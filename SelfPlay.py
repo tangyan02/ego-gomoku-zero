@@ -1,6 +1,8 @@
 import numpy as np
 
 from Game import FourInARowGame
+from Utils import getTimeStr
+
 
 def self_play(mcts, num_games, num_simulations):
     training_data = []
@@ -28,18 +30,12 @@ def self_play(mcts, num_games, num_simulations):
 
             game.make_move(action)  # 执行动作
 
-            print(game.get_board())
-            print(actions)
-            print(action_probs)
-            print(f"set action {action}")
-
         winner = game.check_winner()
         # 为每个状态添加胜利者信息
         for state, action_probs in game_data:
             value = 1 if winner == 1 else -1 if winner == 2 else 0
             training_data.append((state, action_probs, value))
-        print(game.get_board())
-        print(f"winner is {winner}")
+        print(getTimeStr(), "\n", game.get_board())
+        print(getTimeStr(), f"winner is {winner}")
 
     return training_data
-
