@@ -1,6 +1,5 @@
 import torch.nn as nn
 
-
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
         super(PolicyValueNetwork, self).__init__()
@@ -10,6 +9,7 @@ class PolicyValueNetwork(nn.Module):
         self.fc_value = nn.Linear(256, 1)
         self.fc_policy = nn.Linear(256, 36)  # 输出层大小为36，对应6x6个可能的动作
         self.relu = nn.ReLU()
+        self.tanh = nn.Tanh()
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
@@ -21,6 +21,6 @@ class PolicyValueNetwork(nn.Module):
         x = x.view(x.size(0), -1)  # 调整输入张量的形状
         x = self.fc1(x)
         x = self.relu(x)
-        value = self.fc_value(x)
+        value = self.tanh(self.fc_value(x))
         policy = self.softmax(self.fc_policy(x))
         return value, policy
