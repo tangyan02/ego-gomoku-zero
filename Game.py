@@ -8,6 +8,9 @@ class FourInARowGame:
         self.board = np.zeros((board_size, board_size), dtype=int)
         self.current_player = 1
 
+    def get_other_player(self):
+        return 3 - self.current_player
+
     def get_action_index(self, action):
         return action[0] * self.board_size + action[1]
 
@@ -67,7 +70,8 @@ class FourInARowGame:
     def get_state(self):
         board1 = np.where(self.board == 1, 1, 0)
         board2 = np.where(self.board == 2, 1, 0)
-        return np.stack([board1, board2], axis=0)
+        current_player = np.full_like(self.board, fill_value=1 if self.current_player == 1 else 0)
+        return np.stack([board1, board2, current_player], axis=0)
 
     def print_board(self):
         for row in range(self.board_size):
@@ -78,11 +82,6 @@ class FourInARowGame:
                 else:
                     print(self.board[row][col], end="|")
             print()
-        print("-" * (self.board_size * 2 + 1))
-        print("|", end="")
-        for col in range(self.board_size):
-            print(col, end="|")
-        print()
 
     def copy(self):
         new_game = FourInARowGame(self.board_size, self.connect)
