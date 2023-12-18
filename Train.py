@@ -72,6 +72,7 @@ episode = 10000
 
 device = getDevice()
 network = PolicyValueNetwork()
+network.load_state_dict(torch.load(f"model/net_latest.mdl", map_location=torch.device(device)))
 network.to(device)
 
 for i_episode in range(1, episode + 1):
@@ -83,4 +84,4 @@ for i_episode in range(1, episode + 1):
         torch.save(network.state_dict(), f"model/net_{i_episode}.mdl")
         print(getTimeStr(), f"模型已保存 episode:{i_episode}")
     torch.save(network.state_dict(), f"model/net_latest.mdl")
-    print(getTimeStr(), f"最新模型已保存")
+    print(getTimeStr(), f"最新模型已保存 episode:{i_episode}")
