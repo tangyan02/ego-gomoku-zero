@@ -4,12 +4,15 @@ import math
 import torch
 import torch.nn.functional as F
 
+from Utils import getDevice
+
 
 class MonteCarloTree:
-    def __init__(self, value_network):
+    def __init__(self, value_network, device):
         self.value_network = value_network
         self.root = None
         self.node_dict = {}
+        self.device = device
 
     def search(self, game, num_simulations):
         self.root = Node(game, None, self.node_dict)
@@ -34,11 +37,11 @@ class MonteCarloTree:
             self.backpropagate(node, value)
 
     def evaluate_state(self, state):
-        state_tensor = torch.from_numpy(state).unsqueeze(0).float()  # 将状态转换为张量
+        state_tensor = torch.from_numpy(state).unsqueeze(0).float().to(self.device)  # 将状态转换为张量
         value, policy = self.value_network(state_tensor)  # 使用策略价值网络评估状态
 
-        value = value.item()  # 将值转换为标量
-        prior_prob = policy.squeeze().detach().numpy()  # 将概率转换为NumPy数组
+        value = value.cpu().item()  # 将值转换为标量
+        prior_prob = policy.cpu().squeeze().detach().numpy()  # 将概率转换为NumPy数组
         return value, prior_prob
 
     def backpropagate(self, node, value):

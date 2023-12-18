@@ -30,6 +30,9 @@ def self_play(mcts, num_games, num_simulations):
 
             game.make_move(action)  # 执行动作
 
+            print(getTimeStr(), "\n", game.get_board())
+            print(getTimeStr(), f"action is {action}")
+
         winner = game.check_winner()
         # 为每个状态添加胜利者信息
         for state, action_probs in game_data:

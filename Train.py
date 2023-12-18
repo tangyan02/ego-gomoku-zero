@@ -24,7 +24,7 @@ class TrainingDataset(Dataset):
         return len(self.training_data)
 
 
-def train(training_data, network, lr, num_epochs, batch_size):
+def train(training_data, network, device, lr, num_epochs, batch_size):
     training_dataset = TrainingDataset(training_data)
     # 创建数据加载器
     dataloader = DataLoader(training_dataset, batch_size=batch_size, shuffle=True)
@@ -33,9 +33,6 @@ def train(training_data, network, lr, num_epochs, batch_size):
     # 定义优化器
     optimizer = optim.Adam(network.parameters(), lr)
     # 训练循环
-    device = torch.device(getDevice())
-    network.to(device)
-
     for epoch in range(num_epochs):
         running_loss = 0.0
         for batch_data in dataloader:
@@ -73,12 +70,17 @@ num_epochs = 100
 batch_size = 32
 episode = 10000
 
+device = getDevice()
 network = PolicyValueNetwork()
-mcts = MonteCarloTree(network)
+network.to(device)
 
-for i_episode in range(episode):
+for i_episode in range(1, episode + 1):
+    mcts = MonteCarloTree(network, device)
     training_data = self_play(mcts, num_games, num_simulations)
-    train(training_data, network, lr, num_epochs, batch_size)
-    torch.save(network.state_dict(), f"model/net_{i_episode}.mdl")
+    train(training_data, network, device, lr, num_epochs, batch_size)
+
+    if i_episode % 100 == 0:
+        torch.save(network.state_dict(), f"model/net_{i_episode}.mdl")
+        print(getTimeStr(), f"模型已保存 episode:{i_episode}")
     torch.save(network.state_dict(), f"model/net_latest.mdl")
-    print(getTimeStr(), f"模型已保存 episode:{i_episode}")
+    print(getTimeStr(), f"最新模型已保存")
