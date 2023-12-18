@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -72,7 +74,8 @@ episode = 10000
 
 device = getDevice()
 network = PolicyValueNetwork()
-network.load_state_dict(torch.load(f"model/net_latest.mdl", map_location=torch.device(device)))
+if os.path.exists(f"model/net_latest.mdl"):
+    network.load_state_dict(torch.load(f"model/net_latest.mdl", map_location=torch.device(device)))
 network.to(device)
 
 for i_episode in range(1, episode + 1):
