@@ -44,7 +44,6 @@ def self_play(mcts, num_games, num_simulations):
         for state, action_probs in game_data:
             value = 1 if winner == 1 else -1 if winner == 2 else 0
             training_data.append((state, action_probs, value))
-        game.print_board()
         print(getTimeStr(), f"winner is {winner}")
 
     return training_data
