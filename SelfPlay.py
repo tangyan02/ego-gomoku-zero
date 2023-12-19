@@ -15,7 +15,7 @@ def self_play(mcts, num_games, num_simulations):
             mcts.search(game, num_simulations)  # 执行蒙特卡洛树搜索
 
             # 获取动作概率
-            actions, action_probs = mcts.get_action_probabilities(game.get_state())
+            actions, action_probs = mcts.get_action_probabilities(game)
 
             # 归一化概率分布
             action_probs_normalized = action_probs / np.sum(action_probs)

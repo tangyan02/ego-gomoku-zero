@@ -4,8 +4,6 @@ import math
 import torch
 import torch.nn.functional as F
 
-from Utils import getDevice
-
 
 class MonteCarloTree:
     def __init__(self, value_network, device):
@@ -50,8 +48,8 @@ class MonteCarloTree:
             node = node.parent
             value = -value
 
-    def get_action_probabilities(self, state, temperature=1.0):
-        node = self.node_dict[str(state)]
+    def get_action_probabilities(self, game, temperature=1.0):
+        node = self.node_dict[str(game.get_board())]
         action_visits = [(action, child.visits) for action, child in node.children.items()]
         actions, visits = zip(*action_visits)
         visits_tensor = torch.tensor(visits, dtype=torch.float)
@@ -82,7 +80,7 @@ class Node:
         self.value_sum = 0
         self.prior_prob = 0
         self.node_dict = node_dict
-        self.node_dict[str(game.get_state())] = self
+        self.node_dict[str(game.get_board())] = self
 
     def is_leaf(self):
         return len(self.children) == 0
