@@ -1,6 +1,26 @@
+import os
+
+import numpy as np
 import pygame
 
 # 初始化界面
+import torch
+
+from Game import FourInARowGame
+from MTCS import MonteCarloTree
+from PolicyValueNetwork import PolicyValueNetwork
+from Utils import getDevice
+
+
+def getProbs(mtsc, game):
+    value, prior_prob = mtsc.evaluate_state(game.get_state())
+    prior_probs = prior_prob.view().reshape(game.board_size, game.board_size)
+    max_index = np.argmax(prior_probs)
+    max_x = max_index // 6
+    max_y = max_index % 6
+    return value, prior_probs, max_x, max_y
+
+
 pygame.init()
 width, height = 400, 400
 screen = pygame.display.set_mode((width, height))
@@ -9,19 +29,29 @@ pygame.display.set_caption("连珠")
 # 定义颜色
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+YELLOW = (128, 128, 0)
 
 # 定义棋盘大小和格子大小
-board_size = 6
-margin = 40  # 留边大小
-grid_size = (width - 2 * margin) // (board_size - 1)  # 格子大小
+game = FourInARowGame()  # 初始化四子连珠游戏
+margin = width / game.board_size / 2  # 留边大小
+grid_size = (width - 2 * margin) // (game.board_size - 1)  # 格子大小
 stone_radius = grid_size // 2  # 棋子半径为格子大小的1/2
 
-# 初始化棋盘
-board = [[0] * board_size for _ in range(board_size)]
+font = pygame.font.Font(None, 24)
+
+device = getDevice()
+network = PolicyValueNetwork()
+network.to(device)
+mtsc = MonteCarloTree(network, device)
+if os.path.exists(f"model/net_latest.mdl"):
+    network.load_state_dict(torch.load(f"model/net_latest.mdl", map_location=torch.device(device)))
 
 # 游戏主循环
 running = True
-player = 1  # 当前玩家，1代表黑子，2代表白子
+
+value, prior_probs, max_x, max_y = getProbs(mtsc, game)
+
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -29,30 +59,44 @@ while running:
         elif event.type == pygame.MOUSEBUTTONDOWN:
             # 获取鼠标点击位置
             x, y = event.pos
-            # 判断是否在边距内
-            if margin < x < width - margin and margin < y < height - margin:
-                # 计算在棋盘上的位置
-                row = round((y - margin) / grid_size)
-                col = round((x - margin) / grid_size)
-                # 在棋盘上落子
-                if board[row][col] == 0:
-                    board[row][col] = player
-                    player = 2 if player == 1 else 1  # 切换到下一个玩家
+            # 计算在棋盘上的位置
+            row = round((y - margin) / grid_size)
+            col = round((x - margin) / grid_size)
+            # 在棋盘上落子
+            if game.board[row][col] == 0:
+                game.make_move((row, col))
+                value, prior_probs, max_x, max_y = getProbs(mtsc, game)
 
     # 绘制棋盘线条
     screen.fill(WHITE)
-    for i in range(board_size):
+    for i in range(game.board_size):
         pygame.draw.line(screen, BLACK, (margin, i * grid_size + margin), (width - margin, i * grid_size + margin))
         pygame.draw.line(screen, BLACK, (i * grid_size + margin, margin), (i * grid_size + margin, height - margin))
 
     # 绘制棋子
-    for row in range(board_size):
-        for col in range(board_size):
-            if board[row][col] == 1:
+    for row in range(game.board_size):
+        for col in range(game.board_size):
+            if game.board[row][col] == 1:
                 pygame.draw.circle(screen, BLACK, (col * grid_size + margin, row * grid_size + margin), stone_radius)
-            elif board[row][col] == 2:
+            elif game.board[row][col] == 2:
                 pygame.draw.circle(screen, WHITE, (col * grid_size + margin, row * grid_size + margin), stone_radius)
                 pygame.draw.circle(screen, BLACK, (col * grid_size + margin, row * grid_size + margin), stone_radius, 1)
+
+    # 绘制概率
+    for row in range(game.board_size):
+        for col in range(game.board_size):
+            if game.board[row][col] == 0:
+                # 创建文字对象
+                color = RED
+                if row == max_x and col == max_y:
+                    color = YELLOW
+                text = font.render(str(round(prior_probs[row][col], 2)), True, color)
+                # 获取文字对象的矩形
+                text_rect = text.get_rect()
+                # 设置文字矩形的位置
+                text_rect.center = (col * grid_size + margin, row * grid_size + margin)
+                # 在屏幕上绘制文字
+                screen.blit(text, text_rect)
 
     pygame.display.flip()
 
