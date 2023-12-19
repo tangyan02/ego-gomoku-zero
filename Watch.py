@@ -28,6 +28,7 @@ def show_message_box(message, width, height):
 
 def getProbs(mtsc, game):
     value, prior_prob = mtsc.evaluate_state(game.get_state())
+    print(prior_prob)
     prior_probs = prior_prob.view().reshape(game.board_size, game.board_size)
     max_index = np.argmax(prior_probs)
     max_x = max_index // 6
