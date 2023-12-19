@@ -50,14 +50,19 @@ class FourInARowGame:
                     if np.all(self.board[row:row + self.connect, col] == self.board[row][col]):
                         return self.board[row][col]
 
-        # 检查对角线
+        # 检查左上到右下的对角线
         for row in range(self.board_size - self.connect + 1):
             for col in range(self.board_size - self.connect + 1):
                 if self.board[row][col] != 0:
                     if np.all(np.diag(self.board[row:row + self.connect, col:col + self.connect]) == self.board[row][
                         col]):
                         return self.board[row][col]
-                    if np.all(np.diag(np.fliplr(self.board[row:row + self.connect, col:col + self.connect])) ==
+
+        # 检查右上到左下的对角线
+        for row in range(self.board_size - self.connect + 1):
+            for col in range(self.connect - 1, self.board_size):
+                if self.board[row][col] != 0:
+                    if np.all(np.diag(np.fliplr(self.board[row:row + self.connect, col - self.connect + 1:col + 1])) ==
                               self.board[row][col]):
                         return self.board[row][col]
 

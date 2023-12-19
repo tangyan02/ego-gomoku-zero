@@ -12,6 +12,20 @@ from PolicyValueNetwork import PolicyValueNetwork
 from Utils import getDevice
 
 
+# 创建消息框
+def show_message_box(message, width, height):
+    # 创建文字对象
+    text = font.render(message, True, BLACK)
+    # 获取文字对象的矩形
+    text_rect = text.get_rect()
+    # 设置文字矩形的位置为窗口中央
+    text_rect.center = (width // 2, height // 2)
+    # 绘制背景矩形
+    pygame.draw.rect(screen, WHITE, (text_rect.x - 10, text_rect.y - 10, text_rect.width + 20, text_rect.height + 20))
+    # 在屏幕上绘制文字
+    screen.blit(text, text_rect)
+
+
 def getProbs(mtsc, game):
     value, prior_prob = mtsc.evaluate_state(game.get_state())
     prior_probs = prior_prob.view().reshape(game.board_size, game.board_size)
@@ -98,6 +112,8 @@ while running:
                 # 在屏幕上绘制文字
                 screen.blit(text, text_rect)
 
+    if game.check_winner() != 0:
+        show_message_box(f"winner is player {game.get_other_player()}", width, height)
     pygame.display.flip()
 
 # 退出游戏
