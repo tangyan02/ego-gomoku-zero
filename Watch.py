@@ -1,48 +1,60 @@
-import numpy as np
-import torch
+import pygame
 
-from Game import FourInARowGame
-from MTCS import MonteCarloTree
-from PolicyValueNetwork import PolicyValueNetwork
-from Utils import getTimeStr, dirPreBuild, getDevice
+# 初始化界面
+pygame.init()
+width, height = 400, 400
+screen = pygame.display.set_mode((width, height))
+pygame.display.set_caption("连珠")
 
+# 定义颜色
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
 
-def self_play(mcts, num_games, num_simulations):
-    for _ in range(num_games):
-        game = FourInARowGame()  # 初始化四子连珠游戏
+# 定义棋盘大小和格子大小
+board_size = 6
+margin = 40  # 留边大小
+grid_size = (width - 2 * margin) // (board_size - 1)  # 格子大小
+stone_radius = grid_size // 2  # 棋子半径为格子大小的1/2
 
-        while not game.is_game_over():
-            mcts.search(game, num_simulations)  # 执行蒙特卡洛树搜索
+# 初始化棋盘
+board = [[0] * board_size for _ in range(board_size)]
 
-            # 获取动作概率
-            actions, action_probs = mcts.get_action_probabilities(game.get_state())
-            max_prob_index = np.argmax(action_probs)
-            action = actions[max_prob_index]
-            game.make_move(action)  # 执行动作
+# 游戏主循环
+running = True
+player = 1  # 当前玩家，1代表黑子，2代表白子
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            # 获取鼠标点击位置
+            x, y = event.pos
+            # 判断是否在边距内
+            if margin < x < width - margin and margin < y < height - margin:
+                # 计算在棋盘上的位置
+                row = round((y - margin) / grid_size)
+                col = round((x - margin) / grid_size)
+                # 在棋盘上落子
+                if board[row][col] == 0:
+                    board[row][col] = player
+                    player = 2 if player == 1 else 1  # 切换到下一个玩家
 
-            game.print_board()
-            line = ""
-            for i in range(game.board_size * game.board_size):
-                line += str(round(action_probs[i], 2)) + " "
-                if (i + 1) % game.board_size == 0:
-                    print(line)
-                    line = ""
-            print(getTimeStr(), f"action is {action}")
+    # 绘制棋盘线条
+    screen.fill(WHITE)
+    for i in range(board_size):
+        pygame.draw.line(screen, BLACK, (margin, i * grid_size + margin), (width - margin, i * grid_size + margin))
+        pygame.draw.line(screen, BLACK, (i * grid_size + margin, margin), (i * grid_size + margin, height - margin))
 
-        winner = game.check_winner()
-        # 为每个状态添加胜利者信息
-        print(getTimeStr(), f"winner is {winner}")
+    # 绘制棋子
+    for row in range(board_size):
+        for col in range(board_size):
+            if board[row][col] == 1:
+                pygame.draw.circle(screen, BLACK, (col * grid_size + margin, row * grid_size + margin), stone_radius)
+            elif board[row][col] == 2:
+                pygame.draw.circle(screen, WHITE, (col * grid_size + margin, row * grid_size + margin), stone_radius)
+                pygame.draw.circle(screen, BLACK, (col * grid_size + margin, row * grid_size + margin), stone_radius, 1)
 
-dirPreBuild()
+    pygame.display.flip()
 
-num_games = 1
-num_simulations = 2000
-
-device = getDevice()
-network = PolicyValueNetwork()
-network.load_state_dict(torch.load(f"model/net_latest.mdl", map_location=torch.device(device)))
-network.to(device)
-
-while True:
-    mcts = MonteCarloTree(network, device)
-    self_play(mcts, num_games, num_simulations)
+# 退出游戏
+pygame.quit()
