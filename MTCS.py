@@ -32,7 +32,7 @@ class MonteCarloTree:
                 value, prior_prob = self.evaluate_state(node.game.get_state())
                 node.expand(prior_prob)
 
-            self.backpropagate(node, value)
+            self.backpropagate(node, -value)
 
     def evaluate_state(self, state):
         state_tensor = torch.from_numpy(state).unsqueeze(0).float().to(self.device)  # 将状态转换为张量

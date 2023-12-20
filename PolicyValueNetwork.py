@@ -2,7 +2,7 @@ import torch.nn as nn
 
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
-        board_size = 8
+        board_size = 6
 
         super(PolicyValueNetwork, self).__init__()
         self.conv1 = nn.Conv2d(5, 32, kernel_size=(3, 3), stride=(1, 1), padding=1)
