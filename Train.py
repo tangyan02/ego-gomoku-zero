@@ -67,7 +67,7 @@ def train(training_data, network, device, lr, num_epochs, batch_size):
 dirPreBuild()
 
 num_games = 20
-num_simulations = 800
+num_simulations = 400
 lr = 0.001
 num_epochs = 200
 batch_size = 32
