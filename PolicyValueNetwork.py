@@ -2,15 +2,17 @@ import torch.nn as nn
 
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
+        board_size = 6
+
         super(PolicyValueNetwork, self).__init__()
         self.conv1 = nn.Conv2d(5, 32, kernel_size=(3, 3), stride=(1, 1), padding=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=1)
-        self.fc1 = nn.Linear(64 * 6 * 6, 256)
+        self.fc1 = nn.Linear(64 * board_size * board_size, 256)
         self.fc_value = nn.Linear(256, 1)
-        self.fc_policy = nn.Linear(256, 36)  # 输出层大小为36，对应6x6个可能的动作
+        self.fc_policy = nn.Linear(256, board_size * board_size)  # 输出层大小为36，对应6x6个可能的动作
         self.relu = nn.ReLU()
         self.tanh = nn.Tanh()
-        self.softmax = nn.Softmax(dim=1)
+        self.log_softmax = nn.LogSoftmax(dim=1)  # 使用LogSoftmax层替换Softmax层
 
     def forward(self, x):
         if len(x.shape) == 3:
@@ -22,5 +24,5 @@ class PolicyValueNetwork(nn.Module):
         x = self.fc1(x)
         x = self.relu(x)
         value = self.tanh(self.fc_value(x))
-        policy = self.softmax(self.fc_policy(x))
+        policy = self.log_softmax(self.fc_policy(x))  # 使用LogSoftmax层计算log概率值
         return value, policy

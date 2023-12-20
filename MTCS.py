@@ -23,23 +23,23 @@ class MonteCarloTree:
             if node.game.is_game_over():
                 winner = node.game.check_winner()
                 if winner == node.game.current_player:
-                    value = -1
-                elif winner == node.game.get_other_player():
                     value = 1
+                elif winner == node.game.get_other_player():
+                    value = -1
                 else:
                     value, prior_prob = self.evaluate_state(node.game.get_state())
             else:
                 value, prior_prob = self.evaluate_state(node.game.get_state())
                 node.expand(prior_prob)
 
-            self.backpropagate(node, value)
+            self.backpropagate(node, -value)
 
     def evaluate_state(self, state):
         state_tensor = torch.from_numpy(state).unsqueeze(0).float().to(self.device)  # 将状态转换为张量
         value, policy = self.value_network(state_tensor)  # 使用策略价值网络评估状态
 
         value = value.cpu().item()  # 将值转换为标量
-        prior_prob = policy.cpu().squeeze().detach().numpy()  # 将概率转换为NumPy数组
+        prior_prob = torch.exp(policy).cpu().squeeze().detach().numpy()  # 将概率转换为NumPy数组
         return value, prior_prob
 
     def backpropagate(self, node, value):

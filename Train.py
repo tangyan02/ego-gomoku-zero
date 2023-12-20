@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader, Dataset
 
 from PolicyValueNetwork import PolicyValueNetwork
 from SelfPlay import self_play
-
 # 定义训练数据集类
 from Utils import getDevice, dirPreBuild, getTimeStr
 
@@ -38,17 +37,19 @@ def train(training_data, network, device, lr, num_epochs, batch_size):
         running_loss = 0.0
         for batch_data in dataloader:
             states = batch_data[0].float().to(device)
-            action_probs = batch_data[1].float().to(device)
+            mcts_probs = batch_data[1].float().to(device)
             values = batch_data[2].float().to(device)
 
             optimizer.zero_grad()
 
             # 前向传播
-            predicted_values, predicted_action_probs = network(states)
+            predicted_values, predicted_action_logits = network(states)
 
             # 计算值和策略的损失
             value_loss = criterion(predicted_values, values)
-            policy_loss = criterion(predicted_action_probs, action_probs)
+
+            # 计算交叉熵损失
+            policy_loss = -torch.mean(torch.sum(mcts_probs * predicted_action_logits, 1))
 
             # 总损失
             loss = value_loss + policy_loss
@@ -65,9 +66,9 @@ def train(training_data, network, device, lr, num_epochs, batch_size):
 dirPreBuild()
 
 num_games = 20
-num_simulations = 800
+num_simulations = 400
 lr = 0.001
-num_epochs = 1000
+num_epochs = 200
 batch_size = 32
 episode = 10000
 

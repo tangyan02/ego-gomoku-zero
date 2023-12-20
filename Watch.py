@@ -31,8 +31,9 @@ def getProbs(mtsc, game):
     print(prior_prob)
     prior_probs = prior_prob.view().reshape(game.board_size, game.board_size)
     max_index = np.argmax(prior_probs)
-    max_x = max_index // 6
-    max_y = max_index % 6
+    print(max_index)
+    max_x = max_index // game.board_size
+    max_y = max_index %  game.board_size
     return value, prior_probs, max_x, max_y
 
 
@@ -100,18 +101,18 @@ while running:
     # 绘制概率
     for row in range(game.board_size):
         for col in range(game.board_size):
-            if game.board[row][col] == 0:
-                # 创建文字对象
-                color = RED
-                if row == max_x and col == max_y:
-                    color = YELLOW
-                text = font.render(str(round(prior_probs[row][col], 2)), True, color)
-                # 获取文字对象的矩形
-                text_rect = text.get_rect()
-                # 设置文字矩形的位置
-                text_rect.center = (col * grid_size + margin, row * grid_size + margin)
-                # 在屏幕上绘制文字
-                screen.blit(text, text_rect)
+            # if game.board[row][col] == 0:
+            # 创建文字对象
+            color = RED
+            if row == max_x and col == max_y:
+                color = YELLOW
+            text = font.render(str(round(prior_probs[row][col], 2)), True, color)
+            # 获取文字对象的矩形
+            text_rect = text.get_rect()
+            # 设置文字矩形的位置
+            text_rect.center = (col * grid_size + margin, row * grid_size + margin)
+            # 在屏幕上绘制文字
+            screen.blit(text, text_rect)
 
     if game.check_winner() != 0:
         show_message_box(f"winner is player {game.get_other_player()}", width, height)
