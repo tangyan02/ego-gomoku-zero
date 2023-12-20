@@ -23,9 +23,9 @@ class MonteCarloTree:
             if node.game.is_game_over():
                 winner = node.game.check_winner()
                 if winner == node.game.current_player:
-                    value = -1
-                elif winner == node.game.get_other_player():
                     value = 1
+                elif winner == node.game.get_other_player():
+                    value = -1
                 else:
                     value, prior_prob = self.evaluate_state(node.game.get_state())
             else:
