@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 from Game import FourInARowGame
 from Utils import getTimeStr
@@ -41,9 +42,10 @@ def self_play(mcts, num_games, num_simulations):
 
         winner = game.check_winner()
         # 为每个状态添加胜利者信息
-        for state, action_probs in game_data:
+        for state, mcts_probs in game_data:
             value = 1 if winner == 1 else -1 if winner == 2 else 0
-            training_data.append((state, action_probs, value))
+            # 将action_probs处理为概率值
+            training_data.append((state, mcts_probs, value))
         print(getTimeStr(), f"winner is {winner}")
 
     return training_data
