@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 
-from MTCS import MonteCarloTree
 from PolicyValueNetwork import PolicyValueNetwork
 from SelfPlay import self_play
 
@@ -79,8 +78,7 @@ if os.path.exists(f"model/net_latest.mdl"):
 network.to(device)
 
 for i_episode in range(1, episode + 1):
-    mcts = MonteCarloTree(network, device)
-    training_data = self_play(mcts, num_games, num_simulations)
+    training_data = self_play(network, device, num_games, num_simulations)
     train(training_data, network, device, lr, num_epochs, batch_size)
 
     if i_episode % 100 == 0:

@@ -1,12 +1,14 @@
 import numpy as np
 
 from Game import FourInARowGame
+from MTCS import MonteCarloTree
 from Utils import getTimeStr
 
 
-def self_play(mcts, num_games, num_simulations):
+def self_play(network, device, num_games, num_simulations):
     training_data = []
 
+    mcts = MonteCarloTree(network, device)
     for _ in range(num_games):
         game = FourInARowGame()  # 初始化四子连珠游戏
         game_data = []
