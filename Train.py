@@ -8,7 +8,6 @@ from torch.utils.data import DataLoader, Dataset
 from MTCS import MonteCarloTree
 from PolicyValueNetwork import PolicyValueNetwork
 from SelfPlay import self_play
-
 # 定义训练数据集类
 from Utils import getDevice, dirPreBuild, getTimeStr
 
@@ -45,11 +44,13 @@ def train(training_data, network, device, lr, num_epochs, batch_size):
             optimizer.zero_grad()
 
             # 前向传播
-            predicted_values, predicted_action_probs = network(states)
+            predicted_values, predicted_action_logits = network(states)  # 使用未归一化的概率分布
 
             # 计算值和策略的损失
             value_loss = criterion(predicted_values, values)
-            policy_loss = criterion(predicted_action_probs, action_probs)
+
+            # 计算交叉熵损失
+            policy_loss = criterion(predicted_action_logits, action_probs.argmax(dim=1))
 
             # 总损失
             loss = value_loss + policy_loss
