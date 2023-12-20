@@ -85,7 +85,7 @@ class Node:
     def is_leaf(self):
         return len(self.children) == 0
 
-    def select_child(self, exploration_factor=1.4):
+    def select_child(self, exploration_factor=5):
         total_visits = self.visits
         ucb_values = [
             ((child.value_sum / child.visits) if child.visits > 0 else 0) +
