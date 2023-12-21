@@ -47,7 +47,7 @@ def self_play(network, device, num_games, num_simulations):
             game_data.append((state, action_probs_normalized))
             game.make_move(game.parse_action_from_index(action))  # 执行动作
 
-            print_game(game, action, action_probs_normalized)
+            print_game(game, action, action_probs_with_noise)
 
         winner = game.check_winner()
         # 为每个状态添加胜利者信息
