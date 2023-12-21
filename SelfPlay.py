@@ -44,15 +44,15 @@ def self_play(network, device, num_games, num_simulations):
 
             # 保存当前状态和动作概率
             state = game.get_state()
-            game_data.append((state, action_probs_normalized))
+            game_data.append((state, game.current_player, action_probs_normalized))
             game.make_move(game.parse_action_from_index(action))  # 执行动作
 
             print_game(game, action, action_probs_with_noise)
 
         winner = game.check_winner()
         # 为每个状态添加胜利者信息
-        for state, mcts_probs in game_data:
-            value = 1 if winner == game.current_player else -1 if winner == game.get_other_player() else 0
+        for state, player, mcts_probs in game_data:
+            value = 1 if winner == player else -1 if winner == (2 - player) else 0
             # 将action_probs处理为概率值
             training_data.append((state, mcts_probs, value))
         print(getTimeStr(), f"winner is {winner}")
