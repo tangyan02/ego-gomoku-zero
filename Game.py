@@ -15,6 +15,9 @@ class FourInARowGame:
     def get_action_index(self, action):
         return action[0] * self.board_size + action[1]
 
+    def parse_action_from_index(self, action_idx):
+        return (action_idx // self.board_size, action_idx % self.board_size)
+
     def exchange_color(self):
         self.board = np.where(self.board == 0, 0, 3 - self.board)
         self.current_player = 3 - self.current_player

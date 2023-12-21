@@ -30,17 +30,24 @@ def self_play(network, device, num_games, num_simulations):
             # 获取动作概率
             actions, action_probs = mcts.get_action_probabilities(game)
 
+            # 归一化概率分布
+            action_probs_normalized = action_probs / np.sum(action_probs)
+
+            # 添加噪声
             noise_eps = 0.75  # 噪声参数
             dirichlet_alpha = 0.3  # dirichlet系数
-            action = np.random.choice(actions, p=actions * action_probs + (1 - noise_eps) * np.random.dirichlet(
-                dirichlet_alpha * np.ones(len(action_probs))))
+            action_probs_with_noise = (1 - noise_eps) * action_probs_normalized + noise_eps * np.random.dirichlet(
+                dirichlet_alpha * np.ones(len(action_probs_normalized)))
+
+            # 根据带有噪声的概率分布选择动作
+            action = np.random.choice(actions, p=action_probs_with_noise)
 
             # 保存当前状态和动作概率
             state = game.get_state()
-            game_data.append((state, action_probs))
-            game.make_move(action)  # 执行动作
+            game_data.append((state, action_probs_normalized))
+            game.make_move(game.parse_action_from_index(action))  # 执行动作
 
-            print_game(game, action, action_probs)
+            print_game(game, action, action_probs_normalized)
 
         winner = game.check_winner()
         # 为每个状态添加胜利者信息

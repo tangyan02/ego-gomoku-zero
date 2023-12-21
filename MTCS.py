@@ -55,15 +55,11 @@ class MonteCarloTree:
         visits_tensor = torch.tensor(visits, dtype=torch.float)
         action_probs = F.softmax(1.0 / temperature * torch.log(visits_tensor + 1e-10), dim=0).tolist()
 
-        acts = []
-        for x in range(node.game.board_size):
-            for y in range(node.game.board_size):
-                acts.append((x, y))
         probs = [0] * node.game.board_size * node.game.board_size
         for i in range(len(actions)):
             probs[node.game.get_action_index(actions[i])] = action_probs[i]
 
-        return np.array(acts), np.array(probs)
+        return np.array(range(node.game.board_size * node.game.board_size)), np.array(probs)
 
     def apply_temperature(self, action_probabilities, temperature):
         action_probabilities = np.power(action_probabilities, 1 / temperature)
