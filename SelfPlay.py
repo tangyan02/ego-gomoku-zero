@@ -54,7 +54,7 @@ def self_play(network, device, num_games, num_simulations):
         for state, mcts_probs in game_data:
             value = 1 if winner == game.current_player else -1 if winner == game.get_other_player() else 0
             # 将action_probs处理为概率值
-            training_data.append((state, mcts_probs, -value))
+            training_data.append((state, mcts_probs, value))
         print(getTimeStr(), f"winner is {winner}")
 
     return training_data
