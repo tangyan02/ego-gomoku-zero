@@ -9,30 +9,33 @@ class MonteCarloTree:
     def __init__(self, value_network, device):
         self.value_network = value_network
         self.root = None
-        self.node_dict = {}
         self.device = device
 
-    def search(self, game, num_simulations):
-        self.root = Node(game, None, self.node_dict)
+    def simulate(self, game):
+        node = self.root
+        while not node.is_leaf():
+            action, node = node.select_child()
+            game.make_move(action)
 
-        for _ in range(num_simulations):
-            node = self.root
-            while not node.is_leaf():
-                action, node = node.select_child()
-
-            if node.game.is_game_over():
-                winner = node.game.check_winner()
-                if winner == node.game.current_player:
-                    value = 1
-                elif winner == node.game.get_other_player():
-                    value = -1
-                else:
-                    value, prior_prob = self.evaluate_state(node.game.get_state())
+        if node.game.is_game_over():
+            winner = node.game.check_winner()
+            if winner == node.game.current_player:
+                value = 1
+            elif winner == node.game.get_other_player():
+                value = -1
             else:
                 value, prior_prob = self.evaluate_state(node.game.get_state())
-                node.expand(prior_prob)
+        else:
+            value, prior_prob = self.evaluate_state(node.game.get_state())
+            node.expand(prior_prob)
 
-            self.backpropagate(node, -value)
+        self.backpropagate(node, -value)
+
+    def search(self, game, num_simulations):
+        self.root = Node(game, None)
+
+        for _ in range(num_simulations):
+            self.simulate(game.copy())
 
     def evaluate_state(self, state):
         state_tensor = torch.from_numpy(state).unsqueeze(0).float().to(self.device)  # 将状态转换为张量
@@ -48,8 +51,8 @@ class MonteCarloTree:
             node = node.parent
             value = -value
 
-    def get_action_probabilities(self, game, temperature=1.0):
-        node = self.node_dict[str(game.get_board())]
+    def get_action_probabilities(self, temperature=1.0):
+        node = self.root
         action_visits = [(action, child.visits) for action, child in node.children.items()]
         actions, visits = zip(*action_visits)
         visits_tensor = torch.tensor(visits, dtype=torch.float)
@@ -68,15 +71,13 @@ class MonteCarloTree:
 
 
 class Node:
-    def __init__(self, game, parent=None, node_dict=None):
+    def __init__(self, game, parent=None):
         self.game = game
         self.parent = parent
         self.children = {}
         self.visits = 0
         self.value_sum = 0
         self.prior_prob = 0
-        self.node_dict = node_dict
-        self.node_dict[str(game.get_board())] = self
 
     def is_leaf(self):
         return len(self.children) == 0
@@ -101,7 +102,7 @@ class Node:
         for i, action in enumerate(actions):
             new_game = self.game.copy()
             new_game.make_move(action)
-            new_node = Node(new_game, parent=self, node_dict=self.node_dict)
+            new_node = Node(new_game, parent=self)
             new_node.prior_prob = prior_probs[self.game.get_action_index(action)]
             self.children[action] = new_node
 
