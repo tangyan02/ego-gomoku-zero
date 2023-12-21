@@ -34,7 +34,7 @@ def self_play(network, device, num_games, num_simulations):
             action_probs_normalized = action_probs / np.sum(action_probs)
 
             # 添加噪声
-            noise_eps = 0.75  # 噪声参数
+            noise_eps = 0.25  # 噪声参数
             dirichlet_alpha = 0.3  # dirichlet系数
             action_probs_with_noise = (1 - noise_eps) * action_probs_normalized + noise_eps * np.random.dirichlet(
                 dirichlet_alpha * np.ones(len(action_probs_normalized)))
