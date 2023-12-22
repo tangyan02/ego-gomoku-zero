@@ -37,6 +37,9 @@ class FourInARowGame:
             self.board_last = self.board.copy()
             self.board[row][col] = self.current_player
             self.current_player = 3 - self.current_player  # 切换玩家
+        else:
+            print(f"ERROR for action {action}")
+            self.print_board()
 
     def check_winner(self):
         # 检查行
@@ -99,7 +102,7 @@ class FourInARowGame:
         new_game = FourInARowGame(self.board_size, self.connect)
         new_game.board = self.board.copy()
         new_game.current_player = self.current_player
-        new_game.board_last = self.board_last
+        new_game.board_last = self.board_last.copy()
         return new_game
 
     def equals(self, o):
