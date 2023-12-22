@@ -16,6 +16,29 @@ def print_game(game, action, action_probs):
     print(getTimeStr(), f"action is {game.parse_action_from_index(action)}")
 
 
+def get_equi_data(game, play_data):
+    """augment the data set by rotation and flipping
+    play_data: [(state, mcts_prob, winner_z), ..., ...]
+    """
+    extend_data = []
+    for state, mcts_porb, value in play_data:
+        for i in [1, 2, 3, 4]:
+            # rotate counterclockwise
+            equi_state = np.array([np.rot90(s, i) for s in state])
+            equi_mcts_prob = np.rot90(np.flipud(
+                mcts_porb.reshape(game.board_size, game.board_size)), i)
+            extend_data.append((equi_state,
+                                np.flipud(equi_mcts_prob).flatten(),
+                                value))
+            # flip horizontally
+            equi_state = np.array([np.fliplr(s) for s in equi_state])
+            equi_mcts_prob = np.fliplr(equi_mcts_prob)
+            extend_data.append((equi_state,
+                                np.flipud(equi_mcts_prob).flatten(),
+                                value))
+    return extend_data
+
+
 def self_play(network, device, num_games, num_simulations):
     training_data = []
 
@@ -58,6 +81,8 @@ def self_play(network, device, num_games, num_simulations):
             value = 1 if winner == player else -1 if winner == (2 - player) else 0
             # 将action_probs处理为概率值
             training_data.append((state, mcts_probs, value))
+
         print(getTimeStr(), f"winner is {winner}")
 
-    return training_data
+    extend_data = get_equi_data(FourInARowGame(), training_data)
+    return extend_data
