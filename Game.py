@@ -101,3 +101,7 @@ class FourInARowGame:
         new_game.current_player = self.current_player
         new_game.board_last = self.board_last
         return new_game
+
+    def equals(self, o):
+        return self.current_player == o.current_player and str(self.board) == str(
+            o.board) and self.connect == o.connect and self.board_size == o.board_size

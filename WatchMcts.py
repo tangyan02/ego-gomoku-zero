@@ -27,14 +27,13 @@ def show_message_box(message, width, height):
 
 
 def getProbs(mtsc, game):
-    actions, prior_prob = mtsc.get_action_probabilities(game)
+    actions, prior_prob = mtsc.get_action_probabilities()
     print(prior_prob)
     prior_probs = prior_prob.view().reshape(game.board_size, game.board_size)
     max_index = np.argmax(prior_probs)
-    print(max_index)
     max_x = max_index // game.board_size
     max_y = max_index % game.board_size
-    return prior_probs, max_x, max_y
+    return prior_probs, (max_x, max_y)
 
 
 pygame.init()
@@ -68,7 +67,7 @@ running = True
 
 while running:
     mtsc.search(game.copy(), 100)
-    prior_probs, max_x, max_y = getProbs(mtsc, game)
+    prior_probs, action = getProbs(mtsc, game)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -103,7 +102,7 @@ while running:
             # if game.board[row][col] == 0:
             # 创建文字对象
             color = RED
-            if row == max_x and col == max_y:
+            if row == action[0] and col == action[1]:
                 color = YELLOW
             text = font.render(str(round(prior_probs[row][col], 2)), True, color)
             # 获取文字对象的矩形

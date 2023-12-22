@@ -32,7 +32,13 @@ class MonteCarloTree:
         self.backpropagate(node, -value)
 
     def search(self, game, num_simulations):
-        self.root = Node(game, None)
+        if self.root is None:
+            self.root = Node(game, None)
+        else:
+            for action, child in self.root.children.items():
+                if game.equals(child.game):
+                    self.root = child
+                    break
 
         for _ in range(num_simulations):
             self.simulate(game.copy())

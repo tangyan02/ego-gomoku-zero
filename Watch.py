@@ -106,7 +106,7 @@ while running:
             color = RED
             if row == max_x and col == max_y:
                 color = YELLOW
-            text = font.render(str(round(prior_probs[row][col], 2)), True, color)
+            text = font.render(str(round(prior_probs[row][col], 3)), True, color)
             # 获取文字对象的矩形
             text_rect = text.get_rect()
             # 设置文字矩形的位置
