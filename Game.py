@@ -37,9 +37,11 @@ class FourInARowGame:
             self.board_last = self.board.copy()
             self.board[row][col] = self.current_player
             self.current_player = 3 - self.current_player  # 切换玩家
+            return True
         else:
             print(f"ERROR for action {action}")
             self.print_board()
+            return False
 
     def check_winner(self):
         # 检查行

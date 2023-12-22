@@ -45,10 +45,12 @@ def self_play(network, device, num_games, num_simulations):
 
             # 保存当前状态和动作概率
             state = game.get_state()
-            game_data.append((state, game.current_player, action_probs_normalized))
-            game.make_move(game.parse_action_from_index(action))  # 执行动作
+            record = (state, game.current_player, action_probs_normalized)
 
-            print_game(game, action, action_probs_normalized)
+            # 如果加了噪声，可能失败，此处
+            if game.make_move(game.parse_action_from_index(action)):  # 执行动作
+                game_data.append(record)
+                print_game(game, action, action_probs_normalized)
 
         winner = game.check_winner()
         # 为每个状态添加胜利者信息
