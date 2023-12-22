@@ -3,29 +3,16 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 
 from PolicyValueNetwork import PolicyValueNetwork
+from ReplayBuffer import ReplayBuffer
 from SelfPlay import self_play
 # 定义训练数据集类
 from Utils import getDevice, dirPreBuild, getTimeStr
 
 
-class TrainingDataset(Dataset):
-    def __init__(self, training_data):
-        self.training_data = training_data
-
-    def __getitem__(self, index):
-        # 返回单个训练样本
-        return self.training_data[index]
-
-    def __len__(self):
-        # 返回训练数据集大小
-        return len(self.training_data)
-
-
-def train(training_data, network, device, lr, num_epochs, batch_size):
-    training_dataset = TrainingDataset(training_data)
+def train(training_dataset, network, device, lr, num_epochs, batch_size):
     # 创建数据加载器
     dataloader = DataLoader(training_dataset, batch_size=batch_size, shuffle=True)
     # 定义损失函数
@@ -71,6 +58,7 @@ lr = 0.001
 num_epochs = 100
 batch_size = 32
 episode = 10000
+replay_buffer_size = 50000
 
 device = getDevice()
 network = PolicyValueNetwork()
@@ -78,8 +66,11 @@ if os.path.exists(f"model/net_latest.mdl"):
     network.load_state_dict(torch.load(f"model/net_latest.mdl", map_location=torch.device(device)))
 network.to(device)
 
+training_dataset = ReplayBuffer(replay_buffer_size)
+
 for i_episode in range(1, episode + 1):
     training_data = self_play(network, device, num_games, num_simulations)
+    training_dataset.add_samples(training_data)
     train(training_data, network, device, lr, num_epochs, batch_size)
 
     if i_episode % 100 == 0:
