@@ -13,7 +13,7 @@ def print_game(game, action, action_probs):
         if (i + 1) % game.board_size == 0:
             print(line)
             line = ""
-    print(getTimeStr(), f"action is {action}")
+    print(getTimeStr(), f"action is {game.parse_action_from_index(action)}")
 
 
 def self_play(network, device, num_games, num_simulations):
@@ -28,7 +28,7 @@ def self_play(network, device, num_games, num_simulations):
             mcts.search(game, num_simulations)  # 执行蒙特卡洛树搜索
 
             # 获取动作概率
-            actions, action_probs = mcts.get_action_probabilities(game)
+            actions, action_probs = mcts.get_action_probabilities()
 
             # 归一化概率分布
             action_probs_normalized = action_probs / np.sum(action_probs)
