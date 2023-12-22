@@ -13,7 +13,10 @@ class MonteCarloTree:
         self.device = device
 
     def search(self, game, num_simulations):
-        self.root = Node(game, None, self.node_dict)
+        if str(game.get_board()) in self.node_dict:
+            self.root = self.node_dict[str(game.get_board())]
+        else:
+            self.root = Node(game, None, self.node_dict)
 
         for _ in range(num_simulations):
             node = self.root
