@@ -12,9 +12,9 @@ from SelfPlay import self_play
 from Utils import getDevice, dirPreBuild, getTimeStr
 
 
-def train(training_dataset, network, device, lr, num_epochs, batch_size):
+def train(replay_buffer, network, device, lr, num_epochs, batch_size):
     # 创建数据加载器
-    dataloader = DataLoader(training_dataset, batch_size=batch_size, shuffle=True)
+    dataloader = DataLoader(replay_buffer, batch_size=batch_size, shuffle=True)
     # 定义损失函数
     criterion = nn.MSELoss()
     # 定义优化器
@@ -58,7 +58,8 @@ lr = 0.001
 num_epochs = 100
 batch_size = 32
 episode = 10000
-replay_buffer_size = 50000
+replay_buffer_size = 10000
+start_train_size = 2000
 
 device = getDevice()
 network = PolicyValueNetwork()
@@ -66,12 +67,13 @@ if os.path.exists(f"model/net_latest.mdl"):
     network.load_state_dict(torch.load(f"model/net_latest.mdl", map_location=torch.device(device)))
 network.to(device)
 
-training_dataset = ReplayBuffer(replay_buffer_size)
+replay_buffer = ReplayBuffer(replay_buffer_size)
 
 for i_episode in range(1, episode + 1):
     training_data = self_play(network, device, num_games, num_simulations)
-    training_dataset.add_samples(training_data)
-    train(training_data, network, device, lr, num_epochs, batch_size)
+
+    replay_buffer.add_samples(training_data)
+    train(replay_buffer, network, device, lr, num_epochs, batch_size)
 
     if i_episode % 100 == 0:
         torch.save(network.state_dict(), f"model/net_{i_episode}.mdl")
