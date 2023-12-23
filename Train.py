@@ -52,13 +52,13 @@ def train(replay_buffer, network, device, lr, num_epochs, batch_size):
 
 dirPreBuild()
 
-num_games = 40
+num_games = 20
 num_simulations = 400
 lr = 0.001
 num_epochs = 200
-batch_size = 32
+batch_size = 64
 episode = 10000
-replay_buffer_size = 10000
+replay_buffer_size = 20000
 start_train_size = 2000
 
 device = getDevice()
