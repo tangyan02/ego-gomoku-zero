@@ -51,26 +51,26 @@ def self_play(network, device, num_games, num_simulations):
             mcts.search(game, num_simulations)  # 执行蒙特卡洛树搜索
 
             # 获取动作概率
-            actions, action_probs = mcts.get_action_probabilities(temperature=2)
+            actions, action_probs = mcts.get_action_probabilities(temperature=1)
 
             # 归一化概率分布
             action_probs_normalized = action_probs / np.sum(action_probs)
 
             # 添加噪声
-            # noise_eps = 0.25  # 噪声参数
-            # dirichlet_alpha = 0.3  # dirichlet系数
-            # action_probs_with_noise = (1 - noise_eps) * action_probs_normalized + noise_eps * np.random.dirichlet(
-            #     dirichlet_alpha * np.ones(len(action_probs_normalized)))
-            #
-            # # 根据带有噪声的概率分布选择动作
-            # action = np.random.choice(actions, p=action_probs_with_noise)
-            action = np.random.choice(actions, p=action_probs_normalized)
+            noise_eps = 0.25  # 噪声参数
+            dirichlet_alpha = 0.3  # dirichlet系数
+            action_probs_with_noise = (1 - noise_eps) * action_probs_normalized + noise_eps * np.random.dirichlet(
+                dirichlet_alpha * np.ones(len(action_probs_normalized)))
+
+            # 根据带有噪声的概率分布选择动作
+            action = np.random.choice(actions, p=action_probs_with_noise)
+            # action = np.random.choice(actions, p=action_probs_normalized)
 
             # 保存当前状态和动作概率
             state = game.get_state()
             record = (state, game.current_player, action_probs_normalized)
 
-            # 如果加了噪声，可能失败，此处
+            # 如果加了噪声，可能失败，此处不计入流程
             if game.make_move(game.parse_action_from_index(action)):  # 执行动作
                 game_data.append(record)
                 print_game(game, action, action_probs_normalized)
