@@ -60,6 +60,8 @@ batch_size = 64
 episode = 10000
 replay_buffer_size = 20000
 start_train_size = 20000
+temperature = 3
+exploration_factor = 3
 
 device = getDevice()
 network = PolicyValueNetwork()
@@ -70,7 +72,7 @@ network.to(device)
 replay_buffer = ReplayBuffer(replay_buffer_size)
 
 for i_episode in range(1, episode + 1):
-    training_data = self_play(network, device, num_games, num_simulations)
+    training_data = self_play(network, device, num_games, num_simulations, temperature, exploration_factor)
 
     replay_buffer.add_samples(training_data)
 

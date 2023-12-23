@@ -1,7 +1,7 @@
 import numpy as np
 
 from Game import FourInARowGame
-from MTCS import MonteCarloTree, Node
+from MTCS import MonteCarloTree
 from Utils import getTimeStr
 
 
@@ -39,10 +39,10 @@ def get_equi_data(game, play_data):
     return extend_data
 
 
-def self_play(network, device, num_games, num_simulations):
+def self_play(network, device, num_games, num_simulations, temperature, exploration_factor):
     training_data = []
 
-    mcts = MonteCarloTree(network, device)
+    mcts = MonteCarloTree(network, device, exploration_factor)
     for _ in range(num_games):
         game = FourInARowGame()  # 初始化四子连珠游戏
         game_data = []
@@ -51,9 +51,9 @@ def self_play(network, device, num_games, num_simulations):
             mcts.search(game, num_simulations)  # 执行蒙特卡洛树搜索
 
             # 获取动作概率
-            actions, action_probs = mcts.get_action_probabilities(temperature=1)
+            actions, action_probs = mcts.get_action_probabilities()
 
-            action_probs = mcts.apply_temperature(action_probs, 1.4)
+            action_probs = mcts.apply_temperature(action_probs, temperature)
 
             # 归一化概率分布
             action_probs_normalized = action_probs / np.sum(action_probs)

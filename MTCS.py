@@ -6,15 +6,16 @@ import torch.nn.functional as F
 
 
 class MonteCarloTree:
-    def __init__(self, value_network, device):
+    def __init__(self, value_network, device, exploration_factor=5):
         self.value_network = value_network
         self.root = None
         self.device = device
+        self.exploration_factor = exploration_factor
 
     def simulate(self, game):
         node = self.root
         while not node.is_leaf():
-            action, node = node.select_child()
+            action, node = node.select_child(self.exploration_factor)
             game.make_move(action)
 
         if node.game.is_game_over():
@@ -99,7 +100,7 @@ class Node:
     def is_leaf(self):
         return len(self.children) == 0
 
-    def select_child(self, exploration_factor=5):
+    def select_child(self, exploration_factor):
         total_visits = self.visits
         ucb_values = [
             ((child.value_sum / child.visits) if child.visits > 0 else 0) +
