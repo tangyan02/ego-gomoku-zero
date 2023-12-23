@@ -11,6 +11,9 @@ class ReplayBuffer(Dataset):
         if self.max_size is not None and len(self.training_data) > self.max_size:
             self.training_data = self.training_data[-self.max_size:]
 
+    def size(self):
+        return len(self.training_data)
+
     def __getitem__(self, index):
         return self.training_data[index]
 

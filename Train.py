@@ -59,7 +59,7 @@ num_epochs = 200
 batch_size = 64
 episode = 10000
 replay_buffer_size = 20000
-start_train_size = 2000
+start_train_size = 20000
 
 device = getDevice()
 network = PolicyValueNetwork()
@@ -73,10 +73,12 @@ for i_episode in range(1, episode + 1):
     training_data = self_play(network, device, num_games, num_simulations)
 
     replay_buffer.add_samples(training_data)
-    train(replay_buffer, network, device, lr, num_epochs, batch_size)
 
-    if i_episode % 100 == 0:
-        torch.save(network.state_dict(), f"model/net_{i_episode}.mdl")
-        print(getTimeStr(), f"模型已保存 episode:{i_episode}")
-    torch.save(network.state_dict(), f"model/net_latest.mdl")
-    print(getTimeStr(), f"最新模型已保存 episode:{i_episode}")
+    if replay_buffer.size() >= start_train_size:
+        train(replay_buffer, network, device, lr, num_epochs, batch_size)
+
+        if i_episode % 100 == 0:
+            torch.save(network.state_dict(), f"model/net_{i_episode}.mdl")
+            print(getTimeStr(), f"模型已保存 episode:{i_episode}")
+        torch.save(network.state_dict(), f"model/net_latest.mdl")
+        print(getTimeStr(), f"最新模型已保存 episode:{i_episode}")

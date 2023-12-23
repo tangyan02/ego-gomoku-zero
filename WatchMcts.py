@@ -66,7 +66,7 @@ if os.path.exists(f"model/net_latest.mdl"):
 running = True
 
 while running:
-    mtsc.search(game.copy(), 100)
+    mtsc.search(game.copy(), 100, False)
     prior_probs, action = getProbs(mtsc, game)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
