@@ -55,7 +55,7 @@ dirPreBuild()
 num_games = 40
 num_simulations = 400
 lr = 0.001
-num_epochs = 100
+num_epochs = 200
 batch_size = 32
 episode = 10000
 replay_buffer_size = 10000
