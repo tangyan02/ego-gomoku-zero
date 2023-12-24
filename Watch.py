@@ -67,6 +67,8 @@ if os.path.exists(f"model/net_latest.mdl"):
 running = True
 
 value, prior_probs, max_x, max_y = getProbs(mtsc, game)
+game.print_board()
+print(value)
 
 while running:
     for event in pygame.event.get():
@@ -82,6 +84,8 @@ while running:
             if game.board[row][col] == 0:
                 game.make_move((row, col))
                 value, prior_probs, max_x, max_y = getProbs(mtsc, game)
+                game.print_board()
+                print(value)
 
     # 绘制棋盘线条
     screen.fill(WHITE)

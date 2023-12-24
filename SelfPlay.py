@@ -80,7 +80,7 @@ def self_play(network, device, num_games, num_simulations, temperature, explorat
         winner = game.check_winner()
         # 为每个状态添加胜利者信息
         for state, player, mcts_probs in game_data:
-            value = 1 if winner == player else -1 if winner == (2 - player) else 0
+            value = 1 if winner == player else -1 if winner == (3 - player) else 0
             # 将action_probs处理为概率值
             training_data.append((state, mcts_probs, value))
 

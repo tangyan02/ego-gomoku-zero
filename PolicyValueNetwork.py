@@ -1,28 +1,39 @@
 import torch.nn as nn
+import torch.nn.functional as F
+
 
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
-        board_size = 6
-
+        self.board_size = 6
+        self.input_channels = 5
         super(PolicyValueNetwork, self).__init__()
-        self.conv1 = nn.Conv2d(5, 32, kernel_size=(3, 3), stride=(1, 1), padding=1)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=1)
-        self.fc1 = nn.Linear(64 * board_size * board_size, 256)
-        self.fc_value = nn.Linear(256, 1)
-        self.fc_policy = nn.Linear(256, board_size * board_size)  # 输出层大小为36，对应6x6个可能的动作
-        self.relu = nn.ReLU()
-        self.tanh = nn.Tanh()
-        self.log_softmax = nn.LogSoftmax(dim=1)  # 使用LogSoftmax层替换Softmax层
 
-    def forward(self, x):
-        if len(x.shape) == 3:
-            x = x.unsqueeze(0)  # 在第一个维度上添加批量维度为1
+        # common layers
+        self.conv1 = nn.Conv2d(self.input_channels, 32, kernel_size=(3, 3), padding=1)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=(3, 3), padding=1)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=(3, 3), padding=1)
+        # action policy layers
+        self.act_conv1 = nn.Conv2d(128, 4, kernel_size=(1, 1))
+        self.act_fc1 = nn.Linear(4 * self.board_size * self.board_size,
+                                 self.board_size * self.board_size)
+        # state value layers
+        self.val_conv1 = nn.Conv2d(128, 2, kernel_size=(1, 1))
+        self.val_fc1 = nn.Linear(2 * self.board_size * self.board_size, 64)
+        self.val_fc2 = nn.Linear(64, 1)
 
-        x = self.relu(self.conv1(x))
-        x = self.relu(self.conv2(x))
-        x = x.view(x.size(0), -1)  # 调整输入张量的形状
-        x = self.fc1(x)
-        x = self.relu(x)
-        value = self.tanh(self.fc_value(x))
-        policy = self.log_softmax(self.fc_policy(x))  # 使用LogSoftmax层计算log概率值
-        return value, policy
+    def forward(self, state_input):
+        # common layers
+        x = F.relu(self.conv1(state_input))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        # action policy layers
+        x_act = F.relu(self.act_conv1(x))
+        x_act = x_act.view(-1, 4 * self.board_size * self.board_size)
+        x_act = F.log_softmax(self.act_fc1(x_act))
+        # state value layers
+        x_val = F.relu(self.val_conv1(x))
+        x_val = x_val.view(-1, 2 * self.board_size * self.board_size)
+        x_val = F.relu(self.val_fc1(x_val))
+        x_val = F.tanh(self.val_fc2(x_val))
+
+        return x_val, x_act

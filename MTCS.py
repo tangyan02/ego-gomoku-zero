@@ -59,8 +59,8 @@ class MonteCarloTree:
         state_tensor = torch.from_numpy(state).unsqueeze(0).float().to(self.device)  # 将状态转换为张量
         value, policy = self.value_network(state_tensor)  # 使用策略价值网络评估状态
 
-        value = value.cpu().item()  # 将值转换为标量
-        prior_prob = torch.exp(policy).cpu().squeeze().detach().numpy()  # 将概率转换为NumPy数组
+        value = value[0][0].cpu().item()  # 将值转换为标量
+        prior_prob = np.exp(policy.data.cpu().numpy().flatten())
         return value, prior_prob
 
     def backpropagate(self, node, value):
