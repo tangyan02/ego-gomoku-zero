@@ -83,6 +83,8 @@ class MonteCarloTree:
         return np.array(range(node.game.board_size * node.game.board_size)), np.array(probs)
 
     def apply_temperature(self, action_probabilities, temperature):
+        if temperature == 1:
+            return action_probabilities
         action_probabilities = np.power(action_probabilities, 1 / temperature)
         action_probabilities /= np.sum(action_probabilities)
         return action_probabilities

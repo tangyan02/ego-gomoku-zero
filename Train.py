@@ -62,7 +62,7 @@ episode = 10000
 replay_buffer_size = 20000
 start_train_size = 10000
 # start_train_size = 0
-temperature = 3
+temperature = 1
 exploration_factor = 3
 
 device = getDevice()

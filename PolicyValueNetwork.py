@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -34,6 +35,6 @@ class PolicyValueNetwork(nn.Module):
         x_val = F.relu(self.val_conv1(x))
         x_val = x_val.view(-1, 2 * self.board_size * self.board_size)
         x_val = F.relu(self.val_fc1(x_val))
-        x_val = F.tanh(self.val_fc2(x_val))
+        x_val = torch.tanh(self.val_fc2(x_val))
 
         return x_val, x_act

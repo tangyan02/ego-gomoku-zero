@@ -82,7 +82,7 @@ def self_play(network, device, num_games, num_simulations, temperature, explorat
         for state, player, mcts_probs in game_data:
             value = 1 if winner == player else -1 if winner == (3 - player) else 0
             # 将action_probs处理为概率值
-            training_data.append((state, mcts_probs, value))
+            training_data.append((state, mcts_probs, np.array([value])))
 
         print(getTimeStr(), f"winner is {winner}")
 
