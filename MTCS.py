@@ -109,10 +109,10 @@ class Node:
             enumerate(self.children.values())]
         selected_action = None
         max_ucb = float('-inf')
-        for i, child in enumerate(self.children):
+        for i, action in enumerate(self.children):
             if ucb_values[i] > max_ucb:
                 max_ucb = ucb_values[i]
-                selected_action = child
+                selected_action = action
         return selected_action, self.children[selected_action]
 
     def expand(self, prior_probs):
