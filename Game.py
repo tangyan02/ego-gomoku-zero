@@ -2,7 +2,7 @@ import numpy as np
 
 
 class FourInARowGame:
-    def __init__(self, board_size=6, connect=4):
+    def __init__(self, board_size=8, connect=5):
         self.board_size = board_size
         self.connect = connect
         self.board = np.zeros((board_size, board_size), dtype=int)

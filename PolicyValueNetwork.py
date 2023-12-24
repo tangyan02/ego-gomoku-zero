@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
-        self.board_size = 6
+        self.board_size = 8
         self.input_channels = 5
         super(PolicyValueNetwork, self).__init__()
 
