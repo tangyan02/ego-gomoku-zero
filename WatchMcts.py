@@ -28,7 +28,6 @@ def show_message_box(message, width, height):
 
 def getProbs(mtsc, game):
     actions, prior_prob = mtsc.get_action_probabilities()
-    print(prior_prob)
     prior_probs = prior_prob.view().reshape(game.board_size, game.board_size)
     max_index = np.argmax(prior_probs)
     max_x = max_index // game.board_size
@@ -66,8 +65,13 @@ if os.path.exists(f"model/net_latest.mdl"):
 running = True
 
 while running:
-    mtsc.search(game.copy(), 100, False)
+    realPlayer = game.current_player
+    if game.current_player == 2:
+        game.exchange_color()
+    mtsc.search(game.copy(), 50)
     prior_probs, action = getProbs(mtsc, game)
+    if realPlayer != game.current_player:
+        game.exchange_color()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -80,7 +84,6 @@ while running:
             # 在棋盘上落子
             if game.board[row][col] == 0:
                 game.make_move((row, col))
-
     # 绘制棋盘线条
     screen.fill(WHITE)
     for i in range(game.board_size):

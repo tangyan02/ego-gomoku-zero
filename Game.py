@@ -20,6 +20,7 @@ class FourInARowGame:
 
     def exchange_color(self):
         self.board = np.where(self.board == 0, 0, 3 - self.board)
+        self.board_last = np.where(self.board_last == 0, 0, 3 - self.board_last)
         self.current_player = 3 - self.current_player
 
     def get_valid_actions(self):

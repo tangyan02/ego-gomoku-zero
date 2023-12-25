@@ -32,25 +32,13 @@ class MonteCarloTree:
 
         self.backpropagate(node, -value)
 
-    def search(self, game, num_simulations, renew=True):
+    def search(self, game, num_simulations):
         # 探索时新建一个根节点，保证分布均匀。实际对弈落子时，从上一次的结果继续搜索
-        if renew:
+        if self.root is None:
             self.root = Node(game, None)
         else:
-            if self.root is None:
+            if not game.equals(self.root.game):
                 self.root = Node(game, None)
-            else:
-                find_child = False
-                for action, child in self.root.children.items():
-                    if game.equals(child.game):
-                        self.root = child
-                        find_child = True
-                        break
-                if not find_child:
-                    while self.root.parent is not None:
-                        if game.equals(self.root.game):
-                            break
-                        self.root = self.root.parent
 
         for _ in range(num_simulations):
             self.simulate(game.copy())
