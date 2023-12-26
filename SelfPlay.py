@@ -1,7 +1,7 @@
 import numpy as np
 
 from Game import FourInARowGame
-from MTCS import MonteCarloTree
+from MTCS import MonteCarloTree, Node
 from Utils import getTimeStr
 
 
@@ -48,10 +48,10 @@ def self_play(network, device, num_games, num_simulations, temperature, explorat
         game_data = []
 
         while not game.is_game_over():
-            mcts.search(game, num_simulations)  # 执行蒙特卡洛树搜索
+            mcts.search(game, Node(None), num_simulations)  # 执行蒙特卡洛树搜索
 
             # 获取动作概率
-            actions, action_probs = mcts.get_action_probabilities()
+            actions, action_probs = mcts.get_action_probabilities(game)
 
             action_probs = mcts.apply_temperature(action_probs, temperature)
 

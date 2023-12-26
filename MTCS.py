@@ -18,27 +18,22 @@ class MonteCarloTree:
             action, node = node.select_child(self.exploration_factor)
             game.make_move(action)
 
-        if node.game.is_game_over():
-            winner = node.game.check_winner()
-            if winner == node.game.current_player:
+        if game.is_game_over():
+            winner = game.check_winner()
+            if winner == game.current_player:
                 value = 1
-            elif winner == node.game.get_other_player():
+            elif winner == game.get_other_player():
                 value = -1
             else:
-                value, prior_prob = self.evaluate_state(node.game.get_state())
+                value, prior_prob = self.evaluate_state(game.get_state())
         else:
-            value, prior_prob = self.evaluate_state(node.game.get_state())
-            node.expand(prior_prob)
+            value, prior_prob = self.evaluate_state(game.get_state())
+            node.expand(game, prior_prob)
 
         self.backpropagate(node, -value)
 
-    def search(self, game, num_simulations):
-        # 探索时新建一个根节点，保证分布均匀。实际对弈落子时，从上一次的结果继续搜索
-        if self.root is None:
-            self.root = Node(game, None)
-        else:
-            if not game.equals(self.root.game):
-                self.root = Node(game, None)
+    def search(self, game, node, num_simulations):
+        self.root = node
 
         for _ in range(num_simulations):
             self.simulate(game.copy())
@@ -57,18 +52,18 @@ class MonteCarloTree:
             node = node.parent
             value = -value
 
-    def get_action_probabilities(self, temperature=1.0):
+    def get_action_probabilities(self, game, temperature=1.0):
         node = self.root
         action_visits = [(action, child.visits) for action, child in node.children.items()]
         actions, visits = zip(*action_visits)
         visits_tensor = torch.tensor(visits, dtype=torch.float)
         action_probs = F.softmax(1.0 / temperature * torch.log(visits_tensor + 1e-10), dim=0).tolist()
 
-        probs = [0] * node.game.board_size * node.game.board_size
+        probs = [0] * game.board_size * game.board_size
         for i in range(len(actions)):
-            probs[node.game.get_action_index(actions[i])] = action_probs[i]
+            probs[game.get_action_index(actions[i])] = action_probs[i]
 
-        return np.array(range(node.game.board_size * node.game.board_size)), np.array(probs)
+        return np.array(range(game.board_size * game.board_size)), np.array(probs)
 
     def apply_temperature(self, action_probabilities, temperature):
         if temperature == 1:
@@ -79,8 +74,7 @@ class MonteCarloTree:
 
 
 class Node:
-    def __init__(self, game, parent=None):
-        self.game = game
+    def __init__(self, parent=None):
         self.parent = parent
         self.children = {}
         self.visits = 0
@@ -105,14 +99,12 @@ class Node:
                 selected_action = action
         return selected_action, self.children[selected_action]
 
-    def expand(self, prior_probs):
-        actions = self.game.get_valid_actions()
+    def expand(self, game, prior_probs):
+        actions = game.get_valid_actions()
         for i, action in enumerate(actions):
-            new_game = self.game.copy()
-            new_game.make_move(action)
-            new_node = Node(new_game, parent=self)
-            new_node.prior_prob = prior_probs[self.game.get_action_index(action)]
-            self.children[action] = new_node
+            child = Node(parent=self)
+            child.prior_prob = prior_probs[game.get_action_index(action)]
+            self.children[action] = child
 
     def update(self, value):
         self.visits += 1

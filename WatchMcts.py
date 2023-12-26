@@ -7,7 +7,7 @@ import pygame
 import torch
 
 from Game import FourInARowGame
-from MTCS import MonteCarloTree
+from MTCS import MonteCarloTree, Node
 from PolicyValueNetwork import PolicyValueNetwork
 from Utils import getDevice
 
@@ -27,7 +27,7 @@ def show_message_box(message, width, height):
 
 
 def getProbs(mtsc, game):
-    actions, prior_prob = mtsc.get_action_probabilities()
+    actions, prior_prob = mtsc.get_action_probabilities(game)
     prior_probs = prior_prob.view().reshape(game.board_size, game.board_size)
     max_index = np.argmax(prior_probs)
     max_x = max_index // game.board_size
@@ -63,12 +63,12 @@ if os.path.exists(f"model/net_latest.mdl"):
 
 # 游戏主循环
 running = True
-
+node = Node(None)
 while running:
     realPlayer = game.current_player
     # if game.current_player == 2:
     #     game.exchange_color()
-    mtsc.search(game.copy(), 50)
+    mtsc.search(game, node, 50)
     prior_probs, action = getProbs(mtsc, game)
     # if realPlayer != game.current_player:
     #     game.exchange_color()
@@ -84,6 +84,7 @@ while running:
             # 在棋盘上落子
             if game.board[row][col] == 0:
                 game.make_move((row, col))
+                node = Node(None)
     # 绘制棋盘线条
     screen.fill(WHITE)
     for i in range(game.board_size):
