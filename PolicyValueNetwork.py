@@ -6,7 +6,7 @@ import torch.nn.functional as F
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
         self.board_size = 8
-        self.input_channels = 5
+        self.input_channels = 3
         super(PolicyValueNetwork, self).__init__()
 
         # common layers

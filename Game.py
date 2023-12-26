@@ -6,8 +6,8 @@ class FourInARowGame:
         self.board_size = board_size
         self.connect = connect
         self.board = np.zeros((board_size, board_size), dtype=int)
-        self.board_last = np.zeros((board_size, board_size), dtype=int)
         self.current_player = 1
+        self.last_action = None
 
     def get_other_player(self):
         return 3 - self.current_player
@@ -20,7 +20,6 @@ class FourInARowGame:
 
     def exchange_color(self):
         self.board = np.where(self.board == 0, 0, 3 - self.board)
-        self.board_last = np.where(self.board_last == 0, 0, 3 - self.board_last)
         self.current_player = 3 - self.current_player
 
     def get_valid_actions(self):
@@ -35,9 +34,9 @@ class FourInARowGame:
     def make_move(self, action):
         row, col = action
         if self.board[row][col] == 0:
-            self.board_last = self.board.copy()
             self.board[row][col] = self.current_player
             self.current_player = 3 - self.current_player  # 切换玩家
+            self.last_action = action
             return True
         else:
             print(f"error move for action {action}")
@@ -84,12 +83,12 @@ class FourInARowGame:
         return self.board.copy()
 
     def get_state(self):
-        board1 = np.where(self.board == 1, 1, 0)
-        board2 = np.where(self.board == 2, 1, 0)
-        board3 = np.where(self.board_last == 1, 1, 0)
-        board4 = np.where(self.board_last == 2, 1, 0)
-        current_player = np.full_like(self.board, fill_value=1 if self.current_player == 1 else 0)
-        return np.stack([board1, board2, board3, board4, current_player], axis=0)
+        board1 = np.where(self.board == self.current_player, 1, 0)
+        board2 = np.where(self.board == self.get_other_player(), 1, 0)
+        board3 = np.zeros((self.board_size, self.board_size))
+        if self.last_action is not None:
+            board3[self.last_action[0]][self.last_action[1]] = 1
+        return np.stack([board1, board2, board3], axis=0)
 
     def print_board(self):
         for row in range(self.board_size):
@@ -105,7 +104,6 @@ class FourInARowGame:
         new_game = FourInARowGame(self.board_size, self.connect)
         new_game.board = self.board.copy()
         new_game.current_player = self.current_player
-        new_game.board_last = self.board_last.copy()
         return new_game
 
     def equals(self, o):

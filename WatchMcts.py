@@ -66,8 +66,8 @@ running = True
 node = Node(None)
 while running:
     realPlayer = game.current_player
-    # if game.current_player == 2:
-    #     game.exchange_color()
+    if game.current_player == 2:
+        game.exchange_color()
     mtsc.search(game, node, 50)
     prior_probs, action = getProbs(mtsc, game)
     # if realPlayer != game.current_player:
