@@ -97,7 +97,7 @@ class FourInARowGame:
                 if self.board[row][col] == 0:
                     print(" ", end="|")
                 else:
-                    print(self.board[row][col], end="|")
+                    print("x" if self.board[row][col] == 1 else "o", end="|")
             print()
 
     def copy(self):
