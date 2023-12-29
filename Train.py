@@ -52,14 +52,14 @@ def train(replay_buffer, network, device, lr, num_epochs, batch_size):
 
 dirPreBuild()
 
-num_games = 20
+num_games = 10
 # num_games = 1
 num_simulations = 400
 lr = 0.001
-num_epochs = 200
+num_epochs = 100
 batch_size = 32
 episode = 10000
-replay_buffer_size = 20000
+replay_buffer_size = 40000
 start_train_size = 10000
 # start_train_size = 0
 temperature = 1
@@ -69,6 +69,11 @@ device = getDevice()
 network = PolicyValueNetwork()
 if os.path.exists(f"model/net_latest.mdl"):
     network.load_state_dict(torch.load(f"model/net_latest.mdl", map_location=torch.device(device)))
+else:
+    # 将所有权重初始化为 0
+    for param in network.parameters():
+        param.data.fill_(0)
+
 network.to(device)
 
 replay_buffer = ReplayBuffer(replay_buffer_size)
