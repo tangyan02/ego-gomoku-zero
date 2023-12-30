@@ -9,7 +9,7 @@ def print_game(game, action, action_probs):
     game.print_board()
     line = ""
     for i in range(game.board_size * game.board_size):
-        line += str(round(action_probs[i], 2)) + " "
+        line += str(round(action_probs[i], 3)) + " "
         if (i + 1) % game.board_size == 0:
             print(line)
             line = ""

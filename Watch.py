@@ -38,7 +38,7 @@ def getProbs(mtsc, game):
 
 
 pygame.init()
-width, height = 400, 400
+width, height = 600, 600
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("连珠")
 
