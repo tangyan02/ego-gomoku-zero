@@ -50,10 +50,10 @@ def self_play(network, device, num_games, num_simulations, temperature, explorat
             # 获取动作概率
             actions, action_probs = mcts.get_action_probabilities(game)
 
-            action_probs = mcts.apply_temperature(action_probs, temperature)
+            action_probs_temperature = mcts.apply_temperature(action_probs, temperature)
 
             # 归一化概率分布
-            action_probs_normalized = action_probs / np.sum(action_probs)
+            action_probs_normalized = action_probs_temperature / np.sum(action_probs_temperature)
 
             # 添加噪声
             # noise_eps = 0.25  # 噪声参数
@@ -67,7 +67,7 @@ def self_play(network, device, num_games, num_simulations, temperature, explorat
 
             # 保存当前状态和动作概率
             state = game.get_state()
-            record = (state, game.current_player, action_probs_normalized)
+            record = (state, game.current_player, action_probs)
 
             # 如果加了噪声，可能失败，此处不计入流程
             if game.make_move(game.parse_action_from_index(action)):  # 执行动作

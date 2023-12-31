@@ -1,4 +1,5 @@
 import os
+import time
 
 import torch
 import torch.nn as nn
@@ -56,35 +57,37 @@ num_games = 10
 # num_games = 1
 num_simulations = 400
 lr = 0.001
-num_epochs = 200
-batch_size = 32
+num_epochs = 100
+batch_size = 64
 episode = 10000
 replay_buffer_size = 40000
 start_train_size = 10000
 # start_train_size = 0
-temperature = 1
+temperature = 0.5
 exploration_factor = 3
 
 device = getDevice()
 network = PolicyValueNetwork()
 if os.path.exists(f"model/net_latest.mdl"):
     network.load_state_dict(torch.load(f"model/net_latest.mdl", map_location=torch.device(device)))
-else:
-    # 将所有权重初始化为 0
-    for param in network.parameters():
-        param.data.fill_(0)
 
 network.to(device)
 
 replay_buffer = ReplayBuffer(replay_buffer_size)
 
 for i_episode in range(1, episode + 1):
+    start_time = time.time()
     training_data = self_play(network, device, num_games, num_simulations, temperature, exploration_factor)
+    end_time = time.time()
+    print(getTimeStr(), f"获得样本共计{len(training_data)}调，用时{start_time - end_time}s")
 
     replay_buffer.add_samples(training_data)
 
     if replay_buffer.size() >= start_train_size:
+        start_time = time.time()
         train(replay_buffer, network, device, lr, num_epochs, batch_size)
+        end_time = time.time()
+        print(getTimeStr(), f"训练完毕，用时{end_time - start_time}")
 
         if i_episode % 100 == 0:
             torch.save(network.state_dict(), f"model/net_{i_episode}.mdl")
