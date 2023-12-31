@@ -79,7 +79,7 @@ for i_episode in range(1, episode + 1):
     start_time = time.time()
     training_data = self_play(network, device, num_games, num_simulations, temperature, exploration_factor)
     end_time = time.time()
-    print(getTimeStr(), f"获得样本共计{len(training_data)}调，用时{end_time - start_time}s")
+    print(getTimeStr(), f"获得样本共计{len(training_data)}，用时{end_time - start_time}s")
 
     replay_buffer.add_samples(training_data)
 
