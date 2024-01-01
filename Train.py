@@ -1,12 +1,13 @@
-import os
 import time
 
+import Network
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.multiprocessing import Pool
 from torch.utils.data import DataLoader
 
-from PolicyValueNetwork import PolicyValueNetwork
+from Network import PolicyValueNetwork
 from ReplayBuffer import ReplayBuffer
 from SelfPlay import self_play
 # 定义训练数据集类
@@ -51,46 +52,55 @@ def train(replay_buffer, network, device, lr, num_epochs, batch_size):
         print(getTimeStr(), f"Epoch {epoch + 1}/{num_epochs}, Loss: {running_loss / len(dataloader)}")
 
 
-dirPreBuild()
+if __name__ == '__main__':
+    torch.multiprocessing.set_start_method('spawn')
+    dirPreBuild()
 
-num_games = 10
-# num_games = 1
-num_simulations = 400
-lr = 0.001
-num_epochs = 50
-batch_size = 64
-episode = 10000
-replay_buffer_size = 20000
-start_train_size = 10000
-# start_train_size = 0
-temperature = 1
-exploration_factor = 3
+    num_games = 10
+    concurrent_size = 5
+    # num_games = 1
+    num_simulations = 400
+    lr = 0.001
+    num_epochs = 50
+    batch_size = 64
+    episode = 10000
+    replay_buffer_size = 20000
+    # start_train_size = 10000
+    start_train_size = 100000
+    temperature = 1
+    exploration_factor = 3
 
-device = getDevice()
-network = PolicyValueNetwork()
-if os.path.exists(f"model/net_latest.mdl"):
-    network.load_state_dict(torch.load(f"model/net_latest.mdl", map_location=torch.device(device)))
+    device = getDevice()
+    replay_buffer = ReplayBuffer(replay_buffer_size)
 
-network.to(device)
+    pool = Pool(processes=concurrent_size)
 
-replay_buffer = ReplayBuffer(replay_buffer_size)
-
-for i_episode in range(1, episode + 1):
-    start_time = time.time()
-    training_data = self_play(network, device, num_games, num_simulations, temperature, exploration_factor)
-    end_time = time.time()
-    print(getTimeStr(), f"获得样本共计{len(training_data)}，用时{end_time - start_time}s")
-
-    replay_buffer.add_samples(training_data)
-
-    if replay_buffer.size() >= start_train_size:
+    for i_episode in range(1, episode + 1):
         start_time = time.time()
-        train(replay_buffer, network, device, lr, num_epochs, batch_size)
-        end_time = time.time()
-        print(getTimeStr(), f"训练完毕，用时{end_time - start_time}")
+        # 使用多进程进行计算
+        sub_num_games = num_games // concurrent_size
+        params = [(device, num_games, num_simulations, temperature, exploration_factor) for _ in range(concurrent_size)]
+        training_data_list = pool.starmap(self_play, params)
 
-        if i_episode % 100 == 0:
-            torch.save(network.state_dict(), f"model/net_{i_episode}.mdl")
-            print(getTimeStr(), f"模型已保存 episode:{i_episode}")
-        torch.save(network.state_dict(), f"model/net_latest.mdl")
-        print(getTimeStr(), f"最新模型已保存 episode:{i_episode}")
+        training_data = []
+        for item in training_data_list:
+            training_data.append(item)
+
+        end_time = time.time()
+        print(getTimeStr(), f"获得样本共计{len(training_data)}，用时{end_time - start_time}s")
+
+        replay_buffer.add_samples(training_data)
+
+        if replay_buffer.size() >= start_train_size:
+            network = Network.get_network()
+
+            start_time = time.time()
+            train(replay_buffer, network, device, lr, num_epochs, batch_size)
+            end_time = time.time()
+            print(getTimeStr(), f"训练完毕，用时{end_time - start_time}")
+
+            if i_episode % 100 == 0:
+                PolicyValueNetwork.save_network(network ,f"model/net_{i_episode}.mdl")
+                print(getTimeStr(), f"模型已保存 episode:{i_episode}")
+            PolicyValueNetwork.save_network(network)
+            print(getTimeStr(), f"最新模型已保存 episode:{i_episode}")

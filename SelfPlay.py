@@ -1,3 +1,4 @@
+import Network
 import numpy as np
 
 from Game import FourInARowGame
@@ -46,7 +47,8 @@ def get_noise_action(actions, action_probs_normalized):
     return np.random.choice(actions, p=action_probs_with_noise)
 
 
-def self_play(network, device, num_games, num_simulations, temperature, exploration_factor):
+def self_play(device, num_games, num_simulations, temperature, exploration_factor):
+    network = Network.get_network()
     training_data = []
 
     mcts = MonteCarloTree(network, device, exploration_factor)

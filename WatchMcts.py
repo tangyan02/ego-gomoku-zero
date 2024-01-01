@@ -8,7 +8,7 @@ import torch
 
 from Game import FourInARowGame
 from MTCS import MonteCarloTree, Node
-from PolicyValueNetwork import PolicyValueNetwork
+from Network import PolicyValueNetwork
 from Utils import getDevice
 
 

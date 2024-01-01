@@ -1,6 +1,10 @@
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from Utils import getDevice
 
 
 class PolicyValueNetwork(nn.Module):
@@ -38,3 +42,14 @@ class PolicyValueNetwork(nn.Module):
         x_val = torch.tanh(self.val_fc2(x_val))
 
         return x_val, x_act
+
+
+def get_network():
+    network = PolicyValueNetwork()
+    if os.path.exists(f"model/net_latest.mdl"):
+        network.load_state_dict(torch.load(f"model/net_latest.mdl", map_location=torch.device(getDevice())))
+    return network
+
+
+def save_network(network, path=f"model/net_latest.mdl"):
+    torch.save(network.state_dict(), path)
