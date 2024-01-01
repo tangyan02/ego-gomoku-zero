@@ -70,15 +70,15 @@ def self_play(device, num_games, num_simulations, temperature, exploration_facto
             action_probs_normalized = action_probs_temperature / np.sum(action_probs_temperature)
 
             # 添加噪声
-            action = get_noise_action(actions, action_probs_normalized)
-            while not game.is_valid(game.parse_action_from_index(action)):
-                action = get_noise_action(actions, action_probs_normalized)
+            # action = get_noise_action(actions, action_probs_normalized)
+            # while not game.is_valid(game.parse_action_from_index(action)):
+            #     action = get_noise_action(actions, action_probs_normalized)
 
-            # action = np.random.choice(actions, p=action_probs_normalized)
+            action = np.random.choice(actions, p=action_probs_normalized)
 
             # 保存当前状态和动作概率
             state = game.get_state()
-            record = (state, game.current_player, action_probs)
+            record = (state, game.current_player, action_probs_normalized)
 
             # 执行动作
             game.make_move(game.parse_action_from_index(action))

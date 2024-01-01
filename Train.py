@@ -61,7 +61,7 @@ if __name__ == '__main__':
     dirPreBuild()
 
     num_games = 10
-    concurrent_size = 5
+    concurrent_size = 1
 
     # num_games = 1
     num_simulations = 400

@@ -99,7 +99,7 @@ class Node:
         return selected_action, self.children[selected_action]
 
     def expand(self, game, prior_probs):
-        actions = game.get_valid_actions()
+        actions = game.get_next_actions()
         for i, action in enumerate(actions):
             child = Node(parent=self)
             child.prior_prob = prior_probs[game.get_action_index(action)]

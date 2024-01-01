@@ -24,14 +24,28 @@ class FourInARowGame:
         self.board = np.where(self.board == 0, 0, 3 - self.board)
         self.current_player = 3 - self.current_player
 
-    def get_valid_actions(self):
-        valid_actions = []
+    def check_range_is_set(self, x, y, limit):
+        for row in range(x - limit, x + limit + 1):
+            for col in range(y - limit, y + limit + 1):
+                if row < 0 or row >= self.board_size:
+                    continue
+                if col < 0 or col >= self.board_size:
+                    continue
+                if self.board[row][col] != 0:
+                    return True
+        return False
+
+    def get_next_actions(self):
+        result = []
         for row in range(self.board_size):
             for col in range(self.board_size):
                 if self.board[row][col] == 0:
-                    valid_actions.append((row, col))
+                    if self.last_action is None:
+                        result.append((row, col))
+                    elif self.check_range_is_set(row, col, 1):
+                        result.append((row, col))
 
-        return valid_actions
+        return result
 
     def is_valid(self, action):
         row, col = action
@@ -82,7 +96,7 @@ class FourInARowGame:
         return 0  # 没有胜者
 
     def is_game_over(self):
-        return len(self.get_valid_actions()) == 0 or self.check_winner() != 0
+        return len(self.get_next_actions()) == 0 or self.check_winner() != 0
 
     def get_board(self):
         return self.board.copy()
