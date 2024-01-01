@@ -62,8 +62,8 @@ if __name__ == '__main__':
     # num_games = 1
     num_simulations = 400
     lr = 0.001
-    num_epochs = 50
-    batch_size = 64
+    num_epochs = 25
+    batch_size = 128
     episode = 10000
     replay_buffer_size = 20000
     # start_train_size = 10000
@@ -80,15 +80,16 @@ if __name__ == '__main__':
         start_time = time.time()
         # 使用多进程进行计算
         sub_num_games = num_games // concurrent_size
-        params = [(device, num_games, num_simulations, temperature, exploration_factor) for _ in range(concurrent_size)]
+        params = [(device, sub_num_games, num_simulations, temperature, exploration_factor)
+                  for _ in range(concurrent_size)]
         training_data_list = pool.starmap(self_play, params)
 
         training_data = []
         for item in training_data_list:
-            training_data.append(item)
+            training_data += item
 
         end_time = time.time()
-        print(getTimeStr(), f"获得样本共计{len(training_data)}，用时{end_time - start_time}s")
+        print(getTimeStr(), f"通过{num_games}次对局，获得样本共计{len(training_data)}，用时{end_time - start_time}s")
 
         replay_buffer.add_samples(training_data)
 
