@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 
 
@@ -95,13 +97,14 @@ class FourInARowGame:
 
     def print_board(self):
         for row in range(self.board_size):
-            print("|", end="")
+            rowText = "|"
             for col in range(self.board_size):
                 if self.board[row][col] == 0:
-                    print(" ", end="|")
+                    rowText += " |"
                 else:
-                    print("x" if self.board[row][col] == 1 else "o", end="|")
-            print()
+                    loc = "x" if self.board[row][col] == 1 else "o"
+                    rowText += f"{loc}|"
+            logging.info(rowText)
 
     def copy(self):
         new_game = FourInARowGame(self.board_size, self.connect)

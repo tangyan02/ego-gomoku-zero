@@ -1,4 +1,5 @@
 import time
+import logging
 
 import Network
 import torch
@@ -49,11 +50,14 @@ def train(replay_buffer, network, device, lr, num_epochs, batch_size):
 
             running_loss += loss.item()
 
-        print(getTimeStr(), f"Epoch {epoch + 1}/{num_epochs}, Loss: {running_loss / len(dataloader)}")
+        logging.info(getTimeStr() + f"Epoch {epoch + 1}/{num_epochs}, Loss: {running_loss / len(dataloader)}")
 
+
+logging.basicConfig(filename='output.log', level=logging.INFO)
 
 if __name__ == '__main__':
     torch.multiprocessing.set_start_method('spawn')
+    # 配置日志记录器
     dirPreBuild()
 
     num_games = 10
@@ -66,8 +70,8 @@ if __name__ == '__main__':
     batch_size = 128
     episode = 10000
     replay_buffer_size = 20000
-    # start_train_size = 10000
-    start_train_size = 100000
+    start_train_size = 10000
+    # start_train_size = 100000
     temperature = 1
     exploration_factor = 3
 
@@ -89,7 +93,7 @@ if __name__ == '__main__':
             training_data += item
 
         end_time = time.time()
-        print(getTimeStr(), f"通过{num_games}次对局，获得样本共计{len(training_data)}，用时{end_time - start_time}s")
+        logging.info(getTimeStr() + f"通过{num_games}次对局，获得样本共计{len(training_data)}，用时{end_time - start_time}s")
 
         replay_buffer.add_samples(training_data)
 
@@ -99,10 +103,10 @@ if __name__ == '__main__':
             start_time = time.time()
             train(replay_buffer, network, device, lr, num_epochs, batch_size)
             end_time = time.time()
-            print(getTimeStr(), f"训练完毕，用时{end_time - start_time}")
+            logging.info(getTimeStr() + f"训练完毕，用时{end_time - start_time}")
 
             if i_episode % 100 == 0:
                 PolicyValueNetwork.save_network(network, f"model/net_{i_episode}.mdl")
-                print(getTimeStr(), f"模型已保存 episode:{i_episode}")
-            PolicyValueNetwork.save_network(network)
-            print(getTimeStr(), f"最新模型已保存 episode:{i_episode}")
+                logging.info(getTimeStr() + f"模型已保存 episode:{i_episode}")
+            Network.save_network(network)
+            logging.info(getTimeStr() + f"最新模型已保存 episode:{i_episode}")

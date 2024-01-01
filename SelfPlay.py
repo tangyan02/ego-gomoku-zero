@@ -1,3 +1,5 @@
+import logging
+
 import Network
 import numpy as np
 
@@ -12,9 +14,9 @@ def print_game(game, action, action_probs):
     for i in range(game.board_size * game.board_size):
         line += str(round(action_probs[i], 3)) + " "
         if (i + 1) % game.board_size == 0:
-            print(line)
+            logging.info(line)
             line = ""
-    print(getTimeStr(), f"action is {game.parse_action_from_index(action)}")
+    logging.info(getTimeStr() + f"action is {game.parse_action_from_index(action)}")
 
 
 def get_equi_data(game, play_data):
@@ -90,7 +92,7 @@ def self_play(device, num_games, num_simulations, temperature, exploration_facto
             # 将action_probs处理为概率值
             training_data.append((state, mcts_probs, np.array([value])))
 
-        print(getTimeStr(), f"winner is {winner}")
+        logging.info(getTimeStr() + f"winner is {winner}")
 
     extend_data = get_equi_data(FourInARowGame(), training_data)
     return extend_data

@@ -33,7 +33,7 @@ def getProbs(mtsc, game):
     max_index = np.argmax(prior_probs)
     print(max_index)
     max_x = max_index // game.board_size
-    max_y = max_index %  game.board_size
+    max_y = max_index % game.board_size
     return value, prior_probs, max_x, max_y
 
 
@@ -110,7 +110,7 @@ while running:
             color = RED
             if row == max_x and col == max_y:
                 color = YELLOW
-            text = font.render(str(round(prior_probs[row][col], 3)), True, color)
+            text = font.render(str(round(prior_probs[row][col] * 100, 1)), True, color)
             # 获取文字对象的矩形
             text_rect = text.get_rect()
             # 设置文字矩形的位置
