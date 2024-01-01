@@ -13,6 +13,9 @@ class MonteCarloTree:
         self.exploration_factor = exploration_factor
 
     def simulate(self, game):
+        if game.is_game_over():
+            return
+
         node = self.root
         while not node.is_leaf():
             action, node = node.select_child(self.exploration_factor)
