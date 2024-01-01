@@ -58,6 +58,7 @@ if __name__ == '__main__':
 
     num_games = 10
     concurrent_size = 5
+
     # num_games = 1
     num_simulations = 400
     lr = 0.001
@@ -100,7 +101,7 @@ if __name__ == '__main__':
             print(getTimeStr(), f"训练完毕，用时{end_time - start_time}")
 
             if i_episode % 100 == 0:
-                PolicyValueNetwork.save_network(network ,f"model/net_{i_episode}.mdl")
+                PolicyValueNetwork.save_network(network, f"model/net_{i_episode}.mdl")
                 print(getTimeStr(), f"模型已保存 episode:{i_episode}")
             PolicyValueNetwork.save_network(network)
             print(getTimeStr(), f"最新模型已保存 episode:{i_episode}")

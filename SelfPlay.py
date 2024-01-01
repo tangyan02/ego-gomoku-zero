@@ -48,7 +48,7 @@ def get_noise_action(actions, action_probs_normalized):
 
 
 def self_play(device, num_games, num_simulations, temperature, exploration_factor):
-    network = Network.get_network()
+    network = Network.get_network(device)
     training_data = []
 
     mcts = MonteCarloTree(network, device, exploration_factor)
