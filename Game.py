@@ -31,6 +31,10 @@ class FourInARowGame:
 
         return valid_actions
 
+    def is_valid(self, action):
+        row, col = action
+        return self.board[row][col] == 0
+
     def make_move(self, action):
         row, col = action
         if self.board[row][col] == 0:
@@ -40,7 +44,6 @@ class FourInARowGame:
             return True
         else:
             print(f"error move for action {action}")
-            self.print_board()
             return False
 
     def check_winner(self):

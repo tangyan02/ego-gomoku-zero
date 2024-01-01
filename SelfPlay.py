@@ -36,6 +36,16 @@ def get_equi_data(game, play_data):
     return extend_data
 
 
+def get_noise_action(actions, action_probs_normalized):
+    noise_eps = 0.1  # 噪声参数
+    dirichlet_alpha = 0.9  # dirichlet系数
+
+    # 根据带有噪声的概率分布选择动作
+    action_probs_with_noise = (1 - noise_eps) * action_probs_normalized + noise_eps * np.random.dirichlet(
+        dirichlet_alpha * np.ones(len(action_probs_normalized)))
+    return np.random.choice(actions, p=action_probs_with_noise)
+
+
 def self_play(network, device, num_games, num_simulations, temperature, exploration_factor):
     training_data = []
 
@@ -56,23 +66,20 @@ def self_play(network, device, num_games, num_simulations, temperature, explorat
             action_probs_normalized = action_probs_temperature / np.sum(action_probs_temperature)
 
             # 添加噪声
-            # noise_eps = 0.25  # 噪声参数
-            # dirichlet_alpha = 0.3  # dirichlet系数
-            # action_probs_with_noise = (1 - noise_eps) * action_probs_normalized + noise_eps * np.random.dirichlet(
-            #     dirichlet_alpha * np.ones(len(action_probs_normalized)))
-            #
-            # # 根据带有噪声的概率分布选择动作
-            # action = np.random.choice(actions, p=action_probs_with_noise)
-            action = np.random.choice(actions, p=action_probs_normalized)
+            action = get_noise_action(actions, action_probs_normalized)
+            while not game.is_valid(game.parse_action_from_index(action)):
+                action = get_noise_action(actions, action_probs_normalized)
+
+            # action = np.random.choice(actions, p=action_probs_normalized)
 
             # 保存当前状态和动作概率
             state = game.get_state()
             record = (state, game.current_player, action_probs)
 
-            # 如果加了噪声，可能失败，此处不计入流程
-            if game.make_move(game.parse_action_from_index(action)):  # 执行动作
-                game_data.append(record)
-                print_game(game, action, action_probs_normalized)
+            # 执行动作
+            game.make_move(game.parse_action_from_index(action))
+            game_data.append(record)
+            print_game(game, action, action_probs_normalized)
 
         winner = game.check_winner()
         # 为每个状态添加胜利者信息
