@@ -18,18 +18,14 @@ class MonteCarloTree:
             action, node = node.select_child(self.exploration_factor)
             game.make_move(action)
 
-        if game.is_game_over():
-            winner = game.check_winner()
-            if winner == game.current_player:
-                value = 1
-            elif winner == game.get_other_player():
-                value = -1
-            else:
-                value, prior_prob = self.evaluate_state(game.get_state())
-        else:
-            value, prior_prob = self.evaluate_state(game.get_state())
-            node.expand(game, prior_prob)
+        value, prior_prob = self.evaluate_state(game.get_state())
+        winner = game.check_winner()
+        if winner == game.current_player:
+            value = 1
+        elif winner == game.get_other_player():
+            value = -1
 
+        node.expand(game, prior_prob)
         self.backpropagate(node, -value)
 
     def search(self, game, node, num_simulations):
