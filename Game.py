@@ -42,7 +42,7 @@ class FourInARowGame:
                 if self.board[row][col] == 0:
                     if self.last_action is None:
                         result.append((row, col))
-                    elif self.check_range_is_set(row, col, 1):
+                    elif self.check_range_is_set(row, col, 3):
                         result.append((row, col))
 
         return result
