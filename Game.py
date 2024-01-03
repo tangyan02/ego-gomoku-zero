@@ -110,6 +110,7 @@ class FourInARowGame:
         new_game = FourInARowGame(self.board_size, self.connect)
         new_game.board = self.board.copy()
         new_game.current_player = self.current_player
+        new_game.last_action = self.last_action
         return new_game
 
     def equals(self, o):
