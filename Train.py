@@ -106,7 +106,7 @@ if __name__ == '__main__':
             logging.info(getTimeStr() + f"训练完毕，用时{end_time - start_time}")
 
             if i_episode % 100 == 0:
-                PolicyValueNetwork.save_network(network, f"model/net_{i_episode}.mdl")
+                Network.save_network(network, f"model/net_{i_episode}.mdl")
                 logging.info(getTimeStr() + f"模型已保存 episode:{i_episode}")
             Network.save_network(network)
             logging.info(getTimeStr() + f"最新模型已保存 episode:{i_episode}")
