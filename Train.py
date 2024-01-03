@@ -64,7 +64,7 @@ if __name__ == '__main__':
     concurrent_size = 5
 
     # num_games = 1
-    num_simulations = 400
+    num_simulations = 200
     lr = 0.001
     num_epochs = 25
     batch_size = 128
