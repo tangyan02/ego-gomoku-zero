@@ -69,9 +69,7 @@ if __name__ == '__main__':
     num_epochs = 25
     batch_size = 128
     episode = 10000
-    replay_buffer_size = 20000
-    start_train_size = 10000
-    # start_train_size = 100000
+    replay_buffer_size = 5000
     temperature = 1
     exploration_factor = 3
 
@@ -97,7 +95,7 @@ if __name__ == '__main__':
 
         replay_buffer.add_samples(training_data)
 
-        if replay_buffer.size() >= start_train_size:
+        if replay_buffer.size() >= replay_buffer_size:
             network = Network.get_network()
 
             start_time = time.time()
