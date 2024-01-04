@@ -85,6 +85,12 @@ def self_play(device, num_games, num_simulations, temperature, exploration_facto
             game_data.append(record)
             print_game(game, action, action_probs_normalized)
 
+        mcts.search(game, Node(None), num_simulations)  # 执行蒙特卡洛树搜索 # 获取动作概率
+        actions, action_probs = mcts.get_action_probabilities(game)
+        state = game.get_state()
+        record = (state, game.current_player, action_probs)
+        game_data.append(record)
+
         winner = game.check_winner()
         # 为每个状态添加胜利者信息
         for state, player, mcts_probs in game_data:

@@ -28,7 +28,8 @@ class MonteCarloTree:
         elif winner == game.get_other_player():
             value = -1
 
-        node.expand(game, prior_prob)
+        if winner == 0:
+            node.expand(game, prior_prob)
         self.backpropagate(node, -value)
 
     def search(self, game, node, num_simulations):
