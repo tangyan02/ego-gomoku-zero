@@ -16,7 +16,11 @@ def print_game(game, action, action_probs):
         if (i + 1) % game.board_size == 0:
             logging.info(line)
             line = ""
-    logging.info(getTimeStr() + f"action is {game.parse_action_from_index(action)}")
+    if game.current_player == 1:
+        pic = "x"
+    else:
+        pic = "o"
+    logging.info(getTimeStr() + f" {pic} action is {game.parse_action_from_index(action)}")
 
 
 def get_equi_data(game, play_data):
