@@ -16,7 +16,7 @@ def print_game(game, action, action_probs):
         if (i + 1) % game.board_size == 0:
             logging.info(line)
             line = ""
-    if game.current_player == 1:
+    if game.get_other_player() == 1:
         pic = "x"
     else:
         pic = "o"
