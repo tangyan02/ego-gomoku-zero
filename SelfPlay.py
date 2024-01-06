@@ -21,7 +21,7 @@ def print_game(game, action, action_probs):
     else:
         pic = "o"
     logging.info(
-        getTimeStr() + f" {pic} action is {game.parse_action_from_index(action)} on rate resent {round(action_probs[action] * 100, 1)}")
+        getTimeStr() + f" {pic} action is {game.parse_action_from_index(action)} on rate {round(action_probs[action] * 100, 1)} %")
 
 
 def get_equi_data(game, play_data):
