@@ -43,17 +43,14 @@ def get_equi_data(game, play_data):
     return extend_data
 
 
-def get_noise_action(actions, action_probs_normalized):
-    noise_eps = 0.1  # 噪声参数
-    dirichlet_alpha = 0.3  # dirichlet系数
-
+def get_noise_action(actions, action_probs_normalized, noise_eps, dirichlet_alpha):
     # 根据带有噪声的概率分布选择动作
     action_probs_with_noise = (1 - noise_eps) * action_probs_normalized + noise_eps * np.random.dirichlet(
         dirichlet_alpha * np.ones(len(action_probs_normalized)))
     return np.random.choice(actions, p=action_probs_with_noise)
 
 
-def self_play(device, num_games, num_simulations, temperature, exploration_factor):
+def self_play(device, num_games, num_simulations, temperature, exploration_factor, noise_eps, dirichlet_alpha):
     network = Network.get_network(device)
     training_data = []
 
@@ -74,9 +71,9 @@ def self_play(device, num_games, num_simulations, temperature, exploration_facto
             action_probs_normalized = action_probs_temperature / np.sum(action_probs_temperature)
 
             # 添加噪声
-            action = get_noise_action(actions, action_probs_normalized)
+            action = get_noise_action(actions, action_probs_normalized, noise_eps, dirichlet_alpha)
             while not game.is_valid(game.parse_action_from_index(action)):
-                action = get_noise_action(actions, action_probs_normalized)
+                action = get_noise_action(actions, action_probs_normalized, noise_eps, dirichlet_alpha)
 
             # action = np.random.choice(actions, p=action_probs_normalized)
 
