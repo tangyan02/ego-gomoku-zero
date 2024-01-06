@@ -45,7 +45,7 @@ def get_equi_data(game, play_data):
 
 def get_noise_action(actions, action_probs_normalized):
     noise_eps = 0.1  # 噪声参数
-    dirichlet_alpha = 0.9  # dirichlet系数
+    dirichlet_alpha = 0.3  # dirichlet系数
 
     # 根据带有噪声的概率分布选择动作
     action_probs_with_noise = (1 - noise_eps) * action_probs_normalized + noise_eps * np.random.dirichlet(
