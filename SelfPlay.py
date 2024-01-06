@@ -20,7 +20,8 @@ def print_game(game, action, action_probs):
         pic = "x"
     else:
         pic = "o"
-    logging.info(getTimeStr() + f" {pic} action is {game.parse_action_from_index(action)}")
+    logging.info(
+        getTimeStr() + f" {pic} action is {game.parse_action_from_index(action)} on rate resent {round(action_probs[action] * 100, 1)}")
 
 
 def get_equi_data(game, play_data):
@@ -71,11 +72,11 @@ def self_play(device, num_games, num_simulations, temperature, exploration_facto
             action_probs_normalized = action_probs_temperature / np.sum(action_probs_temperature)
 
             # 添加噪声
-            action = get_noise_action(actions, action_probs_normalized, noise_eps, dirichlet_alpha)
-            while not game.is_valid(game.parse_action_from_index(action)):
-                action = get_noise_action(actions, action_probs_normalized, noise_eps, dirichlet_alpha)
+            # action = get_noise_action(actions, action_probs_normalized, noise_eps, dirichlet_alpha)
+            # while not game.is_valid(game.parse_action_from_index(action)):
+            #     action = get_noise_action(actions, action_probs_normalized, noise_eps, dirichlet_alpha)
 
-            # action = np.random.choice(actions, p=action_probs_normalized)
+            action = np.random.choice(actions, p=action_probs_normalized)
 
             # 保存当前状态和动作概率
             state = game.get_state()
