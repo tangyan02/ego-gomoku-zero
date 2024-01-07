@@ -70,7 +70,7 @@ if __name__ == '__main__':
     batch_size = 128
     episode = 10000
     replay_buffer_size = 5000
-    temperature = 0.5
+    temperature = 1
     exploration_factor = 3
     noise_eps = 0.01  # 噪声参数
     dirichlet_alpha = 1  # dirichlet系数
@@ -84,6 +84,7 @@ if __name__ == '__main__':
         start_time = time.time()
         # 使用多进程进行计算
         sub_num_games = num_games // concurrent_size
+
         params = [(device, sub_num_games, num_simulations, temperature, exploration_factor, noise_eps, dirichlet_alpha)
                   for _ in range(concurrent_size)]
         training_data_list = pool.starmap(self_play, params)
