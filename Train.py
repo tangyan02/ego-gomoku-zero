@@ -70,7 +70,7 @@ if __name__ == '__main__':
     batch_size = 128
     episode = 10000
     replay_buffer_size = 5000
-    temperature = 1
+    temperature = 0.5
     exploration_factor = 3
     noise_eps = 0.01  # 噪声参数
     dirichlet_alpha = 1  # dirichlet系数
