@@ -8,7 +8,7 @@ from MTCS import MonteCarloTree, Node
 from Utils import getTimeStr
 
 
-def print_game(game, action, action_probs):
+def print_game(game, action, action_probs, temperature):
     game.print_board()
     line = ""
     for i in range(game.board_size * game.board_size):
@@ -21,7 +21,7 @@ def print_game(game, action, action_probs):
     else:
         pic = "o"
     logging.info(
-        getTimeStr() + f" {pic} action is {game.parse_action_from_index(action)} on rate {round(action_probs[action] * 100, 1)} %")
+        getTimeStr() + f" {pic} action is {game.parse_action_from_index(action)} on rate {round(action_probs[action] * 100, 1)} % temperature {round(temperature, 2)}")
 
 
 def get_equi_data(game, play_data):
@@ -51,7 +51,7 @@ def get_noise_action(actions, action_probs_normalized, noise_eps, dirichlet_alph
     return np.random.choice(actions, p=action_probs_with_noise)
 
 
-def self_play(device, num_games, num_simulations, temperature, exploration_factor, noise_eps, dirichlet_alpha):
+def self_play(device, num_games, num_simulations, temperature_default, exploration_factor, noise_eps, dirichlet_alpha):
     network = Network.get_network(device)
     training_data = []
 
@@ -60,12 +60,14 @@ def self_play(device, num_games, num_simulations, temperature, exploration_facto
         game = FourInARowGame()  # 初始化四子连珠游戏
         game_data = []
 
+        step = 0
         while not game.is_game_over():
             mcts.search(game, Node(None), num_simulations)  # 执行蒙特卡洛树搜索
 
             # 获取动作概率
             actions, action_probs = mcts.get_action_probabilities(game)
 
+            temperature = temperature_default * (game.board_size * game.board_size - step) / (game.board_size * game.board_size)
             action_probs_temperature = mcts.apply_temperature(action_probs, temperature)
 
             # 归一化概率分布
@@ -85,7 +87,8 @@ def self_play(device, num_games, num_simulations, temperature, exploration_facto
             # 执行动作
             game.make_move(game.parse_action_from_index(action))
             game_data.append(record)
-            print_game(game, action, action_probs_normalized)
+            print_game(game, action, action_probs_normalized, temperature)
+            step += 1
 
         winner = game.check_winner()
         # 为每个状态添加胜利者信息

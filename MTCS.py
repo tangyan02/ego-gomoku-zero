@@ -61,6 +61,8 @@ class MonteCarloTree:
 
         probs = [0] * game.board_size * game.board_size
         for i in range(len(actions)):
+            if visits[i] == 1:
+                action_probs[i] = 0  # 修改访问次数为1的概率为0（可能只是被迫探索了一次,但是会产生较大噪音）
             probs[game.get_action_index(actions[i])] = action_probs[i]
 
         return np.array(range(game.board_size * game.board_size)), np.array(probs)
