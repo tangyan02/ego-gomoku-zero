@@ -14,7 +14,7 @@ class PolicyValueNetwork(nn.Module):
         super(PolicyValueNetwork, self).__init__()
 
         # common layers
-        self.conv1 = nn.Conv2d(self.input_channels, 32, kernel_size=(3, 3), padding=1)
+        self.conv1 = nn.Conv2d(self.input_channels, 32, kernel_size=(5, 5), padding=2)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=(3, 3), padding=1)
         self.conv3 = nn.Conv2d(64, 128, kernel_size=(3, 3), padding=1)
         # action policy layers
