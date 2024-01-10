@@ -68,16 +68,12 @@ class FiveInARowGame:
         self_winner_actions = self.get_winning_moves(self.current_player)
         if len(self_winner_actions) > 0:
             return self_winner_actions
+
         opp_winner_actions = self.get_winning_moves(self.get_other_player())
         if len(opp_winner_actions) > 0:
             return opp_winner_actions
 
-        valid_actions = []
-        for row in range(self.board_size):
-            for col in range(self.board_size):
-                if self.board[row][col] == 0:
-                    valid_actions.append((row, col))
-
+        valid_actions = self.get_empty_points()
         return valid_actions
 
     def is_valid(self, action):
