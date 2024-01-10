@@ -10,6 +10,7 @@ class FiveInARowGame:
         self.board = np.zeros((board_size, board_size), dtype=int)
         self.current_player = 1
         self.last_action = None
+        self.last_last_action = None
 
     def get_other_player(self):
         return 3 - self.current_player
@@ -32,8 +33,22 @@ class FiveInARowGame:
                     empty_points.append((row, col))
         return empty_points
 
+    def get_nearby_empty_points(self, action):
+        empty_points = []
+        if action is not None:
+            last_row, last_col = self.last_action
+            for dx in range(-self.connect, self.connect + 1):
+                for dy in range(-self.connect, self.connect + 1):
+                    row = last_row + dx
+                    col = last_col + dy
+                    if 0 <= row < self.board_size and 0 <= col < self.board_size and self.board[row][col] == 0:
+                        empty_points.append((row, col))
+        return empty_points
+
     def get_winning_moves(self, player):
-        empty_points = self.get_empty_points()
+        empty_points = self.get_nearby_empty_points(self.last_action) \
+                       + self.get_nearby_empty_points(self.last_last_action)
+        empty_points = list(set(empty_points))
         winning_moves = []
         for point in empty_points:
             row, col = point
@@ -85,6 +100,7 @@ class FiveInARowGame:
         if self.board[row][col] == 0:
             self.board[row][col] = self.current_player
             self.current_player = 3 - self.current_player  # 切换玩家
+            self.last_last_action = self.last_action
             self.last_action = action
             return True
         else:
@@ -154,6 +170,7 @@ class FiveInARowGame:
         new_game.board = self.board.copy()
         new_game.current_player = self.current_player
         new_game.last_action = self.last_action
+        new_game.last_last_action = self.last_last_action
         return new_game
 
     def equals(self, o):
