@@ -9,7 +9,7 @@ from Utils import getDevice
 
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
-        self.board_size = 11
+        self.board_size = 15
         self.input_channels = 3
         super(PolicyValueNetwork, self).__init__()
 

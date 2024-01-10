@@ -6,7 +6,7 @@ import pygame
 # 初始化界面
 import torch
 
-from Game import FourInARowGame
+from Game import FiveInARowGame
 from MTCS import MonteCarloTree
 from Network import PolicyValueNetwork
 from Utils import getDevice
@@ -49,7 +49,7 @@ RED = (255, 0, 0)
 YELLOW = (128, 128, 0)
 
 # 定义棋盘大小和格子大小
-game = FourInARowGame()  # 初始化四子连珠游戏
+game = FiveInARowGame()  # 初始化四子连珠游戏
 margin = width / game.board_size / 2  # 留边大小
 grid_size = (width - 2 * margin) // (game.board_size - 1)  # 格子大小
 stone_radius = grid_size // 2  # 棋子半径为格子大小的1/2

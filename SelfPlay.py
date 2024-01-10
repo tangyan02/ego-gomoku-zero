@@ -3,7 +3,7 @@ import logging
 import Network
 import numpy as np
 
-from Game import FourInARowGame
+from Game import FiveInARowGame
 from MTCS import MonteCarloTree, Node
 from Utils import getTimeStr
 
@@ -57,7 +57,7 @@ def self_play(device, num_games, num_simulations, temperature_default, explorati
 
     mcts = MonteCarloTree(network, device, exploration_factor)
     for _ in range(num_games):
-        game = FourInARowGame()  # 初始化四子连珠游戏
+        game = FiveInARowGame()  # 初始化四子连珠游戏
         game_data = []
 
         step = 0
@@ -99,5 +99,5 @@ def self_play(device, num_games, num_simulations, temperature_default, explorati
 
         logging.info(getTimeStr() + f"winner is {winner}")
 
-    extend_data = get_equi_data(FourInARowGame(), training_data)
+    extend_data = get_equi_data(FiveInARowGame(), training_data)
     return extend_data

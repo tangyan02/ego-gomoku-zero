@@ -3,8 +3,8 @@ import logging
 import numpy as np
 
 
-class FourInARowGame:
-    def __init__(self, board_size=11, connect=5):
+class FiveInARowGame:
+    def __init__(self, board_size=15, connect=5):
         self.board_size = board_size
         self.connect = connect
         self.board = np.zeros((board_size, board_size), dtype=int)
@@ -24,7 +24,54 @@ class FourInARowGame:
         self.board = np.where(self.board == 0, 0, 3 - self.board)
         self.current_player = 3 - self.current_player
 
+    def get_empty_points(self):
+        empty_points = []
+        for row in range(self.board_size):
+            for col in range(self.board_size):
+                if self.board[row][col] == 0:
+                    empty_points.append((row, col))
+        return empty_points
+
+    def get_winning_moves(self, player):
+        empty_points = self.get_empty_points()
+        winning_moves = []
+        for point in empty_points:
+            row, col = point
+            self.board[row][col] = player
+            if self.check_five_in_a_row(row, col, player):
+                winning_moves.append((row, col))
+            self.board[row][col] = 0
+        return winning_moves
+
+    def check_five_in_a_row(self, row, col, player):
+        directions = [(0, 1), (1, 0), (1, 1), (-1, 1)]  # 水平、垂直、对角线方向
+        for direction in directions:
+            dx, dy = direction
+            count = 1
+            # 向正方向搜索
+            x, y = row + dx, col + dy
+            while 0 <= x < self.board_size and 0 <= y < self.board_size and self.board[x][y] == player:
+                count += 1
+                x += dx
+                y += dy
+            # 向负方向搜索
+            x, y = row - dx, col - dy
+            while 0 <= x < self.board_size and 0 <= y < self.board_size and self.board[x][y] == player:
+                count += 1
+                x -= dx
+                y -= dy
+            if count >= self.connect:
+                return True
+        return False
+
     def get_valid_actions(self):
+        self_winner_actions = self.get_winning_moves(self.current_player)
+        if len(self_winner_actions) > 0:
+            return self_winner_actions
+        opp_winner_actions = self.get_winning_moves(self.get_other_player())
+        if len(opp_winner_actions) > 0:
+            return opp_winner_actions
+
         valid_actions = []
         for row in range(self.board_size):
             for col in range(self.board_size):
@@ -107,7 +154,7 @@ class FourInARowGame:
             logging.info(rowText)
 
     def copy(self):
-        new_game = FourInARowGame(self.board_size, self.connect)
+        new_game = FiveInARowGame(self.board_size, self.connect)
         new_game.board = self.board.copy()
         new_game.current_player = self.current_player
         new_game.last_action = self.last_action
