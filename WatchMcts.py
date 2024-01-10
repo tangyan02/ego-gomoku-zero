@@ -40,6 +40,8 @@ width, height = 600, 600
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("连珠")
 
+show_player = [1]
+
 # 定义颜色
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -96,20 +98,21 @@ while running:
                 pygame.draw.circle(screen, BLACK, (col * grid_size + margin, row * grid_size + margin), stone_radius, 1)
 
     # 绘制概率
-    for row in range(game.board_size):
-        for col in range(game.board_size):
-            # if game.board[row][col] == 0:
-            # 创建文字对象
-            color = RED
-            if row == action[0] and col == action[1]:
-                color = YELLOW
-            text = font.render(str(round(prior_probs[row][col] * 100, 1)), True, color)
-            # 获取文字对象的矩形
-            text_rect = text.get_rect()
-            # 设置文字矩形的位置
-            text_rect.center = (col * grid_size + margin, row * grid_size + margin)
-            # 在屏幕上绘制文字
-            screen.blit(text, text_rect)
+    if game.current_player in show_player:
+        for row in range(game.board_size):
+            for col in range(game.board_size):
+                # if game.board[row][col] == 0:
+                # 创建文字对象
+                color = RED
+                if row == action[0] and col == action[1]:
+                    color = YELLOW
+                text = font.render(str(round(prior_probs[row][col] * 100, 1)), True, color)
+                # 获取文字对象的矩形
+                text_rect = text.get_rect()
+                # 设置文字矩形的位置
+                text_rect.center = (col * grid_size + margin, row * grid_size + margin)
+                # 在屏幕上绘制文字
+                screen.blit(text, text_rect)
 
     if game.check_winner() != 0:
         show_message_box(f"winner is player {game.get_other_player()}", width, height)
