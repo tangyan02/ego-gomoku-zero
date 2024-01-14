@@ -60,8 +60,8 @@ device = getDevice()
 network = PolicyValueNetwork()
 network.to(device)
 mtsc = MonteCarloTree(network, device)
-if os.path.exists(f"model/net_latest.mdl"):
-    network.load_state_dict(torch.load(f"model/net_latest.mdl", map_location=torch.device(device)))
+if os.path.exists(f"../model/net_latest.mdl"):
+    network.load_state_dict(torch.load(f"../model/net_latest.mdl", map_location=torch.device(device)))
 
 # 游戏主循环
 running = True

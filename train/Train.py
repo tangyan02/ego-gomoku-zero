@@ -8,7 +8,6 @@ import torch.optim as optim
 from torch.multiprocessing import Pool
 from torch.utils.data import DataLoader
 
-from Network import PolicyValueNetwork
 from ReplayBuffer import ReplayBuffer
 from SelfPlay import self_play
 # 定义训练数据集类

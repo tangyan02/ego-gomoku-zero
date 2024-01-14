@@ -46,8 +46,8 @@ class PolicyValueNetwork(nn.Module):
 
 def get_network(device=getDevice()):
     network = PolicyValueNetwork()
-    if os.path.exists(f"model/net_latest.mdl"):
-        network.load_state_dict(torch.load(f"model/net_latest.mdl", map_location=torch.device(device)))
+    if os.path.exists(f"../model/net_latest.mdl"):
+        network.load_state_dict(torch.load(f"../model/net_latest.mdl", map_location=torch.device(device)))
     network.to(device)
     return network
 
