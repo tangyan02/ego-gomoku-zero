@@ -59,8 +59,8 @@ if __name__ == '__main__':
     # 配置日志记录器
     dirPreBuild()
 
-    num_games = 10
-    concurrent_size = 5
+    num_games = 1
+    concurrent_size = 1
 
     # num_games = 1
     num_simulations = 800

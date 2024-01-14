@@ -81,16 +81,20 @@ public:
     void simulate(Game game)
     {
         if (game.isGameOver())
+        {
             return;
+        }
 
         Node *node = root;
         while (!node->isLeaf())
         {
             std::pair<int, Node *> result = node->selectChild(exploration_factor);
             int action = result.first;
+            // cout << action << endl;
             node = result.second;
             Point pointAction = game.getPointFormIndex(action);
             game.makeMove(pointAction);
+            // game.printBoard();
         }
 
         std::pair<float, std::vector<float>>
@@ -109,12 +113,13 @@ public:
         backpropagate(node, -value);
     }
 
-    void search(Game game, Node *node, int num_simulations)
+    void search(Game &game, Node *node, int num_simulations)
     {
         root = node;
 
         for (int i = 0; i < num_simulations; i++)
         {
+            // cout << "开始模拟，次数 " << i << endl;
             simulate(game);
         }
     }
@@ -183,8 +188,8 @@ public:
         std::vector<float> probs(game.boardSize * game.boardSize, 0);
         for (int i = 0; i < actions.size(); i++)
         {
-            if (visits[i] == 1)
-                action_probs[i] = 0;
+            // if (visits[i] == 1)
+            //     action_probs[i] = 0;
             probs[actions[i]] = action_probs[i];
         }
 

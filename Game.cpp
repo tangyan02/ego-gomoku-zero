@@ -34,11 +34,11 @@ class Game
 {
 private:
     int board[BOARD_SIZE][BOARD_SIZE];
-    int currentPlayer;
 
 public:
     Point lastAction;
     int boardSize;
+    int currentPlayer;
 
     Game()
     {
@@ -140,7 +140,7 @@ public:
         }
     }
 
-    bool makeMove(Point &p)
+    bool makeMove(Point p)
     {
         int row = p.x, col = p.y;
         if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE || board[row][col] != NONE)
