@@ -2,6 +2,8 @@
 #include <vector>
 #include <torch/torch.h>
 
+using namespace std;
+
 const int BOARD_SIZE = 15;
 const int CONNECT = 5;
 
@@ -36,10 +38,12 @@ private:
 
 public:
     Point lastAction;
+    int boardSize;
 
     Game()
     {
         currentPlayer = 1;
+        boardSize = BOARD_SIZE;
         for (int i = 0; i < BOARD_SIZE; i++)
             for (int j = 0; j < BOARD_SIZE; j++)
                 board[i][j] = 0;
@@ -141,6 +145,7 @@ public:
         int row = p.x, col = p.y;
         if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE || board[row][col] != NONE)
         {
+            cout << "move失败!" << endl;
             return false;
         }
 
