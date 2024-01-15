@@ -1,6 +1,3 @@
-#include <iostream>
-#include <vector>
-#include <torch/torch.h>
 #include "Game.h"
 
 using namespace std;
