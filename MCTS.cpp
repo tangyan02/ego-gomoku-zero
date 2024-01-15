@@ -2,8 +2,8 @@
 #include <cmath>
 #include <unordered_map>
 #include <vector>
-#include "Game.cpp"
-#include "Network.cpp"
+#include "Game.h"
+#include "Network.h"
 
 using namespace std;
 
@@ -92,7 +92,7 @@ public:
             int action = result.first;
             // cout << action << endl;
             node = result.second;
-            Point pointAction = game.getPointFormIndex(action);
+            Point pointAction = game.getPointFromIndex(action);
             game.makeMove(pointAction);
             // game.printBoard();
         }

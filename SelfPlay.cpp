@@ -1,6 +1,6 @@
 #include <torch/torch.h>
 #include <iostream>
-#include "MTCS.cpp"
+#include "MCTS.cpp"
 #include <random>
 
 void printGame(Game &game, int action, std::vector<float> &action_probs, float temperature)
@@ -17,7 +17,7 @@ void printGame(Game &game, int action, std::vector<float> &action_probs, float t
         }
     }
     std::string pic = (game.getOtherPlayer() == 1) ? "x" : "o";
-    cout << pic << " action is " << game.getPointFormIndex(action).x << "," << game.getPointFormIndex(action).y
+    cout << pic << " action is " << game.getPointFromIndex(action).x << "," << game.getPointFromIndex(action).y
          << " on rate " << round(action_probs[action] * 10) / 10
          << " temperature " << round(temperature * 100) / 100 << endl;
 }
@@ -40,7 +40,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> e
                 rotated_state[j] = state[j].rot90(i, {0, 1});
             }
             // 转换为 torch::Tensor， 逆时针旋转 90 度
-            torch::Tensor rotated_mcts_prob_tensor = torch::from_blob(mcts_prob.data(), {3, 3}).rot90(i, {0, 1});
+            torch::Tensor rotated_mcts_prob_tensor = torch::from_blob(mcts_prob.data(), {boardSize, boardSize}).rot90(i, {0, 1});
 
             // 转换回 std::vector<float>
             std::vector<float> rotated_mcts_prob(rotated_mcts_prob_tensor.data_ptr<float>(),
@@ -112,7 +112,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
             auto state = game.getState();
             std::tuple<torch::Tensor, int, std::vector<float>> record(state, game.currentPlayer, action_probs);
 
-            game.makeMove(game.getPointFormIndex(action));
+            game.makeMove(game.getPointFromIndex(action));
             game_data.push_back(record);
             printGame(game, action, action_probs_normalized, temperature);
             step++;
