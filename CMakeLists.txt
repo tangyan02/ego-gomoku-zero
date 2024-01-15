@@ -25,5 +25,5 @@ if (MSVC)
                      POST_BUILD
                      COMMAND ${CMAKE_COMMAND} -E copy_if_different
                      ${TORCH_DLLS}
-                     $<TARGET_FILE_DIR:example-app>)
+                     $<TARGET_FILE_DIR:ego-gomoku-zero>)
 endif (MSVC)
