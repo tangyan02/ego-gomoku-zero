@@ -23,7 +23,7 @@ void printGame(Game &game, int action, std::vector<float> &action_probs, float t
 }
 
 std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> extendData(
-        int boardSize, std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> play_data) {
+        int boardSize, std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> &play_data) {
     std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> extend_data;
     for (auto data: play_data) {
         auto &state = std::get<0>(data);
@@ -45,7 +45,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> e
                                                  rotated_mcts_prob_tensor.data_ptr<float>() +
                                                  rotated_mcts_prob_tensor.numel());
 
-            extend_data.push_back(std::make_tuple(rotated_state, rotated_mcts_prob, value));
+            extend_data.emplace_back(std::make_tuple(rotated_state, rotated_mcts_prob, value));
 
             // 翻转
             torch::Tensor flip_state = torch::zeros_like(state);
@@ -56,7 +56,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> e
             std::vector<float> flip_mcts_prob(flip_mcts_prob_tensor.data_ptr<float>(),
                                               flip_mcts_prob_tensor.data_ptr<float>() + flip_mcts_prob_tensor.numel());
 
-            extend_data.push_back(std::make_tuple(flip_state, flip_mcts_prob, value));
+            extend_data.emplace_back(std::make_tuple(flip_state, flip_mcts_prob, value));
         }
     }
     return extend_data;
@@ -75,7 +75,6 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
 
     for (int i = 0; i < numGames; i++) {
         Game game;
-        Node node;
         std::vector<std::tuple<torch::Tensor, int, std::vector<float>>> game_data;
 
         int step = 0;
@@ -121,7 +120,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
         }
         for (const auto &[state, player, mcts_probs]: game_data) {
             float value = (winner == player) ? 1.0f : ((winner == (3 - player)) ? -1.0f : 0.0f);
-            training_data.push_back(std::make_tuple(state, mcts_probs, std::vector<float>{value}));
+            training_data.emplace_back(std::make_tuple(state, mcts_probs, std::vector<float>{value}));
         }
 
         cout << "winner is " << winner << endl;
