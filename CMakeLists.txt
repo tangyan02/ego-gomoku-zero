@@ -12,7 +12,7 @@ set(CMAKE_PREFIX_PATH ${TORCH_CMAKE_PREFIX_PATH})
 find_package(Torch REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS} -O3 -march=native -funroll-loops -ftree-vectorize -finline-functions")
 
-add_executable(ego-gomoku-zero selfPlay.cpp Game.h Game.cpp NetWork.h Network.cpp MCTS.h MCTS.cpp SelfPlay.h main.cpp ReplayBuffer.h ReplayBuffer.cpp)
+add_executable(ego-gomoku-zero selfPlay.cpp Game.h Game.cpp NetWork.h Network.cpp MCTS.h MCTS.cpp SelfPlay.h main.cpp ReplayBuffer.h ReplayBuffer.cpp Train.cpp Train.h)
 target_link_libraries(ego-gomoku-zero "${TORCH_LIBRARIES}")
 set_property(TARGET ego-gomoku-zero PROPERTY CXX_STANDARD 17)
 
