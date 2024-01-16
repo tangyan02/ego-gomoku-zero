@@ -10,12 +10,13 @@
 #include <torch/optim.h>
 #include <fstream>
 
-class PolicyValueNetwork : public torch::nn::Module
-{
+class PolicyValueNetwork : public torch::nn::Module {
 
 public:
     PolicyValueNetwork();
-    std::pair<torch::Tensor, torch::Tensor> forward(torch::Tensor state_input);
+
+    std::pair<torch::Tensor, torch::Tensor> forward(torch::Tensor &state_input);
+
 private:
     int board_size;
     int input_channels;
@@ -27,7 +28,9 @@ private:
 };
 
 torch::Device getDevice();
+
 std::__1::shared_ptr<PolicyValueNetwork> getNetwork(torch::Device device = getDevice());
-void saveNetwork(std::shared_ptr<PolicyValueNetwork> network, const std::string& path = "../model/net_latest.mdl");
+
+void saveNetwork(std::shared_ptr<PolicyValueNetwork> &network, const std::string &path = "../model/net_latest.mdl");
 
 #endif //EGO_GOMOKU_ZERO_NETWORK_H

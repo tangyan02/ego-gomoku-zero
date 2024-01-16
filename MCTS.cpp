@@ -67,8 +67,9 @@ void MonteCarloTree::simulate(Game game) {
         // game.printBoard();
     }
 
+    auto state = game.getState();
     std::pair<float, std::vector<float>>
-            result = evaluate_state(game.getState());
+            result = evaluate_state(state);
     float value = result.first;
     std::vector<float> priorProb = result.second;
     if (game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer())) {
@@ -89,7 +90,7 @@ void MonteCarloTree::search(Game &game, Node *node, int num_simulations) {
     }
 }
 
-std::pair<float, std::vector<float>> MonteCarloTree::evaluate_state(torch::Tensor state) {
+std::pair<float, std::vector<float>> MonteCarloTree::evaluate_state(torch::Tensor &state) {
     torch::Tensor state_tensor = state.to(device).clone();
     std::pair<torch::Tensor, torch::Tensor> result = network->forward(state_tensor);
 

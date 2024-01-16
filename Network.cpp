@@ -14,7 +14,7 @@ PolicyValueNetwork::PolicyValueNetwork() : board_size(15), input_channels(3) {
     val_fc2 = register_module("val_fc2", torch::nn::Linear(64, 1));
 }
 
-std::pair<torch::Tensor, torch::Tensor> PolicyValueNetwork::forward(torch::Tensor state_input) {
+std::pair<torch::Tensor, torch::Tensor> PolicyValueNetwork::forward(torch::Tensor &state_input) {
     // common layers
     torch::Tensor x = torch::relu(conv1->forward(state_input));
     x = torch::relu(conv2->forward(x));
@@ -56,6 +56,6 @@ std::__1::shared_ptr<PolicyValueNetwork> getNetwork(torch::Device device) {
     return network;
 }
 
-void saveNetwork(std::shared_ptr<PolicyValueNetwork> network, const std::string &path) {
+void saveNetwork(std::shared_ptr<PolicyValueNetwork> &network, const std::string &path) {
     torch::save(network, path);
 }

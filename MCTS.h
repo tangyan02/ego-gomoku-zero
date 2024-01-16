@@ -42,7 +42,7 @@ public:
 
     void search(Game &game, Node *node, int num_simulations);
 
-    std::pair<float, std::vector<float>> evaluate_state(torch::Tensor state);
+    std::pair<float, std::vector<float>> evaluate_state(torch::Tensor &state);
 
     void backpropagate(Node *node, float value);
 

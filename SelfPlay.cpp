@@ -1,8 +1,4 @@
-#include <torch/torch.h>
-#include <iostream>
-#include "MCTS.h"
-#include "Network.h"
-#include <random>
+#include "SelfPlay.h"
 
 using namespace std;
 
@@ -126,10 +122,4 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
         cout << "winner is " << winner << endl;
     }
     return extendData(Game().boardSize, training_data);
-}
-
-int main() {
-    auto data = selfPlay(getDevice(), 1, 800, 1, 3);
-    cout << "training_data size:" << data.size() << endl;
-    return 0;
 }
