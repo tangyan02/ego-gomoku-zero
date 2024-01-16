@@ -1,6 +1,3 @@
-//
-// Created by 唐雁 on 2024/1/15.
-//
 
 #ifndef EGO_GOMOKU_ZERO_MCTS_H
 #define EGO_GOMOKU_ZERO_MCTS_H

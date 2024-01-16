@@ -1,7 +1,3 @@
-//
-// Created by 唐雁 on 2024/1/16.
-//
-
 #ifndef EGO_GOMOKU_ZERO_SELFPLAY_H
 #define EGO_GOMOKU_ZERO_SELFPLAY_H
 
