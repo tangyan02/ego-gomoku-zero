@@ -14,17 +14,17 @@ std::string getTimeStr() {
     return ss.str();
 }
 // 创建目录
-void dirPreBuild() {
-    std::filesystem::path dirPath("model");
-
-    if (!fileExists(dirPath)) {
-        std::filesystem::create_directory(dirPath);
-    }
-}
+//void dirPreBuild() {
+//    std::filesystem::path dirPath("model");
+//
+//    if (!std::filesystem::exists(dirPath)) {
+//        std::filesystem::create_directory(dirPath);
+//    }
+//}
 
 int main() {
 
-    dirPreBuild();
+//    dirPreBuild();
     int episode = 100000;
     auto replayBuffer = ReplayBuffer(10000);
 

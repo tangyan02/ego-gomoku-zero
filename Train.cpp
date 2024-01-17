@@ -1,7 +1,7 @@
 #include "Train.h"
 
 void
-train(ReplayBuffer &replay_buffer, const std::__1::shared_ptr<PolicyValueNetwork> &network, Device device, float lr,
+train(ReplayBuffer &replay_buffer, const std::shared_ptr<PolicyValueNetwork> &network, Device device, float lr,
       int num_epochs, int batch_size) {
     // 创建数据集
     auto dataloader = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(std::move(replay_buffer),

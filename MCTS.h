@@ -32,7 +32,7 @@ public:
 
 class MonteCarloTree {
 public:
-    MonteCarloTree(std::__1::shared_ptr<PolicyValueNetwork> network, torch::Device device,
+    MonteCarloTree(std::shared_ptr<PolicyValueNetwork> network, torch::Device device,
                    float exploration_factor = 5);
 
     void simulate(Game game);
@@ -48,7 +48,7 @@ public:
     std::vector<float> apply_temperature(std::vector<float> action_probabilities, float temperature);
 
 private:
-    std::__1::shared_ptr<PolicyValueNetwork> network;
+    std::shared_ptr<PolicyValueNetwork> network;
     Node *root;
     torch::Device device;
     float exploration_factor;

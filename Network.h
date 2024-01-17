@@ -26,7 +26,7 @@ private:
     torch::nn::Linear val_fc1{nullptr}, val_fc2{nullptr};
 };
 
-std::__1::shared_ptr<PolicyValueNetwork> getNetwork(torch::Device device = getDevice());
+std::shared_ptr<PolicyValueNetwork> getNetwork(torch::Device device = getDevice());
 
 void saveNetwork(std::shared_ptr<PolicyValueNetwork> &network, const std::string &path = "../model/net_latest.mdl");
 

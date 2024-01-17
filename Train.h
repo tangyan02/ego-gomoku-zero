@@ -25,6 +25,6 @@ using namespace torch::data::samplers;
 using namespace std;
 
 
-void train(ReplayBuffer& replay_buffer, const std::__1::shared_ptr<PolicyValueNetwork>& network, Device device, float lr, int num_epochs, int batch_size);
+void train(ReplayBuffer& replay_buffer, const std::shared_ptr<PolicyValueNetwork>& network, Device device, float lr, int num_epochs, int batch_size);
 
 #endif //EGO_GOMOKU_ZERO_TRAIN_H

@@ -9,6 +9,7 @@
 #include <torch/nn.h>
 #include <torch/optim.h>
 #include <fstream>
+#include <filesystem>
 
 torch::Device getDevice();
 
