@@ -5,6 +5,9 @@
 #include <torch/nn.h>
 #include <torch/optim.h>
 #include <fstream>
+#include "utils.h"
+
+using namespace std;
 
 class PolicyValueNetwork : public torch::nn::Module {
 
@@ -22,8 +25,6 @@ private:
     torch::nn::Conv2d val_conv1{nullptr};
     torch::nn::Linear val_fc1{nullptr}, val_fc2{nullptr};
 };
-
-torch::Device getDevice();
 
 std::__1::shared_ptr<PolicyValueNetwork> getNetwork(torch::Device device = getDevice());
 

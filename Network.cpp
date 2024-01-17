@@ -34,19 +34,6 @@ std::pair<torch::Tensor, torch::Tensor> PolicyValueNetwork::forward(torch::Tenso
     return std::make_pair(x_val, x_act);
 }
 
-torch::Device getDevice() {
-    if (torch::cuda::is_available()) {
-        return torch::kCUDA;
-    } else {
-        return torch::kCPU;
-    }
-}
-
-bool fileExists(const std::string &filePath) {
-    std::ifstream file(filePath);
-    return file.good();
-}
-
 std::__1::shared_ptr<PolicyValueNetwork> getNetwork(torch::Device device) {
     auto network = std::make_shared<PolicyValueNetwork>();
 
