@@ -19,15 +19,17 @@ std::pair<torch::Tensor, torch::Tensor> PolicyValueNetwork::forward(torch::Tenso
     torch::Tensor x = torch::relu(conv1->forward(state_input));
     x = torch::relu(conv2->forward(x));
     x = torch::relu(conv3->forward(x));
-    // action policy layers
-    torch::Tensor x_act = torch::relu(act_conv1->forward(x));
-    x_act = x_act.view({-1, 4 * board_size * board_size});
-    x_act = torch::log_softmax(act_fc1->forward(x_act), /*dim=*/1);
+
     // state value layers
     torch::Tensor x_val = torch::relu(val_conv1->forward(x));
     x_val = x_val.view({-1, 2 * board_size * board_size});
     x_val = torch::relu(val_fc1->forward(x_val));
     x_val = torch::tanh(val_fc2->forward(x_val));
+
+    // action policy layers
+    torch::Tensor x_act = torch::relu(act_conv1->forward(x));
+    x_act = x_act.view({-1, 4 * board_size * board_size});
+    x_act = torch::log_softmax(act_fc1->forward(x_act), /*dim=*/1);
 
     return std::make_pair(x_val, x_act);
 }

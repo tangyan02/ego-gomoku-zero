@@ -6,7 +6,9 @@ void printGame(Game &game, int action, std::vector<float> &action_probs, float t
     game.printBoard();
     std::string line;
     for (int i = 0; i < game.boardSize * game.boardSize; i++) {
-        line += std::to_string(round(action_probs[i] * 1000) / 1000) + " ";
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(3) << action_probs[i];
+        line += ss.str() + " ";
         if ((i + 1) % game.boardSize == 0) {
             cout << line << endl;
             line = "";
@@ -52,7 +54,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> e
             std::vector<float> flip_mcts_prob(flip_mcts_prob_tensor.data_ptr<float>(),
                                               flip_mcts_prob_tensor.data_ptr<float>() + flip_mcts_prob_tensor.numel());
 
-            extend_data.emplace_back(std::make_tuple(flip_state, flip_mcts_prob, value));
+            extend_data.emplace_back(std::make_tuple(flip_state.clone(), flip_mcts_prob, value));
         }
     }
     return extend_data;
@@ -64,7 +66,6 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
         int numSimulations,
         float temperatureDefault,
         float explorationFactor) {
-    numGames = 1;
     auto network = getNetwork();
     MonteCarloTree mcts = MonteCarloTree(network, device, explorationFactor);
     std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> training_data;
@@ -122,4 +123,5 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
         cout << "winner is " << winner << endl;
     }
     return extendData(Game().boardSize, training_data);
+//    return training_data;
 }

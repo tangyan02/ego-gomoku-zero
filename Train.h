@@ -22,6 +22,7 @@ using namespace torch::optim;
 using namespace torch::data;
 using namespace torch::data::datasets;
 using namespace torch::data::samplers;
+using namespace std;
 
 
 void train(ReplayBuffer& replay_buffer, const std::__1::shared_ptr<PolicyValueNetwork>& network, Device device, float lr, int num_epochs, int batch_size);

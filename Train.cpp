@@ -1,8 +1,12 @@
 #include "Train.h"
 
-void train(ReplayBuffer& replay_buffer, const std::__1::shared_ptr<PolicyValueNetwork>& network, Device device, float lr, int num_epochs, int batch_size) {
-    // 创建数据加载器
-    auto dataloader = torch::data:: DataLoader(replay_buffer, batch_size, true);
+void
+train(ReplayBuffer &replay_buffer, const std::__1::shared_ptr<PolicyValueNetwork> &network, Device device, float lr,
+      int num_epochs, int batch_size) {
+    // 创建数据集
+    auto dataloader = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(std::move(replay_buffer),
+                                                                                          batch_size);
+
     // 定义损失函数
     auto criterion = MSELoss();
     // 定义优化器
@@ -10,21 +14,39 @@ void train(ReplayBuffer& replay_buffer, const std::__1::shared_ptr<PolicyValueNe
     // 训练循环
     for (int epoch = 0; epoch < num_epochs; ++epoch) {
         float running_loss = 0.0;
-        for (auto& batch_data : *dataloader) {
-            auto states = batch_data.data.to(device);
-            auto mcts_probs = batch_data.target.to(device);
-            auto values = batch_data.target2.to(device);
+        float running_count = 0.0;
+        for (auto &batch_data: *dataloader) {
+            vector<Tensor> stateList;
+            vector<Tensor> mctsProbTensorList;
+            vector<Tensor> valueTensorList;
+            for (const auto &item: batch_data) {
+                stateList.emplace_back(get<0>(item));
+
+                vector<float> mctsProbList = get<1>(item);
+                torch::Tensor mctsProbTensor = torch::from_blob(mctsProbList.data(),
+                                                                {static_cast<long>(mctsProbList.size())});
+                mctsProbTensorList.emplace_back(mctsProbTensor.clone());
+
+                vector<float> valueList = get<2>(item);
+                torch::Tensor valueTensor = torch::from_blob(valueList.data(), {static_cast<long>(valueList.size())});
+                valueTensorList.emplace_back(valueTensor.clone());
+            }
+            Tensor states = torch::stack(stateList, 0);
+            Tensor mcts_probs = torch::stack(mctsProbTensorList, 0);
+            Tensor values = torch::stack(valueTensorList, 0);
 
             optimizer.zero_grad();
 
             // 前向传播
-            auto predicted_values = network->forward(states);
+            auto predicted_data = network->forward(states);
+            auto prodicted_value = get<0>(predicted_data);
+            auto prodicted_act = get<1>(predicted_data);
 
             // 计算值和策略的损失
-            auto value_loss = criterion(predicted_values, values);
+            auto value_loss = criterion(prodicted_value, values);
 
             // 计算交叉熵损失
-            auto policy_loss = -torch::mean(torch::sum(mcts_probs * predicted_values, 1));
+            auto policy_loss = -torch::mean(torch::sum(mcts_probs * prodicted_act, 1));
 
             // 总损失
             auto loss = value_loss + policy_loss;
@@ -34,8 +56,11 @@ void train(ReplayBuffer& replay_buffer, const std::__1::shared_ptr<PolicyValueNe
             optimizer.step();
 
             running_loss += loss.item<float>();
+            running_count += 1;
+            break;
         }
 
-        std::cout << "Epoch " << epoch + 1 << "/" << num_epochs << ", Loss: " << running_loss / dataloader->size() << std::endl;
+        std::cout << "Epoch " << epoch + 1 << "/" << num_epochs << ", Loss: "
+                  << running_loss / running_count << std::endl;
     }
 }
