@@ -15,6 +15,10 @@ PolicyValueNetwork::PolicyValueNetwork() : board_size(15), input_channels(3) {
 }
 
 std::pair<torch::Tensor, torch::Tensor> PolicyValueNetwork::forward(torch::Tensor &state_input) {
+    if (state_input.dim() == 3) {
+        state_input.unsqueeze_(0);
+    }
+
     // common layers
     torch::Tensor x = torch::relu(conv1->forward(state_input));
     x = torch::relu(conv2->forward(x));
