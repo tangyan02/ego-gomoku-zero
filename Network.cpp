@@ -41,11 +41,12 @@ std::pair<torch::Tensor, torch::Tensor> PolicyValueNetwork::forward(torch::Tenso
 std::shared_ptr<PolicyValueNetwork> getNetwork(torch::Device device) {
     auto network = std::make_shared<PolicyValueNetwork>();
 
-    std::string path = "../model/net_latest.mdl";
+    std::string path = "model/net_latest.mdl";
     if (fileExists(path)) {
         torch::load(network, path);
         network->to(device);
     }
+    network->to(device);
     return network;
 }
 

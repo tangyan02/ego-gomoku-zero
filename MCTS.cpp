@@ -168,3 +168,14 @@ std::vector<float> MonteCarloTree::apply_temperature(std::vector<float> action_p
     }
     return action_probabilities;
 }
+
+void MonteCarloTree::release(Node *node) {
+    if (!node->children.empty()) {
+        for (const auto &item: node->children) {
+            release(item.second);
+        }
+    }
+    if (node->parent != nullptr) {
+        delete node;
+    }
+}

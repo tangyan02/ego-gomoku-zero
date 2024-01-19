@@ -9,14 +9,13 @@
 
 void printGame(Game &game, int action, std::vector<float> &action_probs, float temperature);
 
-std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> selfPlay(
+std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> concurrentSelfPlay(
         torch::Device device,
         int numGames,
         int numSimulations,
         float temperatureDefault,
-        float explorationFactor);
-
-std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> extendData(
-        int boardSize, std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> &play_data);
+        float explorationFactor,
+        int concurrent
+);
 
 #endif //EGO_GOMOKU_ZERO_SELFPLAY_H

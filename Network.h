@@ -28,6 +28,6 @@ private:
 
 std::shared_ptr<PolicyValueNetwork> getNetwork(torch::Device device = getDevice());
 
-void saveNetwork(std::shared_ptr<PolicyValueNetwork> &network, const std::string &path = "../model/net_latest.mdl");
+void saveNetwork(std::shared_ptr<PolicyValueNetwork> &network, const std::string &path = "model/net_latest.mdl");
 
 #endif //EGO_GOMOKU_ZERO_NETWORK_H

@@ -11,8 +11,16 @@
 #include <fstream>
 #include <filesystem>
 
+#ifdef _WIN32
+#include <direct.h>  // Windows
+#else
+#include <sys/stat.h>  // Linux/Unix
+#endif
+
 torch::Device getDevice();
 
 bool fileExists(const std::string &filePath);
+
+void createModelDirectory();
 
 #endif //EGO_GOMOKU_ZERO_UTILS_H

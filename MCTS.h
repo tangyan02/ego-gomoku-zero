@@ -47,6 +47,8 @@ public:
 
     std::vector<float> apply_temperature(std::vector<float> action_probabilities, float temperature);
 
+    void release(Node *node);
+
 private:
     std::shared_ptr<PolicyValueNetwork> network;
     Node *root;

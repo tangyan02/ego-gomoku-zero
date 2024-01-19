@@ -31,9 +31,9 @@ train(ReplayBuffer &replay_buffer, const std::shared_ptr<PolicyValueNetwork> &ne
                 torch::Tensor valueTensor = torch::from_blob(valueList.data(), {static_cast<long>(valueList.size())});
                 valueTensorList.emplace_back(valueTensor.clone());
             }
-            Tensor states = torch::stack(stateList, 0);
-            Tensor mcts_probs = torch::stack(mctsProbTensorList, 0);
-            Tensor values = torch::stack(valueTensorList, 0);
+            Tensor states = torch::stack(stateList, 0).to(device);
+            Tensor mcts_probs = torch::stack(mctsProbTensorList, 0).to(device);
+            Tensor values = torch::stack(valueTensorList, 0).to(device);
 
             optimizer.zero_grad();
 

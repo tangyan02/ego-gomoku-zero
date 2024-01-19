@@ -12,7 +12,7 @@ set(CMAKE_SYSTEM_PROCESSOR x86_64)
 set(CMAKE_OSX_ARCHITECTURES x86_64)
 
 find_package(Torch REQUIRED)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS} -O3 -funroll-loops -ftree-vectorize -finline-functions")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS} -O3 -funroll-loops -ftree-vectorize -finline-functions -std=c++17")
 
 add_executable(ego-gomoku-zero SelfPlay.cpp Game.h Game.cpp Network.h Network.cpp MCTS.h MCTS.cpp SelfPlay.h main.cpp ReplayBuffer.h ReplayBuffer.cpp Train.cpp Train.h utils.h utils.cpp)
 target_link_libraries(ego-gomoku-zero "${TORCH_LIBRARIES}")
