@@ -97,7 +97,7 @@ std::pair<float, std::vector<float>> MonteCarloTree::evaluate_state(torch::Tenso
     torch::Tensor value = result.first;
     torch::Tensor policy = result.second;
 
-    float valueFloat = value[0][0].item<float>();
+    auto valueFloat = value[0][0].cpu().item<float>();
 
     // 将张量转换为 CPU 上的张量
     torch::Tensor cpu_policy = torch::exp(policy).cpu();
