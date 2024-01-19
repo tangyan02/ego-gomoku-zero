@@ -16,7 +16,7 @@ void printGame(Game &game, int action, std::vector<float> &action_probs, float t
     }
     std::string pic = (game.getOtherPlayer() == 1) ? "x" : "o";
     cout << pic << " action is " << game.getPointFromIndex(action).x << "," << game.getPointFromIndex(action).y
-         << " on rate " << round(action_probs[action] * 10) / 10
+         << " on rate " << round(action_probs[action] * 1000) / 1000
          << " temperature " << round(temperature * 100) / 100 << endl;
 }
 
