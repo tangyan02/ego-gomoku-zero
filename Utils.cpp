@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "Utils.h"
 
 torch::Device getDevice() {
     if (torch::cuda::is_available()) {
@@ -13,7 +13,7 @@ bool fileExists(const std::string &filePath) {
     return file.good();
 }
 
-bool directoryExists(const char* dirPath) {
+bool directoryExists(const char *dirPath) {
 #ifdef _WIN32
     struct _stat info;
     if (_stat(dirPath, &info) != 0) {
@@ -29,8 +29,8 @@ bool directoryExists(const char* dirPath) {
 #endif
 }
 
-void createModelDirectory() {
-    const char* dirPath = "model";
+
+void createDirectory(const char *dirPath) {
 
     if (!directoryExists(dirPath)) {
 #ifdef _WIN32
@@ -40,11 +40,11 @@ void createModelDirectory() {
 #endif
 
         if (result == 0) {
-            std::cout << "Created 'model' directory." << std::endl;
+            std::cout << "Created '" << dirPath << "' directory." << std::endl;
         } else {
-            std::cout << "Failed to create 'model' directory." << std::endl;
+            std::cout << "Failed to create '" << dirPath << "' directory." << std::endl;
         }
     } else {
-        std::cout << "'model' directory already exists." << std::endl;
+        std::cout << "'" << dirPath << "' directory already exists." << std::endl;
     }
 }

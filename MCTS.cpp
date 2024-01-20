@@ -49,7 +49,8 @@ void Node::update(double value) {
 
 MonteCarloTree::MonteCarloTree(std::shared_ptr<PolicyValueNetwork> network, torch::Device device,
                                float exploration_factor)
-        : network(std::move(network)), root(nullptr), device(device), exploration_factor(exploration_factor) {}
+        : network(std::move(network)), root(nullptr), device(device), exploration_factor(exploration_factor) {
+}
 
 void MonteCarloTree::simulate(Game game) {
     if (game.isGameOver()) {

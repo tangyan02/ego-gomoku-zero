@@ -126,12 +126,12 @@ void selfPlay(
 
         cout << "winner is " << winner << endl;
     }
-    result[threadNo] = extendData(Game().boardSize, training_data);
+//    result[threadNo] = extendData(Game().boardSize, training_data);
+    result[threadNo] = training_data;
 }
 
 
 std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> concurrentSelfPlay(
-        torch::Device device,
         int numGames,
         int numSimulations,
         float temperatureDefault,
@@ -141,6 +141,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> c
     std::vector<std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>>> result(
             numGames);  // 存储计算结果的向量
     std::vector<std::thread> threads;  // 存储线程的向量
+    torch::Device device = getDevice();
 
     // 创建并启动线程
     for (int i = 0; i < numGames; ++i) {
@@ -163,4 +164,58 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> c
         }
     }
     return totalResult;
+}
+
+void recordConcurrentSelfPlay(
+        int numGames,
+        int numSimulations,
+        float temperatureDefault,
+        float explorationFactor,
+        int concurrent) {
+    // 创建文件流对象
+    std::ofstream file("record/data.txt");
+
+    if (file.is_open()) {
+
+        auto data = concurrentSelfPlay(numGames, numSimulations, temperatureDefault, explorationFactor, concurrent);
+        for (auto &item: data) {
+            auto state = get<0>(item);
+
+            // 获取张量的维度
+            int64_t dim0 = state.size(0);
+            int64_t dim1 = state.size(1);
+            int64_t dim2 = state.size(2);
+
+            file << dim0 << " " << dim1 << " " << dim2 << endl;
+            // 遍历张量并打印数值
+            for (int64_t i = 0; i < dim0; ++i) {
+                for (int64_t j = 0; j < dim1; ++j) {
+                    for (int64_t k = 0; k < dim2; ++k) {
+                        file << state[i][j][k].item<float>() << " ";
+                    }
+                    file << endl;
+                }
+            }
+
+            vector<float> mctsProbList = get<1>(item);
+            file << mctsProbList.size() << endl;
+            for (auto f: mctsProbList) {
+                file << f << " ";
+            }
+            file << endl;
+
+            vector<float> valueList = get<2>(item);
+            file << valueList.size() << endl;
+            for (auto f: valueList) {
+                file << f << " ";
+            }
+            file << endl;
+        }
+
+        // 关闭文件
+        file.close();
+        std::cout << "Data has been written to file." << std::endl;
+    } else {
+        std::cerr << "Failed to open file." << std::endl;
+    }
 }

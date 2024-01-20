@@ -21,6 +21,6 @@ torch::Device getDevice();
 
 bool fileExists(const std::string &filePath);
 
-void createModelDirectory();
+void createDirectory(const char *dirPath);
 
 #endif //EGO_GOMOKU_ZERO_UTILS_H

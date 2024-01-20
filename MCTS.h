@@ -51,6 +51,7 @@ public:
 
 private:
     std::shared_ptr<PolicyValueNetwork> network;
+    torch::jit::Module model;
     Node *root;
     torch::Device device;
     float exploration_factor;

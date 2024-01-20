@@ -76,7 +76,7 @@ void Game::printBoard() {
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
             switch (board[i][j]) {
-                case NONE:
+                case NONE_P:
                     std::cout << ".";
                     break;
                 case BLACK:
@@ -94,7 +94,7 @@ void Game::printBoard() {
 
 bool Game::makeMove(Point p) {
     int row = p.x, col = p.y;
-    if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE || board[row][col] != NONE) {
+    if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE || board[row][col] != NONE_P) {
         cout << "move失败!" << endl;
         return false;
     }

@@ -4,8 +4,9 @@
 #include <torch/torch.h>
 #include <torch/nn.h>
 #include <torch/optim.h>
+#include <torch/script.h>
 #include <fstream>
-#include "utils.h"
+#include "Utils.h"
 
 using namespace std;
 

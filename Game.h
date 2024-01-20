@@ -19,7 +19,7 @@ public:
 const int BOARD_SIZE = 15;
 const int CONNECT = 5;
 
-#define NONE 0
+#define NONE_P 0
 #define BLACK 1
 #define WHITE 2
 
