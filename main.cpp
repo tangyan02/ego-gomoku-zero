@@ -19,40 +19,15 @@ int main() {
     createDirectory("model");
     createDirectory("record");
 
-    int episode = 1;
     int numGames = 1;
     int concurrent = 1;
     int sumSimulations = 800;
     float temperatureDefault = 1;
     float explorationFactor = 3;
-    int buffer_size = 10000;
-    float lr = 0.001;
-    int num_epochs = 5;
-    int batch_size = 128;
-
-    auto replayBuffer = ReplayBuffer(buffer_size);
 
     auto network = getNetwork();
-    for (int i = 1; i <= episode; i++) {
-//        auto start_time = std::chrono::steady_clock::now();
-//        auto data = concurrentSelfPlay(numGames ,sumSimulations, temperatureDefault, explorationFactor, concurrent);
-        recordConcurrentSelfPlay(numGames ,sumSimulations, temperatureDefault, explorationFactor, concurrent);
 
-//        cout << "training_data size:" << data.size() << endl;
-
-//        auto end_time = std::chrono::steady_clock::now();
-//        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-
-//        std::cout << getTimeStr() << "训练完毕，用时" << duration.count() / 1000.0 << "秒" << std::endl;
-//        replayBuffer.add_samples(data);
-//        train(replayBuffer, network, getDevice(), lr, num_epochs, batch_size);
-//
-//        if (i % 100 == 0) {
-//            saveNetwork(network, "model/net_" + to_string(i) + ".mdl");
-//        }
-//        saveNetwork(network);
-//        cout << "模型保存完毕 episode " << i << endl;
-    }
+    recordConcurrentSelfPlay(numGames ,sumSimulations, temperatureDefault, explorationFactor, concurrent);
 
     return 0;
 }
