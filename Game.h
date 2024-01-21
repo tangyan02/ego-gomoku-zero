@@ -29,6 +29,7 @@ private:
 
 public:
     Point lastAction;
+    Point lastLastAction;
     int boardSize;
     int currentPlayer;
 

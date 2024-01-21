@@ -47,18 +47,21 @@ std::vector<Point> Game::getEmptyPoints() {
 }
 
 torch::Tensor Game::getState() {
-    torch::Tensor tensor = torch::zeros({3, BOARD_SIZE, BOARD_SIZE});
+    torch::Tensor tensor = torch::zeros({4, BOARD_SIZE, BOARD_SIZE});
     for (int row = 0; row < BOARD_SIZE; row++) {
         for (int col = 0; col < BOARD_SIZE; col++) {
-            if (board[row][col] == 1) {
+            if (board[row][col] == currentPlayer) {
                 tensor[0][row][col] = 1;
-            } else if (board[row][col] == 2) {
+            } else if (board[row][col] == getOtherPlayer()) {
                 tensor[1][row][col] = 1;
             }
         }
     }
     if (lastAction.x >= 0 && lastAction.y >= 0) {
         tensor[2][lastAction.x][lastAction.y] = 1;
+    }
+    if (lastLastAction.x >= 0 && lastLastAction.y >= 0) {
+        tensor[3][lastLastAction.x][lastLastAction.y] = 1;
     }
     return tensor;
 }
@@ -102,6 +105,8 @@ bool Game::makeMove(Point p) {
     board[row][col] = currentPlayer;
     currentPlayer = (currentPlayer == BLACK) ? WHITE : BLACK;
 
+    lastLastAction.x = lastAction.x;
+    lastLastAction.y = lastAction.y;
     lastAction.x = row;
     lastAction.y = col;
 

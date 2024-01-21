@@ -10,7 +10,7 @@ from Utils import getDevice
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
         self.board_size = 15
-        self.input_channels = 3
+        self.input_channels = 4
         super(PolicyValueNetwork, self).__init__()
 
         # common layers
