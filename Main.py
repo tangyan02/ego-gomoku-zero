@@ -1,6 +1,6 @@
 import subprocess
-import threading
 import time
+import concurrent.futures
 
 import numpy as np
 
@@ -29,17 +29,12 @@ def run_program(shard):
         print(f"Command execution failed with return code {process.returncode} for shard {shard}.")
 
 
-def selfPlayInCpp(shardNum):
-    threads = []
-    for shard in range(shardNum):
-        # 创建并启动线程
-        thread = threading.Thread(target=run_program, args=(shard,))
-        thread.start()
-        threads.append(thread)
-
-    # 等待所有线程完成
-    for thread in threads:
-        thread.join()
+def selfPlayInCpp(shard_num, worker_num):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=worker_num) as executor:
+        # 提交任务给线程池
+        futures = [executor.submit(run_program, shard) for shard in range(shard_num)]
+        # 等待所有任务完成
+        concurrent.futures.wait(futures)
 
 
 def getFileData(shard_num):
@@ -94,9 +89,10 @@ dirPreBuild()
 lr = 0.001
 num_epochs = 5
 batch_size = 128
-episode = 10000
+episode = 100000
 replay_buffer_size = 10000
-shard_num = 5
+shard_num = 10
+worker_num = 4
 
 network = get_network()
 save_network(network)
@@ -108,7 +104,7 @@ for i_episode in range(1, episode + 1):
 
     start_time = time.time()
 
-    selfPlayInCpp(shard_num)
+    selfPlayInCpp(shard_num, worker_num)
 
     end_time = time.time()
     print(getTimeStr() + f"自我对弈完毕，用时 {end_time - start_time} s")
