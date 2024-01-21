@@ -8,7 +8,7 @@
 #include <cmath>
 #include <limits>
 #include "Game.h"
-#include "Network.h"
+#include <torch/script.h>
 
 class Node {
 public:

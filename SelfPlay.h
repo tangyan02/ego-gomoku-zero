@@ -2,11 +2,10 @@
 #define EGO_GOMOKU_ZERO_SELFPLAY_H
 
 #include <torch/torch.h>
+#include <torch/script.h>
 #include <iostream>
 #include "MCTS.h"
-#include "Network.h"
 #include <random>
-#include "Utils.h"
 #include <iostream>
 #include <fstream>
 

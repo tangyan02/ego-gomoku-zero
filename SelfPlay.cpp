@@ -20,13 +20,29 @@ void printGame(Game &game, int action, std::vector<float> &action_probs, float t
          << " temperature " << round(temperature * 100) / 100 << endl;
 }
 
+torch::jit::Module getNetwork(torch::Device device) {
+    std::string path = "model/net_latest.mdl.pt";
+    auto model = torch::jit::load(path);
+    model.to(device);
+    std::cout << "模型" << path << "已加载" << endl;
+    return model;
+}
+
+torch::Device getDevice() {
+    if (torch::cuda::is_available()) {
+        return torch::kCUDA;
+    } else {
+        return torch::kCPU;
+    }
+//    return torch::kCPU;
+}
+
 std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> selfPlay(int numGames,
                                                                                         int numSimulations,
                                                                                         float temperatureDefault,
                                                                                         float explorationFactor) {
     torch::Device device = getDevice();
     auto network = getNetwork(device);
-    network.to(device);
     MonteCarloTree mcts = MonteCarloTree(&network, device, explorationFactor);
     std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> training_data;
 
