@@ -178,6 +178,7 @@ void recordConcurrentSelfPlay(
     if (file.is_open()) {
 
         auto data = concurrentSelfPlay(numGames, numSimulations, temperatureDefault, explorationFactor, concurrent);
+        file << data.size() << endl;
         std::cout << "data count " << data.size() << endl;
         for (auto &item: data) {
             auto state = get<0>(item);

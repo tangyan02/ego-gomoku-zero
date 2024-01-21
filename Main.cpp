@@ -15,12 +15,8 @@ std::string getTimeStr() {
 
 
 int main() {
-
-    createDirectory("model");
-    createDirectory("record");
-
-    int numGames = 1;
-    int concurrent = 1;
+    int numGames = 10;
+    int concurrent = 10;
     int sumSimulations = 800;
     float temperatureDefault = 1;
     float explorationFactor = 3;
