@@ -45,7 +45,7 @@ def selfPlayInCpp(shardNum):
 def getFileData(shard_num):
     training_data = []
     for shard in range(shard_num):
-        f = open("record/data.txt_" + str(shard_num), "r")
+        f = open(f"record/data_{shard}.txt", "r")
         count = int(f.readline())
         for i in range(count):
             state_shape = f.readline().strip().split(" ")
