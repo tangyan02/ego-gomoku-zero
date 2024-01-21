@@ -111,11 +111,11 @@ for i_episode in range(1, episode + 1):
     selfPlayInCpp(shard_num)
 
     end_time = time.time()
-    print(getTimeStr() + f"训练完毕，用时 {end_time - start_time} s")
+    print(getTimeStr() + f"自我对弈完毕，用时 {end_time - start_time} s")
 
     training_data = getFileData(shard_num)
     equi_data = get_equi_data(training_data)
-    print(getTimeStr() + "完成扩展训练数据，条数 " + str(len(equi_data)))
+    print(getTimeStr() + f"完成扩展自我对弈数据，条数 " + str(len(equi_data)))
     replay_buffer.add_samples(equi_data)
 
     if replay_buffer.size() >= replay_buffer_size:
