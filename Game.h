@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <torch/torch.h>
+#include <unordered_set>
 
 class Point {
 public:
@@ -24,10 +25,8 @@ const int CONNECT = 5;
 #define WHITE 2
 
 class Game {
-private:
-    int board[BOARD_SIZE][BOARD_SIZE];
-
 public:
+    int board[BOARD_SIZE][BOARD_SIZE];
     Point lastAction;
     Point lastLastAction;
     int boardSize;
@@ -52,6 +51,7 @@ public:
     bool makeMove(Point p);
 
     bool checkWin(int row, int col, int player);
+
 };
 
 

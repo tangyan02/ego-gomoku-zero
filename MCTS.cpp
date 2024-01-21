@@ -33,7 +33,9 @@ std::pair<int, Node *> Node::selectChild(double exploration_factor) {
 }
 
 void Node::expand(Game &game, const std::vector<float> &prior_probs) {
-    std::vector<Point> actions = game.getEmptyPoints();
+
+    std::vector<Point> actions = selectActions(game);
+
     for (auto &action: actions) {
         Node *child = new Node(this);
         int actionIndex = game.getActionIndex(action);
@@ -49,7 +51,7 @@ void Node::update(double value) {
 
 MonteCarloTree::MonteCarloTree(torch::jit::Module *network, torch::Device device,
                                float exploration_factor)
-        : network(std::move(network)), root(nullptr), device(device), exploration_factor(exploration_factor) {
+        : network(network), root(nullptr), device(device), exploration_factor(exploration_factor) {
 }
 
 void MonteCarloTree::simulate(Game game) {

@@ -30,7 +30,7 @@ int Game::getActionIndex(Point &p) {
 }
 
 Point Game::getPointFromIndex(int actionIndex) {
-    return Point(actionIndex / BOARD_SIZE, actionIndex % BOARD_SIZE);
+    return {actionIndex / BOARD_SIZE, actionIndex % BOARD_SIZE};
 }
 
 
@@ -39,7 +39,7 @@ std::vector<Point> Game::getEmptyPoints() {
     for (int row = 0; row < BOARD_SIZE; row++) {
         for (int col = 0; col < BOARD_SIZE; col++) {
             if (board[row][col] == 0) {
-                emptyPoints.push_back(Point(row, col));
+                emptyPoints.emplace_back(Point(row, col));
             }
         }
     }
@@ -72,7 +72,7 @@ bool Game::isGameOver() {
             return true;
         }
     }
-    return getEmptyPoints().size() == 0;
+    return getEmptyPoints().empty();
 }
 
 void Game::printBoard() {

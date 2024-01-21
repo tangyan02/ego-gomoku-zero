@@ -7,22 +7,50 @@ import torch.nn.functional as F
 from Utils import getDevice
 
 
+class ResidualBlock(nn.Module):
+    def __init__(self, channels):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=(3, 3), padding=1)
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=(3, 3), padding=1)
+
+    def forward(self, x):
+        residual = x
+        out = F.relu(self.conv1(x))
+        out = self.conv2(out)
+        out += residual
+        out = F.relu(out)
+        return out
+
+
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
         self.board_size = 15
         self.input_channels = 4
+        self.filters = 128
         super(PolicyValueNetwork, self).__init__()
 
         # common layers
-        self.conv1 = nn.Conv2d(self.input_channels, 32, kernel_size=(7, 7), padding=3)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=(5, 5), padding=2)
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=(3, 3), padding=1)
+        self.conv1 = nn.Conv2d(self.input_channels, self.filters, kernel_size=(3, 3), padding=1)
+
+        self.residual_blocks = nn.Sequential(
+            ResidualBlock(self.filters),
+            ResidualBlock(self.filters),
+            ResidualBlock(self.filters),
+            ResidualBlock(self.filters),
+            ResidualBlock(self.filters),
+            ResidualBlock(self.filters),
+            ResidualBlock(self.filters),
+            ResidualBlock(self.filters),
+            ResidualBlock(self.filters),
+            ResidualBlock(self.filters)
+        )
+
         # action policy layers
-        self.act_conv1 = nn.Conv2d(128, 4, kernel_size=(1, 1))
+        self.act_conv1 = nn.Conv2d(self.filters, 4, kernel_size=(1, 1))
         self.act_fc1 = nn.Linear(4 * self.board_size * self.board_size,
                                  self.board_size * self.board_size)
         # state value layers
-        self.val_conv1 = nn.Conv2d(128, 2, kernel_size=(1, 1))
+        self.val_conv1 = nn.Conv2d(self.filters, 2, kernel_size=(1, 1))
         self.val_fc1 = nn.Linear(2 * self.board_size * self.board_size, 64)
         self.val_fc2 = nn.Linear(64, 1)
 
@@ -32,8 +60,8 @@ class PolicyValueNetwork(nn.Module):
 
         # common layers
         x = F.relu(self.conv1(state_input))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
+        x = self.residual_blocks(x)
+
         # action policy layers
         x_act = F.relu(self.act_conv1(x))
         x_act = x_act.view(-1, 4 * self.board_size * self.board_size)

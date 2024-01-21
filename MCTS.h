@@ -9,6 +9,7 @@
 #include <limits>
 #include "Game.h"
 #include <torch/script.h>
+#include "Analyzer.h"
 
 class Node {
 public:
