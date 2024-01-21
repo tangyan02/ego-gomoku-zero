@@ -1,20 +1,21 @@
 import subprocess
+import time
 
 import numpy as np
 
 from Network import get_network, save_network
 from ReplayBuffer import ReplayBuffer
 from Train import train
-from Utils import getDevice, getTimeStr
+from Utils import getDevice, getTimeStr, dirPreBuild
 
 
 def selfPlayInCpp():
     # 执行可执行程序
-    process = subprocess.Popen('./build/ego-gomoku-zero', stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    process = subprocess.Popen('./build/ego-gomoku-zero', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     # 持续打印输出
     for line in process.stdout:
-        print(line, end='')
+        print(line.decode(), end='')
 
     # 等待命令执行完成
     process.wait()
@@ -72,6 +73,8 @@ def get_equi_data(play_data):
     return extend_data
 
 
+dirPreBuild()
+
 lr = 0.001
 num_epochs = 5
 batch_size = 128
@@ -79,15 +82,23 @@ episode = 10000
 replay_buffer_size = 12000
 
 network = get_network()
+save_network(network)
+
 device = getDevice()
 
 replay_buffer = ReplayBuffer(replay_buffer_size)
 for i_episode in range(1, episode + 1):
 
+    start_time = time.time()
+
     selfPlayInCpp()
+
+    end_time = time.time()
+    print(getTimeStr() + f"训练完毕，用时 {end_time - start_time} s")
+
     training_data = getFileData()
     equi_data = get_equi_data(training_data)
-    print(getTimeStr(), "完成扩展训练数据，条数", len(equi_data))
+    print(getTimeStr() + "完成扩展训练数据，条数 " + str(len(equi_data)))
     replay_buffer.add_samples(equi_data)
 
     if replay_buffer.size() >= replay_buffer_size:

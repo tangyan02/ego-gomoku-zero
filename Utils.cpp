@@ -6,6 +6,7 @@ torch::Device getDevice() {
     } else {
         return torch::kCPU;
     }
+//    return torch::kCPU;
 }
 
 bool fileExists(const std::string &filePath) {

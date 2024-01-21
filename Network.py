@@ -27,6 +27,9 @@ class PolicyValueNetwork(nn.Module):
         self.val_fc2 = nn.Linear(64, 1)
 
     def forward(self, state_input):
+        if state_input.dim() == 3:
+            state_input = torch.unsqueeze(state_input, dim=0)
+
         # common layers
         x = F.relu(self.conv1(state_input))
         x = F.relu(self.conv2(x))
@@ -34,7 +37,7 @@ class PolicyValueNetwork(nn.Module):
         # action policy layers
         x_act = F.relu(self.act_conv1(x))
         x_act = x_act.view(-1, 4 * self.board_size * self.board_size)
-        x_act = F.log_softmax(self.act_fc1(x_act))
+        x_act = F.log_softmax(self.act_fc1(x_act), dim=1)
         # state value layers
         x_val = F.relu(self.val_conv1(x))
         x_val = x_val.view(-1, 2 * self.board_size * self.board_size)

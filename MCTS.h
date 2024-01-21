@@ -32,7 +32,7 @@ public:
 
 class MonteCarloTree {
 public:
-    MonteCarloTree(std::shared_ptr<PolicyValueNetwork> network, torch::Device device,
+    MonteCarloTree(torch::jit::Module *network, torch::Device device,
                    float exploration_factor = 5);
 
     void simulate(Game game);
@@ -50,8 +50,7 @@ public:
     void release(Node *node);
 
 private:
-    std::shared_ptr<PolicyValueNetwork> network;
-    torch::jit::Module model;
+    torch::jit::Module *network;
     Node *root;
     torch::Device device;
     float exploration_factor;

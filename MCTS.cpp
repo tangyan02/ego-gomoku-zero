@@ -47,7 +47,7 @@ void Node::update(double value) {
     value_sum += value;
 }
 
-MonteCarloTree::MonteCarloTree(std::shared_ptr<PolicyValueNetwork> network, torch::Device device,
+MonteCarloTree::MonteCarloTree(torch::jit::Module *network, torch::Device device,
                                float exploration_factor)
         : network(std::move(network)), root(nullptr), device(device), exploration_factor(exploration_factor) {
 }
@@ -93,10 +93,12 @@ void MonteCarloTree::search(Game &game, Node *node, int num_simulations) {
 
 std::pair<float, std::vector<float>> MonteCarloTree::evaluate_state(torch::Tensor &state) {
     torch::Tensor state_tensor = state.to(device).clone();
-    std::pair<torch::Tensor, torch::Tensor> result = network->forward(state_tensor);
+    std::vector<torch::jit::IValue> inputs;
+    inputs.emplace_back(state_tensor);
 
-    torch::Tensor value = result.first;
-    torch::Tensor policy = result.second;
+    auto outputs = network->forward(inputs).toTuple();
+    torch::Tensor value = outputs->elements()[0].toTensor();
+    torch::Tensor policy = outputs->elements()[1].toTensor();
 
     auto valueFloat = value[0][0].cpu().item<float>();
 

@@ -69,8 +69,9 @@ void selfPlay(
         float explorationFactor,
         int threadNo,
         std::vector<std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>>> &result) {
-    auto network = getNetwork();
-    MonteCarloTree mcts = MonteCarloTree(network, device, explorationFactor);
+    auto network = getNetwork(device);
+    network.to(device);
+    MonteCarloTree mcts = MonteCarloTree(&network, device, explorationFactor);
     std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> training_data;
 
     for (int i = 0; i < numGames; i++) {
