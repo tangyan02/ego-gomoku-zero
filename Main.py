@@ -1,4 +1,5 @@
 import subprocess
+import threading
 import time
 
 import numpy as np
@@ -9,9 +10,10 @@ from Train import train
 from Utils import getDevice, getTimeStr, dirPreBuild
 
 
-def selfPlayInCpp():
-    # 执行可执行程序
-    process = subprocess.Popen('./build/ego-gomoku-zero', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+def run_program(shard):
+    # 执行可执行程序，传入参数shard
+    process = subprocess.Popen(['./build/ego-gomoku-zero', str(shard)], stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT)
 
     # 持续打印输出
     for line in process.stdout:
@@ -22,32 +24,46 @@ def selfPlayInCpp():
 
     # 检查命令的返回码
     if process.returncode == 0:
-        print("Command execution successful.")
+        print(f"Command execution successful for shard {shard}.")
     else:
-        print(f"Command execution failed with return code: {process.returncode}")
+        print(f"Command execution failed with return code {process.returncode} for shard {shard}.")
 
 
-def getFileData():
-    f = open("record/data.txt", "r")
-    count = int(f.readline())
+def selfPlayInCpp(shardNum):
+    threads = []
+    for shard in range(shardNum):
+        # 创建并启动线程
+        thread = threading.Thread(target=run_program, args=(shard,))
+        thread.start()
+        threads.append(thread)
+
+    # 等待所有线程完成
+    for thread in threads:
+        thread.join()
+
+
+def getFileData(shard_num):
     training_data = []
-    for i in range(count):
-        state_shape = f.readline().strip().split(" ")
-        k, x, y = int(state_shape[0]), int(state_shape[1]), int(state_shape[2])
-        state = np.zeros((k, x, y), dtype=float)
-        for r in range(k):
-            for i in range(x):
-                arr = f.readline().strip().split(" ")
-                for j in range(len(arr)):
-                    state[r][i][j] = float(arr[j])
-        f.readline()
-        props_line = f.readline()
-        props = [float(x) for x in props_line.strip().split(" ")]
-        f.readline()
-        values_line = f.readline()
-        values = [float(x) for x in values_line.strip().split(" ")]
+    for shard in range(shard_num):
+        f = open("record/data.txt_" + str(shard_num), "r")
+        count = int(f.readline())
+        for i in range(count):
+            state_shape = f.readline().strip().split(" ")
+            k, x, y = int(state_shape[0]), int(state_shape[1]), int(state_shape[2])
+            state = np.zeros((k, x, y), dtype=float)
+            for r in range(k):
+                for i in range(x):
+                    arr = f.readline().strip().split(" ")
+                    for j in range(len(arr)):
+                        state[r][i][j] = float(arr[j])
+            f.readline()
+            props_line = f.readline()
+            props = [float(x) for x in props_line.strip().split(" ")]
+            f.readline()
+            values_line = f.readline()
+            values = [float(x) for x in values_line.strip().split(" ")]
 
-        training_data.append((state, np.array(props), np.array(values)))
+            training_data.append((state, np.array(props), np.array(values)))
 
     return training_data
 
@@ -79,7 +95,8 @@ lr = 0.001
 num_epochs = 5
 batch_size = 128
 episode = 10000
-replay_buffer_size = 12000
+replay_buffer_size = 10000
+shard_num = 5
 
 network = get_network()
 save_network(network)
@@ -91,12 +108,12 @@ for i_episode in range(1, episode + 1):
 
     start_time = time.time()
 
-    selfPlayInCpp()
+    selfPlayInCpp(shard_num)
 
     end_time = time.time()
     print(getTimeStr() + f"训练完毕，用时 {end_time - start_time} s")
 
-    training_data = getFileData()
+    training_data = getFileData(shard_num)
     equi_data = get_equi_data(training_data)
     print(getTimeStr() + "完成扩展训练数据，条数 " + str(len(equi_data)))
     replay_buffer.add_samples(equi_data)

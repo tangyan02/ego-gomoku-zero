@@ -12,19 +12,11 @@
 
 void printGame(Game &game, int action, std::vector<float> &action_probs, float temperature);
 
-std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> concurrentSelfPlay(
+void recordSelfPlay(
         int numGames,
         int numSimulations,
         float temperatureDefault,
         float explorationFactor,
-        int concurrent
-);
-
-void recordConcurrentSelfPlay(
-        int numGames,
-        int numSimulations,
-        float temperatureDefault,
-        float explorationFactor,
-        int concurrent);
+        const std::string& shard);
 
 #endif //EGO_GOMOKU_ZERO_SELFPLAY_H
