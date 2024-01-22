@@ -90,7 +90,7 @@ lr = 0.001
 num_epochs = 5
 batch_size = 128
 episode = 100000
-replay_buffer_size = 10000
+replay_buffer_size = 12000
 shard_num = 10
 worker_num = 4
 
