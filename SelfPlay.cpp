@@ -37,6 +37,19 @@ torch::Device getDevice() {
 //    return torch::kCPU;
 }
 
+void addAction(Game &game, int action,
+               std::vector<std::tuple<torch::Tensor, int, std::vector<float>>> &game_data,
+               float temperature,
+               std::vector<float> &action_probs,
+               std::vector<float> &action_probs_normalized
+) {
+    auto state = game.getState();
+    std::tuple<torch::Tensor, int, std::vector<float>> record(state, game.currentPlayer, action_probs);
+    game.makeMove(game.getPointFromIndex(action));
+    game_data.push_back(record);
+    printGame(game, action, action_probs_normalized, temperature);
+}
+
 std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> selfPlay(int numGames,
                                                                                         int numSimulations,
                                                                                         float temperatureDefault,
@@ -52,14 +65,19 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
 
         int step = 0;
         while (!game.isGameOver()) {
-            //如果只有唯一选择，则只需访问一次子节点（由于计算概率去除了只访问一次的，并且第一模拟只扩展，实际上需模拟3次），
+            //如果只有唯一选择，则直接选择
             vector<Point> nextActions = selectActions(game);
-            Node node;
             if (nextActions.size() == 1) {
-                mcts.search(game, &node, 3);
-            } else {
-                mcts.search(game, &node, numSimulations);
+                int actionIndex = game.getActionIndex(nextActions[0]);
+                vector<float> probs(BOARD_SIZE * BOARD_SIZE);
+                probs[actionIndex] = 1;
+                addAction(game, actionIndex, game_data, 0, probs, probs);
+                continue;
             }
+
+            //开始mcts预测
+            Node node;
+            mcts.search(game, &node, numSimulations);
 
             std::vector<int> actions;
             std::vector<float> action_probs;
