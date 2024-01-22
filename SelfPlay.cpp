@@ -52,8 +52,14 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
 
         int step = 0;
         while (!game.isGameOver()) {
+            //如果只有唯一选择，则只需访问一次子节点（由于计算概率去除了只访问一次的，并且第一模拟只扩展，实际上需模拟3次），
+            vector<Point> nextActions = selectActions(game);
             Node node;
-            mcts.search(game, &node, numSimulations);
+            if (nextActions.size() == 1) {
+                mcts.search(game, &node, 3);
+            } else {
+                mcts.search(game, &node, numSimulations);
+            }
 
             std::vector<int> actions;
             std::vector<float> action_probs;
@@ -80,7 +86,6 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
 
             auto state = game.getState();
             std::tuple<torch::Tensor, int, std::vector<float>> record(state, game.currentPlayer, action_probs);
-
             game.makeMove(game.getPointFromIndex(action));
             game_data.push_back(record);
             printGame(game, action, action_probs_normalized, temperature);
