@@ -72,6 +72,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
                 vector<float> probs(BOARD_SIZE * BOARD_SIZE);
                 probs[actionIndex] = 1;
                 addAction(game, actionIndex, game_data, 0, probs, probs);
+                step++;
                 continue;
             }
 
@@ -102,11 +103,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
                                                          action_probs_normalized.end());
             int action = actions[distribution(gen)];
 
-            auto state = game.getState();
-            std::tuple<torch::Tensor, int, std::vector<float>> record(state, game.currentPlayer, action_probs);
-            game.makeMove(game.getPointFromIndex(action));
-            game_data.push_back(record);
-            printGame(game, action, action_probs_normalized, temperature);
+            addAction(game, action, game_data, 0, action_probs, action_probs_normalized);
             step++;
         }
 
