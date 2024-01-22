@@ -17,7 +17,7 @@ public:
 };
 
 
-const int BOARD_SIZE = 15;
+const int BOARD_SIZE = 20;
 const int CONNECT = 5;
 
 #define NONE_P 0
