@@ -103,7 +103,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
                                                          action_probs_normalized.end());
             int action = actions[distribution(gen)];
 
-            addAction(game, action, game_data, 0, action_probs, action_probs_normalized);
+            addAction(game, action, game_data, temperature, action_probs, action_probs_normalized);
             step++;
         }
 
