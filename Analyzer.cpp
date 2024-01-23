@@ -93,8 +93,8 @@ std::vector<Point> selectActions(Game &game) {
     }
     //我方活4
     auto activeFourMoves = getActiveFourMoves(game.currentPlayer, game, roundPoints);
-    if (!otherWinnerMoves.empty()) {
-        return otherWinnerMoves;
+    if (!activeFourMoves.empty()) {
+        return activeFourMoves;
     }
 
     return emptyPoints;
