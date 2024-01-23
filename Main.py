@@ -114,6 +114,11 @@ for i_episode in range(1, episode + 1):
     extended_data = get_extended_data(training_data)
     print(getTimeStr() + f"完成扩展自我对弈数据，条数 " + str(len(extended_data)))
 
+    # 输出当前的学习率
+    current_lr = optimizer.param_groups[0]['lr']
+    scheduler.step()
+    print(f"Current learning rate: {current_lr}")
+
     train(extended_data, network, device, lr, num_epochs, batch_size)
 
     if i_episode % 100 == 0:
