@@ -4,7 +4,6 @@ import time
 
 import numpy as np
 from torch import optim
-from torch.optim import lr_scheduler
 
 from Network import get_network, save_network
 from Train import train
@@ -84,8 +83,7 @@ def get_extended_data(play_data):
 
 dirPreBuild()
 
-lr = 0.01
-num_epochs = 5
+lr = 0.001
 batch_size = 128
 episode = 100000
 shard_num = 10
@@ -96,10 +94,7 @@ save_network(network)
 
 device = getDevice()
 # 定义优化器
-optimizer = optim.SGD(network.parameters(), lr)
-
-# 定义学习率调度器
-scheduler = lr_scheduler.OneCycleLR(optimizer, lr, total_steps=episode)
+optimizer = optim.Adam(network.parameters(), lr)
 
 for i_episode in range(1, episode + 1):
 
@@ -114,12 +109,7 @@ for i_episode in range(1, episode + 1):
     extended_data = get_extended_data(training_data)
     print(getTimeStr() + f"完成扩展自我对弈数据，条数 " + str(len(extended_data)))
 
-    # 输出当前的学习率
-    current_lr = optimizer.param_groups[0]['lr']
-    scheduler.step()
-    print(f"Current learning rate: {current_lr}")
-
-    train(extended_data, network, device, lr, num_epochs, batch_size)
+    train(extended_data, network, device, optimizer, batch_size, i_episode)
 
     if i_episode % 100 == 0:
         save_network(network, f"model/net_{i_episode}.mdl")
