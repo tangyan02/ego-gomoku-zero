@@ -83,7 +83,7 @@ def get_extended_data(play_data):
 
 dirPreBuild()
 
-lr = 0.001
+lr = 3e-4
 batch_size = 128
 episode = 100000
 shard_num = 10
