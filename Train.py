@@ -5,13 +5,15 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
+from SampleSet import SampleSet
 # 定义训练数据集类
 from Utils import getTimeStr
 
 
-def train(replay_buffer, network, device, lr, num_epochs, batch_size):
+def train(extended_data, network, device, lr, num_epochs, batch_size):
     # 创建数据加载器
-    dataloader = DataLoader(replay_buffer, batch_size=batch_size, shuffle=True)
+    sample_set = SampleSet(extended_data)
+    dataloader = DataLoader(sample_set, batch_size=batch_size, shuffle=True)
     # 定义损失函数
     criterion = nn.MSELoss()
     # 定义优化器

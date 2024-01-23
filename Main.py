@@ -1,11 +1,10 @@
+import concurrent.futures
 import subprocess
 import time
-import concurrent.futures
 
 import numpy as np
 
 from Network import get_network, save_network
-from ReplayBuffer import ReplayBuffer
 from Train import train
 from Utils import getDevice, getTimeStr, dirPreBuild
 
@@ -63,10 +62,7 @@ def getFileData(shard_num):
     return training_data
 
 
-def get_equi_data(play_data):
-    """augment the data set by rotation and flipping
-    play_data: [(state, mcts_prob, winner_z), ..., ...]
-    """
+def get_extended_data(play_data):
     extend_data = []
     for state, mcts_porb, value in play_data:
         for i in [1, 2, 3, 4]:
@@ -86,11 +82,10 @@ def get_equi_data(play_data):
 
 dirPreBuild()
 
-lr = 0.001
+lr = 0.0001
 num_epochs = 5
 batch_size = 128
 episode = 100000
-replay_buffer_size = 10000
 shard_num = 10
 worker_num = 4
 
@@ -99,7 +94,6 @@ save_network(network)
 
 device = getDevice()
 
-replay_buffer = ReplayBuffer(replay_buffer_size)
 for i_episode in range(1, episode + 1):
 
     start_time = time.time()
@@ -110,15 +104,13 @@ for i_episode in range(1, episode + 1):
     print(getTimeStr() + f"自我对弈完毕，用时 {end_time - start_time} s")
 
     training_data = getFileData(shard_num)
-    equi_data = get_equi_data(training_data)
-    print(getTimeStr() + f"完成扩展自我对弈数据，条数 " + str(len(equi_data)))
-    replay_buffer.add_samples(equi_data)
+    extended_data = get_extended_data(training_data)
+    print(getTimeStr() + f"完成扩展自我对弈数据，条数 " + str(len(extended_data)))
 
-    if replay_buffer.size() >= replay_buffer_size:
-        train(replay_buffer, network, device, lr, num_epochs, batch_size)
+    train(extended_data, network, device, lr, num_epochs, batch_size)
 
-        if i_episode % 100 == 0:
-            save_network(network, f"model/net_{i_episode}.mdl")
-            print(getTimeStr() + f"模型已保存 episode:{i_episode}")
-        save_network(network)
-        print(getTimeStr() + f"最新模型已保存 episode:{i_episode}")
+    if i_episode % 100 == 0:
+        save_network(network, f"model/net_{i_episode}.mdl")
+        print(getTimeStr() + f"模型已保存 episode:{i_episode}")
+    save_network(network)
+    print(getTimeStr() + f"最新模型已保存 episode:{i_episode}")
