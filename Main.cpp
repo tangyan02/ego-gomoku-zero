@@ -1,8 +1,9 @@
 #include "SelfPlay.h"
+#include "AnalyzerTest.h"
 
 using namespace std;
 
-int main(int argc, char *argv[]) {
+void selfPlay(int argc, char *argv[]) {
     std::string shard;
     if (argc > 1) {
         std::string firstArg = argv[1];
@@ -16,7 +17,39 @@ int main(int argc, char *argv[]) {
     float explorationFactor = 3;
 
     recordSelfPlay(numGames, sumSimulations, temperatureDefault,
-                             explorationFactor, shard);
+                   explorationFactor, shard);
+}
 
+void test() {
+    typedef bool (*FunctionPtr)();
+    FunctionPtr functions[] = {
+            testGetWinnerMove,
+            testGetActiveFourMoves,
+            testGetActiveFourMoves2
+    };
+
+    int total = sizeof(functions) / sizeof(functions[0]);
+    int succeedCount = 0;
+    for (const auto &func: functions) {
+        bool result = func();
+        if (result) {
+            succeedCount += 1;
+            cout << "成功" << endl;
+        } else {
+            cout << "失败" << endl;
+        }
+    }
+    cout << "总计样例个数 " << total << endl;
+    if (total == succeedCount) {
+        cout << "全部成功" << endl;
+    } else {
+        cout << "存在失败样例 " << total - succeedCount << " 个" << endl;
+    }
+
+}
+
+int main(int argc, char *argv[]) {
+//    selfPlay(argc, argv);
+    test();
     return 0;
 }

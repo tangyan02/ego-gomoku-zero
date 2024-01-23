@@ -62,7 +62,24 @@ std::vector<Point> getWinningMoves(int player, Game &game, std::vector<Point> &b
     return winning_moves;
 }
 
+std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point> &basedMoves) {
+    std::vector<Point> result;
+    for (const auto &point: basedMoves) {
+        int row = point.x;
+        int col = point.y;
+        game.board[row][col] = player;
+        auto nearByEmptyPoints = getNearByEmptyPoints(point, game);
+        auto winMoves = getWinningMoves(player, game, nearByEmptyPoints);
+        if (winMoves.size() >= 2) {
+            result.emplace_back(point);
+        }
+        game.board[row][col] = 0;
+    }
+    return result;
+}
+
 std::vector<Point> selectActions(Game &game) {
+    auto emptyPoints = game.getEmptyPoints();
     auto roundPoints = getTwoRoundPoints(game.lastAction, game.lastLastAction, game);
     //我方长5
     auto currentWinnerMoves = getWinningMoves(game.currentPlayer, game, roundPoints);
@@ -74,5 +91,11 @@ std::vector<Point> selectActions(Game &game) {
     if (!otherWinnerMoves.empty()) {
         return otherWinnerMoves;
     }
-    return game.getEmptyPoints();
+    //我方活4
+    auto activeFourMoves = getActiveFourMoves(game.currentPlayer, game, roundPoints);
+    if (!otherWinnerMoves.empty()) {
+        return otherWinnerMoves;
+    }
+
+    return emptyPoints;
 }
