@@ -10,4 +10,8 @@ std::vector<Point> getWinningMoves(int player, Game &game, std::vector<Point> &b
 
 std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point> &basedMoves);
 
+std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point> &basedMoves);
+
+std::vector<Point> getThreeDefenceMoves(int player, Game &game, std::vector<Point> &basedMoves);
+
 #endif //EGO_GOMOKU_ZERO_ANALYZER_H

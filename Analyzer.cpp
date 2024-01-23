@@ -78,8 +78,41 @@ std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point>
     return result;
 }
 
+std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point> &basedMoves) {
+    std::vector<Point> result;
+    for (const auto &point: basedMoves) {
+        int row = point.x;
+        int col = point.y;
+        game.board[row][col] = player;
+        auto nearByEmptyPoints = getNearByEmptyPoints(point, game);
+        auto winMoves = getWinningMoves(player, game, nearByEmptyPoints);
+        if (winMoves.size() == 1) {
+            result.emplace_back(point);
+        }
+        game.board[row][col] = 0;
+    }
+    return result;
+}
+
+std::vector<Point> getThreeDefenceMoves(int player, Game &game, std::vector<Point> &basedMoves) {
+    //如果对方有2个活4点，则走活4点
+    //如果对方只有1个活4点，则阻止活4点和眠4点
+    std::vector<Point> defenceMoves;
+    auto otherActiveFourMoves = getActiveFourMoves(3 - player, game, basedMoves);
+    if (!otherActiveFourMoves.empty()) {
+        if (otherActiveFourMoves.size() >= 2) {
+            return otherActiveFourMoves;
+        }
+        auto otherSleepyFourMoves = getSleepyFourMoves(3 - player, game, basedMoves);
+        defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
+        defenceMoves.insert(defenceMoves.end(), otherSleepyFourMoves.begin(), otherSleepyFourMoves.end());
+    }
+    return defenceMoves;
+}
+
 std::vector<Point> selectActions(Game &game) {
     auto emptyPoints = game.getEmptyPoints();
+    auto nearPoints = getNearByEmptyPoints(game.lastAction, game);
     auto roundPoints = getTwoRoundPoints(game.lastAction, game.lastLastAction, game);
     //我方长5
     auto currentWinnerMoves = getWinningMoves(game.currentPlayer, game, roundPoints);
@@ -87,7 +120,7 @@ std::vector<Point> selectActions(Game &game) {
         return currentWinnerMoves;
     }
     //防止对手长5
-    auto otherWinnerMoves = getWinningMoves(game.getOtherPlayer(), game, roundPoints);
+    auto otherWinnerMoves = getWinningMoves(game.getOtherPlayer(), game, nearPoints);
     if (!otherWinnerMoves.empty()) {
         return otherWinnerMoves;
     }
@@ -95,6 +128,11 @@ std::vector<Point> selectActions(Game &game) {
     auto activeFourMoves = getActiveFourMoves(game.currentPlayer, game, roundPoints);
     if (!activeFourMoves.empty()) {
         return activeFourMoves;
+    }
+    //防活3
+    auto threeDefenceMoves = getThreeDefenceMoves(game.currentPlayer, game, nearPoints);
+    if (!threeDefenceMoves.empty()) {
+        return threeDefenceMoves;
     }
 
     return emptyPoints;

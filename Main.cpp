@@ -25,7 +25,12 @@ void test() {
     FunctionPtr functions[] = {
             testGetWinnerMove,
             testGetActiveFourMoves,
-            testGetActiveFourMoves2
+            testGetActiveFourMoves2,
+            testGetActiveFourMoves3,
+            testGetSleepyFourMoves,
+            testGetSleepyFourMoves2,
+            testGetThreeDefenceMoves,
+            testGetThreeDefenceMoves2
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);
@@ -49,7 +54,7 @@ void test() {
 }
 
 int main(int argc, char *argv[]) {
-//    selfPlay(argc, argv);
-    test();
+    selfPlay(argc, argv);
+//    test();
     return 0;
 }

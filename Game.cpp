@@ -88,6 +88,8 @@ void Game::printBoard() {
                 case WHITE:
                     std::cout << "O";
                     break;
+                default:
+                    std::cout << "#";
             }
             std::cout << " ";
         }
