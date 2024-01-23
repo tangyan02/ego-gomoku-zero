@@ -1,8 +1,5 @@
-import logging
-
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from SampleSet import SampleSet
@@ -10,14 +7,12 @@ from SampleSet import SampleSet
 from Utils import getTimeStr
 
 
-def train(extended_data, network, device, lr, num_epochs, batch_size):
+def train(extended_data, network, device, optimizer, num_epochs, batch_size):
     # 创建数据加载器
     sample_set = SampleSet(extended_data)
     dataloader = DataLoader(sample_set, batch_size=batch_size, shuffle=True)
     # 定义损失函数
     criterion = nn.MSELoss()
-    # 定义优化器
-    optimizer = optim.Adam(network.parameters(), lr)
     # 训练循环
     for epoch in range(num_epochs):
         running_loss = 0.0

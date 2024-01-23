@@ -3,6 +3,8 @@ import subprocess
 import time
 
 import numpy as np
+from torch import optim
+from torch.optim import lr_scheduler
 
 from Network import get_network, save_network
 from Train import train
@@ -82,7 +84,7 @@ def get_extended_data(play_data):
 
 dirPreBuild()
 
-lr = 0.0001
+lr = 0.01
 num_epochs = 5
 batch_size = 128
 episode = 100000
@@ -93,6 +95,11 @@ network = get_network()
 save_network(network)
 
 device = getDevice()
+# 定义优化器
+optimizer = optim.SGD(network.parameters(), lr)
+
+# 定义学习率调度器
+scheduler = lr_scheduler.OneCycleLR(optimizer, lr, total_steps=episode)
 
 for i_episode in range(1, episode + 1):
 
