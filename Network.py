@@ -7,19 +7,32 @@ import torch.nn.functional as F
 from Utils import getDevice
 
 
+# 定义一个Residual block
 class ResidualBlock(nn.Module):
     def __init__(self, channels):
         super(ResidualBlock, self).__init__()
-        self.conv1 = nn.Conv2d(channels, channels, kernel_size=(3, 3), padding=1)
-        self.conv2 = nn.Conv2d(channels, channels, kernel_size=(3, 3), padding=1)
+
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1)
+        self.bn1 = nn.BatchNorm2d(channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1)
+        self.bn2 = nn.BatchNorm2d(channels)
 
     def forward(self, x):
         residual = x
-        out = F.relu(self.conv1(x))
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
         out = self.conv2(out)
+        out = self.bn2(out)
+
         out += residual
-        out = F.relu(out)
+        out = self.relu(out)
+
         return out
+
 
 
 class PolicyValueNetwork(nn.Module):
@@ -46,11 +59,13 @@ class PolicyValueNetwork(nn.Module):
         )
 
         # action policy layers
-        self.act_conv1 = nn.Conv2d(self.filters, 4, kernel_size=(1, 1))
-        self.act_fc1 = nn.Linear(4 * self.board_size * self.board_size,
+        self.act_conv1 = nn.Conv2d(self.filters, 2, kernel_size=(1, 1))
+        self.act_bn1 = nn.BatchNorm2d(2)
+        self.act_fc1 = nn.Linear(2 * self.board_size * self.board_size,
                                  self.board_size * self.board_size)
         # state value layers
         self.val_conv1 = nn.Conv2d(self.filters, 2, kernel_size=(1, 1))
+        self.val_bn1 = nn.BatchNorm2d(2)
         self.val_fc1 = nn.Linear(2 * self.board_size * self.board_size, 64)
         self.val_fc2 = nn.Linear(64, 1)
 
@@ -63,11 +78,16 @@ class PolicyValueNetwork(nn.Module):
         x = self.residual_blocks(x)
 
         # action policy layers
-        x_act = F.relu(self.act_conv1(x))
-        x_act = x_act.view(-1, 4 * self.board_size * self.board_size)
+        x_act = self.act_conv1(x)
+        x_act = self.act_bn1(x_act)
+        x_act = F.relu(x_act)
+        x_act = x_act.view(-1, 2 * self.board_size * self.board_size)
         x_act = F.log_softmax(self.act_fc1(x_act), dim=1)
+
         # state value layers
-        x_val = F.relu(self.val_conv1(x))
+        x_val = self.val_conv1(x)
+        x_val = self.val_bn1(x_val)
+        x_val = F.relu(x_val)
         x_val = x_val.view(-1, 2 * self.board_size * self.board_size)
         x_val = F.relu(self.val_fc1(x_val))
         x_val = torch.tanh(self.val_fc2(x_val))
