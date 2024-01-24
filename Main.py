@@ -87,7 +87,7 @@ lr = 3e-4
 batch_size = 128
 episode = 100000
 shard_num = 10
-worker_num = 4
+worker_num = 3
 
 network = get_network()
 save_network(network)
