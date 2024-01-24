@@ -13,11 +13,11 @@ Point::Point(int x, int y) {
 }
 
 
-Game::Game() {
+Game::Game(int boardSize) {
     currentPlayer = 1;
-    boardSize = BOARD_SIZE;
-    for (int i = 0; i < BOARD_SIZE; i++)
-        for (int j = 0; j < BOARD_SIZE; j++)
+    this->boardSize = boardSize;
+    for (int i = 0; i < boardSize; i++)
+        for (int j = 0; j < boardSize; j++)
             board[i][j] = 0;
 }
 
@@ -26,18 +26,18 @@ int Game::getOtherPlayer() {
 }
 
 int Game::getActionIndex(Point &p) {
-    return p.x * BOARD_SIZE + p.y;
+    return p.x * boardSize + p.y;
 }
 
 Point Game::getPointFromIndex(int actionIndex) {
-    return {actionIndex / BOARD_SIZE, actionIndex % BOARD_SIZE};
+    return {actionIndex / boardSize, actionIndex % boardSize};
 }
 
 
 std::vector<Point> Game::getEmptyPoints() {
     std::vector<Point> emptyPoints;
-    for (int row = 0; row < BOARD_SIZE; row++) {
-        for (int col = 0; col < BOARD_SIZE; col++) {
+    for (int row = 0; row < boardSize; row++) {
+        for (int col = 0; col < boardSize; col++) {
             if (board[row][col] == 0) {
                 emptyPoints.emplace_back(Point(row, col));
             }
@@ -47,9 +47,9 @@ std::vector<Point> Game::getEmptyPoints() {
 }
 
 torch::Tensor Game::getState() {
-    torch::Tensor tensor = torch::zeros({4, BOARD_SIZE, BOARD_SIZE});
-    for (int row = 0; row < BOARD_SIZE; row++) {
-        for (int col = 0; col < BOARD_SIZE; col++) {
+    torch::Tensor tensor = torch::zeros({4, boardSize, boardSize});
+    for (int row = 0; row < boardSize; row++) {
+        for (int col = 0; col < boardSize; col++) {
             if (board[row][col] == currentPlayer) {
                 tensor[0][row][col] = 1;
             } else if (board[row][col] == getOtherPlayer()) {
@@ -76,8 +76,8 @@ bool Game::isGameOver() {
 }
 
 void Game::printBoard() {
-    for (int i = 0; i < BOARD_SIZE; i++) {
-        for (int j = 0; j < BOARD_SIZE; j++) {
+    for (int i = 0; i < boardSize; i++) {
+        for (int j = 0; j < boardSize; j++) {
             switch (board[i][j]) {
                 case NONE_P:
                     std::cout << ".";
@@ -99,7 +99,7 @@ void Game::printBoard() {
 
 bool Game::makeMove(Point p) {
     int row = p.x, col = p.y;
-    if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE || board[row][col] != NONE_P) {
+    if (row < 0 || row >= boardSize || col < 0 || col >= boardSize || board[row][col] != NONE_P) {
         cout << "move失败!" << endl;
         return false;
     }
@@ -124,7 +124,7 @@ bool Game::checkWin(int row, int col, int player) {
         j--;
     }
     j = col + 1;
-    while (j < BOARD_SIZE && board[i][j] == player) {
+    while (j < boardSize && board[i][j] == player) {
         count++;
         j++;
     }
@@ -140,7 +140,7 @@ bool Game::checkWin(int row, int col, int player) {
         i--;
     }
     i = row + 1;
-    while (i < BOARD_SIZE && board[i][j] == player) {
+    while (i < boardSize && board[i][j] == player) {
         count++;
         i++;
     }
@@ -157,7 +157,7 @@ bool Game::checkWin(int row, int col, int player) {
         j--;
     }
     i = row + 1, j = col + 1;
-    while (i < BOARD_SIZE && j < BOARD_SIZE && board[i][j] == player) {
+    while (i < boardSize && j < boardSize && board[i][j] == player) {
         count++;
         i++;
         j++;
@@ -169,13 +169,13 @@ bool Game::checkWin(int row, int col, int player) {
     // 右上到左下斜线方向
     count = 1;
     i = row - 1, j = col + 1;
-    while (i >= 0 && j < BOARD_SIZE && board[i][j] == player) {
+    while (i >= 0 && j < boardSize && board[i][j] == player) {
         count++;
         i--;
         j++;
     }
     i = row + 1, j = col - 1;
-    while (i < BOARD_SIZE && j >= 0 && board[i][j] == player) {
+    while (i < boardSize && j >= 0 && board[i][j] == player) {
         count++;
         i++;
         j--;

@@ -17,7 +17,7 @@ public:
 };
 
 
-const int BOARD_SIZE = 20;
+const int MAX_BOARD_SIZE = 20;
 const int CONNECT = 5;
 
 #define NONE_P 0
@@ -26,13 +26,13 @@ const int CONNECT = 5;
 
 class Game {
 public:
-    int board[BOARD_SIZE][BOARD_SIZE];
+    int board[MAX_BOARD_SIZE][MAX_BOARD_SIZE];
     Point lastAction;
     Point lastLastAction;
     int boardSize;
     int currentPlayer;
 
-    Game();
+    Game(int boardSize);
 
     int getOtherPlayer();
 

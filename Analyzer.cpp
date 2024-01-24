@@ -10,7 +10,7 @@ std::vector<Point> getNearByEmptyPoints(Point action, Game &game) {
             for (int dy = -CONNECT; dy <= CONNECT; dy++) {
                 int row = last_row + dx;
                 int col = last_col + dy;
-                if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE && game.board[row][col] == 0) {
+                if (row >= 0 && row < game.boardSize && col >= 0 && col < game.boardSize && game.board[row][col] == 0) {
                     empty_points.emplace_back(row, col);
                 }
             }
