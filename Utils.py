@@ -11,6 +11,8 @@ def dirPreBuild():
     if not os.path.exists("model"):
         os.mkdir("model")
 
+    if not os.path.exists("record"):
+        os.mkdir("record")
 
 def getDevice():
     device = "cpu"
