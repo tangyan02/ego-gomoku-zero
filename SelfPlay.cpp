@@ -50,7 +50,8 @@ void addAction(Game &game, int action,
     printGame(game, action, action_probs_normalized, temperature);
 }
 
-std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> selfPlay(int numGames,
+std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> selfPlay(int boardSize,
+                                                                                        int numGames,
                                                                                         int numSimulations,
                                                                                         float temperatureDefault,
                                                                                         float explorationFactor) {
@@ -60,7 +61,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
     std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> training_data;
 
     for (int i = 0; i < numGames; i++) {
-        Game game;
+        Game game(boardSize);
         std::vector<std::tuple<torch::Tensor, int, std::vector<float>>> game_data;
 
         int step = 0;
@@ -69,7 +70,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
             vector<Point> nextActions = selectActions(game);
             if (nextActions.size() == 1) {
                 int actionIndex = game.getActionIndex(nextActions[0]);
-                vector<float> probs(BOARD_SIZE * BOARD_SIZE);
+                vector<float> probs(game.boardSize * game.boardSize);
                 probs[actionIndex] = 1;
                 addAction(game, actionIndex, game_data, 0, probs, probs);
                 step++;
@@ -123,6 +124,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
 }
 
 void recordSelfPlay(
+        int boardSize,
         int numGames,
         int numSimulations,
         float temperatureDefault,
@@ -133,7 +135,7 @@ void recordSelfPlay(
 
     if (file.is_open()) {
 
-        auto data = selfPlay(numGames, numSimulations, temperatureDefault, explorationFactor);
+        auto data = selfPlay(boardSize, numGames, numSimulations, temperatureDefault, explorationFactor);
         file << data.size() << endl;
         std::cout << "data count " << data.size() << endl;
         for (auto &item: data) {

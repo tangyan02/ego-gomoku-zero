@@ -12,6 +12,7 @@
 void printGame(Game &game, int action, std::vector<float> &action_probs, float temperature);
 
 void recordSelfPlay(
+        int boardSize,
         int numGames,
         int numSimulations,
         float temperatureDefault,

@@ -15,8 +15,9 @@ void selfPlay(int argc, char *argv[]) {
     int sumSimulations = 800;
     float temperatureDefault = 1;
     float explorationFactor = 3;
+    int boardSize = 15;
 
-    recordSelfPlay(numGames, sumSimulations, temperatureDefault,
+    recordSelfPlay(boardSize, numGames, sumSimulations, temperatureDefault,
                    explorationFactor, shard);
 }
 
