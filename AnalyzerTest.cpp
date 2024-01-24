@@ -4,9 +4,11 @@
 
 using namespace std;
 
+const int boardSize = 15;
+
 bool testGetWinnerMove() {
     cout << "testWinnerMove" << endl;
-    Game game;
+    Game game(boardSize);
     game.currentPlayer = 1;
     game.makeMove(Point(0, 1));
     game.makeMove(Point(1, 0));
@@ -33,7 +35,7 @@ bool testGetWinnerMove() {
 
 bool testGetActiveFourMoves() {
     cout << "testGetActiveFourMoves" << endl;
-    Game game;
+    Game game(boardSize);
     game.currentPlayer = 1;
     game.makeMove(Point(0, 1));
     game.makeMove(Point(1, 0));
@@ -57,7 +59,7 @@ bool testGetActiveFourMoves() {
 
 bool testGetActiveFourMoves2() {
     cout << "testGetActiveFourMoves2" << endl;
-    Game game;
+    Game game(boardSize);
     game.currentPlayer = 1;
     game.makeMove(Point(1, 0));
     game.makeMove(Point(0, 2));
@@ -81,7 +83,7 @@ bool testGetActiveFourMoves2() {
 
 bool testGetActiveFourMoves3() {
     cout << "testGetActiveFourMoves3" << endl;
-    Game game;
+    Game game(boardSize);
     game.currentPlayer = 1;
     game.makeMove(Point(0, 0));
     game.makeMove(Point(1, 0));
@@ -110,7 +112,7 @@ bool testGetActiveFourMoves3() {
 
 bool testGetSleepyFourMoves() {
     cout << "testGetSleepyFourMoves" << endl;
-    Game game;
+    Game game(boardSize);
     game.currentPlayer = 1;
     game.makeMove(Point(0, 4));
     game.makeMove(Point(1, 0));
@@ -135,7 +137,7 @@ bool testGetSleepyFourMoves() {
 
 bool testGetSleepyFourMoves2() {
     cout << "testGetSleepyFourMoves2" << endl;
-    Game game;
+    Game game(boardSize);
     game.currentPlayer = 1;
     game.makeMove(Point(0, 4));
     game.makeMove(Point(1, 0));
@@ -161,7 +163,7 @@ bool testGetSleepyFourMoves2() {
 
 bool testGetThreeDefenceMoves() {
     cout << "testGetThreeDefenceMoves" << endl;
-    Game game;
+    Game game(boardSize);
     game.currentPlayer = 1;
     game.makeMove(Point(0, 4));
     game.makeMove(Point(1, 0));
@@ -186,7 +188,7 @@ bool testGetThreeDefenceMoves() {
 
 bool testGetThreeDefenceMoves2() {
     cout << "testGetThreeDefenceMoves2" << endl;
-    Game game;
+    Game game(boardSize);
     game.currentPlayer = 1;
     game.makeMove(Point(0, 4));
     game.makeMove(Point(1, 0));
