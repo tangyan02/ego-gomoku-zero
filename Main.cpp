@@ -4,10 +4,10 @@
 using namespace std;
 
 void selfPlay(int argc, char *argv[]) {
-    std::string shard;
+    string shard;
     if (argc > 1) {
-        std::string firstArg = argv[1];
-        std::cout << "当前分片：" << firstArg << std::endl;
+        string firstArg = argv[1];
+        cout << "current shard " << firstArg << endl;
         shard = "_" + firstArg;
     }
 
@@ -40,16 +40,16 @@ void test() {
         bool result = func();
         if (result) {
             succeedCount += 1;
-            cout << "成功" << endl;
+            cout << "succeed" << endl;
         } else {
-            cout << "失败" << endl;
+            cout << "faid" << endl;
         }
     }
-    cout << "总计样例个数 " << total << endl;
+    cout << "total cases count " << total << endl;
     if (total == succeedCount) {
-        cout << "全部成功" << endl;
+        cout << "all succeed" << endl;
     } else {
-        cout << "存在失败样例 " << total - succeedCount << " 个" << endl;
+        cout << "fail case exist " << total - succeedCount << endl;
     }
 
 }

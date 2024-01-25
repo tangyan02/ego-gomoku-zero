@@ -2,3 +2,7 @@
 /build
 /train/model/net_lastest.mdl
 /.vecode
+/__pycache__
+/out/build/x64-Debug
+/.vs
+/model
