@@ -151,9 +151,9 @@ MonteCarloTree::get_action_probabilities(Game game, float temperature) {
 
     std::vector<float> probs(game.boardSize * game.boardSize, 0);
     for (int i = 0; i < actions.size(); i++) {
-        //劣势的情况下会有大量节点只访问一次，并影响了原有的概率，自我对战时不考虑选点
-        if (visits[i] == 1)
-            action_probs[i] = 0;
+//        //劣势的情况下会有大量节点只访问一次，并影响了原有的概率，自我对战时不考虑选点
+//        if (visits[i] == 1)
+//            action_probs[i] = 0;
         probs[actions[i]] = action_probs[i];
     }
 

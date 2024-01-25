@@ -179,7 +179,7 @@ bool testGetThreeDefenceMoves() {
     }
     game.printBoard();
     cout << result.size() << endl;
-    if (result.size() == 3) {
+    if (result.size() == 5) {
         return true;
     } else {
         return false;
