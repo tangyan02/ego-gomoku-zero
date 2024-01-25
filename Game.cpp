@@ -39,7 +39,7 @@ std::vector<Point> Game::getEmptyPoints() {
     for (int row = 0; row < boardSize; row++) {
         for (int col = 0; col < boardSize; col++) {
             if (board[row][col] == 0) {
-                emptyPoints.emplace_back(Point(row, col));
+                emptyPoints.emplace_back(row, col);
             }
         }
     }

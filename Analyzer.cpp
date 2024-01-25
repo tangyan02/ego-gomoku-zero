@@ -95,8 +95,8 @@ std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point>
 }
 
 std::vector<Point> getThreeDefenceMoves(int player, Game &game, std::vector<Point> &basedMoves) {
-    //如果对方有2个活4点，则走活4点
-    //如果对方只有1个活4点，则阻止活4点和眠4点
+    //如果对方有2个活4点，阻止活4点
+    //如果对方只有1个活4点，则阻止活4点和眠4点,加上自己的所有眠4点
     std::vector<Point> defenceMoves;
     auto otherActiveFourMoves = getActiveFourMoves(3 - player, game, basedMoves);
     if (!otherActiveFourMoves.empty()) {
@@ -104,8 +104,11 @@ std::vector<Point> getThreeDefenceMoves(int player, Game &game, std::vector<Poin
             return otherActiveFourMoves;
         }
         auto otherSleepyFourMoves = getSleepyFourMoves(3 - player, game, basedMoves);
+        auto allMoves = game.getEmptyPoints();
+        auto sleepyFourMoves = getSleepyFourMoves(player, game, allMoves);
         defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
         defenceMoves.insert(defenceMoves.end(), otherSleepyFourMoves.begin(), otherSleepyFourMoves.end());
+        defenceMoves.insert(defenceMoves.end(), sleepyFourMoves.begin(), sleepyFourMoves.end());
     }
     return defenceMoves;
 }
