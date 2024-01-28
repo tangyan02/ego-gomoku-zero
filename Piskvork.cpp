@@ -141,6 +141,14 @@ int min(int a,int b) {
 
 void brain_turn()
 {
+    vector<Point> nextActions = selectActions(*game);
+    if (nextActions.size() == 1) {
+        int actionIndex = game->getActionIndex(nextActions[0]);
+        auto p = game->getPointFromIndex(actionIndex);
+        pipeOut("MESSAGE : action %d,%d", p.x, p.y);
+        do_mymove(p.x, p.y);
+        return;
+    }
 	MonteCarloTree mcts = MonteCarloTree(&network, device, 1);
 
 	piskvorkMessageEnable = true;
