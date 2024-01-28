@@ -58,6 +58,6 @@ private:
 };
 
 
-torch::jit::Module getNetwork(torch::Device device);
+torch::jit::Module getNetwork(torch::Device device, std::string path);
 
 #endif //EGO_GOMOKU_ZERO_MCTS_H
