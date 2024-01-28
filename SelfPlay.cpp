@@ -24,7 +24,7 @@ torch::jit::Module getNetwork(torch::Device device) {
     std::string path = "model/net_latest.mdl.pt";
     auto model = torch::jit::load(path);
     model.to(device);
-    cout << path << " loaded" << endl;
+    //cout << path << " loaded" << endl;
     return model;
 }
 

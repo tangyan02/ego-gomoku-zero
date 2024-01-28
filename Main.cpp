@@ -1,5 +1,6 @@
 #include "SelfPlay.h"
 #include "AnalyzerTest.h"
+#include "pisqpipe.h"
 
 using namespace std;
 
@@ -56,6 +57,7 @@ void test() {
 
 int main(int argc, char *argv[]) {
     selfPlay(argc, argv);
-//    test();
+    //test();
+//    piskvork();
     return 0;
 }

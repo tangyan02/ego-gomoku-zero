@@ -57,4 +57,7 @@ private:
     float exploration_factor;
 };
 
+
+torch::jit::Module getNetwork(torch::Device device);
+
 #endif //EGO_GOMOKU_ZERO_MCTS_H
