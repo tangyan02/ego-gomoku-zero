@@ -1,6 +1,6 @@
 #include "SelfPlay.h"
 #include "AnalyzerTest.h"
-#include "pisqpipe.h"
+#include "Pisqpipe.h"
 
 using namespace std;
 
