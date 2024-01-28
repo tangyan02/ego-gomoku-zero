@@ -10,7 +10,9 @@
 #include "math.h"
 #include <sys/timeb.h>
 #include "SelfPlay.h"
-#include <direct.h>  
+#include <direct.h>
+#include <iostream>
+
 
 const char* infotext = "name=\"Ego\", author=\"TangYan\", version=\"7.0\", country=\"China\", email=\"tangyan1412@foxmail.com\"";
 
@@ -22,28 +24,49 @@ static torch::jit::Module network;
 
 static auto device = torch::kCPU;
 
+using namespace std;
+
 long long getSystemTime() {
 	struct timeb t;
 	ftime(&t);
 	return 1000 * t.time + t.millitm;
 }
 
+string getPrefix() {
+	char path[MAX_PATH];
+
+	if (GetModuleFileName(NULL, path, MAX_PATH) != 0) {
+		int lastSlash = -1;
+
+		for (int i = strlen(path); i >= 0; --i) {
+			if (path[i] == '\\') {
+				lastSlash = i;
+				break;
+			}
+		}
+
+		if (lastSlash > 0 && lastSlash + 1 <= strlen(path)) {
+			auto result = string(&path[0], &path[lastSlash]);
+			return result;
+		}
+	}
+	return "";
+}
+
 void brain_init()
 {
 	const int MAXPATH = 250;
-	char buffer[MAXPATH];
-	getcwd(buffer, MAXPATH);
-	pipeOut("MESSAGE The current directory is: %s", buffer);
+	auto prefix = getPrefix();
+	auto subfix = string("/model/net_latest.mdl.pt");
+	auto fullPath = prefix + subfix;
 
-	pipeOut("MESSAGE : START TO INIT");
-	pipeOut("MESSAGE : START TO INIT2");
 	setbuf(stdout, NULL);
 	if (width != 15 || height != 15) {
 		pipeOut("ERROR size of the board");
 		return;
 	}
 	boardSize = width;
-	network = getNetwork(device);
+	network = getNetwork(device, fullPath);
 	pipeOut("MESSAGE : LOADED");
 	
 	game = new Game(boardSize);
