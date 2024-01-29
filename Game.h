@@ -27,6 +27,7 @@ const int CONNECT = 5;
 class Game {
 public:
     int board[MAX_BOARD_SIZE][MAX_BOARD_SIZE];
+    std::vector<Point> historyMoves;
     Point lastAction;
     Point lastLastAction;
     int boardSize;

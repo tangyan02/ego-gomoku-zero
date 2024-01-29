@@ -1,5 +1,6 @@
 #include "SelfPlay.h"
 #include "AnalyzerTest.h"
+#include "GameTest.h"
 #include "Pisqpipe.h"
 
 using namespace std;
@@ -32,7 +33,10 @@ void test() {
             testGetSleepyFourMoves,
             testGetSleepyFourMoves2,
             testGetThreeDefenceMoves,
-            testGetThreeDefenceMoves2
+            testGetThreeDefenceMoves2,
+            testGetState,
+            testGetState2,
+            testGetState3
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);
@@ -57,7 +61,7 @@ void test() {
 
 int main(int argc, char *argv[]) {
     selfPlay(argc, argv);
-    //test();
+//    test();
     //piskvork();
     return 0;
 }

@@ -20,10 +20,9 @@ void printGame(Game &game, int action, std::vector<float> &action_probs, float t
          << " temperature " << round(temperature * 100) / 100 << endl;
 }
 
-torch::jit::Module getNetwork(torch::Device device, std::string path = "\\model\\net_latest.mdl.pt" ) {
+torch::jit::Module getNetwork(torch::Device device, std::string path = "./model/net_latest.mdl.pt" ) {
 	auto model = torch::jit::load(path);
     model.to(device);
-    //cout << path << " loaded" << endl;
     return model;
 }
 

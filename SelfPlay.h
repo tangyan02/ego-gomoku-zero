@@ -19,4 +19,6 @@ void recordSelfPlay(
         float explorationFactor,
         const std::string& shard);
 
+torch::jit::Module getNetwork(torch::Device device, std::string path);
+
 #endif //EGO_GOMOKU_ZERO_SELFPLAY_H

@@ -38,7 +38,7 @@ class ResidualBlock(nn.Module):
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
         self.board_size = 15
-        self.input_channels = 6
+        self.input_channels = 12
         self.filters = 128
         super(PolicyValueNetwork, self).__init__()
 
