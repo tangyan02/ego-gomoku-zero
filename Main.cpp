@@ -7,8 +7,10 @@ using namespace std;
 
 void selfPlay(int argc, char *argv[]) {
     string shard;
+    int partNum = 1;
     if (argc > 1) {
         string firstArg = argv[1];
+        partNum = std::stoi(argv[2]);;
         cout << "current shard " << firstArg << endl;
         shard = "_" + firstArg;
     }
@@ -19,8 +21,18 @@ void selfPlay(int argc, char *argv[]) {
     float explorationFactor = 3;
     int boardSize = 15;
 
-    recordSelfPlay(boardSize, numGames, sumSimulations, temperatureDefault,
-                   explorationFactor, shard);
+    std::vector<std::thread> threads; // 存储线程的容器
+    // 创建n个线程并将函数作为入口点
+    for (int i = 0; i < partNum; ++i) {
+        auto part = shard + "_" + std::to_string(i);
+        threads.emplace_back(recordSelfPlay, boardSize, numGames, sumSimulations, temperatureDefault,
+                             explorationFactor, part);
+    }
+
+    // 等待所有线程执行完毕
+    for (auto &thread: threads) {
+        thread.join();
+    }
 }
 
 void test() {

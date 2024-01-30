@@ -127,9 +127,9 @@ void recordSelfPlay(
         int numSimulations,
         float temperatureDefault,
         float explorationFactor,
-        const std::string &shard) {
+        const std::string &part) {
     // 创建文件流对象
-    std::ofstream file("record/data" + shard + ".txt");
+    std::ofstream file("record/data" + part + ".txt");
 
     if (file.is_open()) {
 
