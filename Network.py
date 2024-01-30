@@ -60,7 +60,7 @@ class PolicyValueNetwork(nn.Module):
         # action policy layers
         self.act_conv1 = nn.Conv2d(self.filters, 4, kernel_size=(1, 1))
         self.act_bn1 = nn.BatchNorm2d(4)
-        self.act_fc1 = nn.Linear(2 * self.board_size * self.board_size,
+        self.act_fc1 = nn.Linear(4 * self.board_size * self.board_size,
                                  self.board_size * self.board_size)
         # state value layers
         self.val_conv1 = nn.Conv2d(self.filters, 2, kernel_size=(1, 1))
