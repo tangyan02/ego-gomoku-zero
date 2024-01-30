@@ -58,7 +58,7 @@ class PolicyValueNetwork(nn.Module):
         )
 
         # action policy layers
-        self.act_conv1 = nn.Conv2d(self.filters, 2, kernel_size=(1, 1))
+        self.act_conv1 = nn.Conv2d(self.filters, 4, kernel_size=(1, 1))
         self.act_bn1 = nn.BatchNorm2d(2)
         self.act_fc1 = nn.Linear(2 * self.board_size * self.board_size,
                                  self.board_size * self.board_size)
@@ -80,7 +80,7 @@ class PolicyValueNetwork(nn.Module):
         x_act = self.act_conv1(x)
         x_act = self.act_bn1(x_act)
         x_act = F.relu(x_act)
-        x_act = x_act.view(-1, 2 * self.board_size * self.board_size)
+        x_act = x_act.view(-1, 4 * self.board_size * self.board_size)
         x_act = F.log_softmax(self.act_fc1(x_act), dim=1)
 
         # state value layers
