@@ -1,24 +1,38 @@
 #include "SelfPlay.h"
 #include "AnalyzerTest.h"
+#include "GameTest.h"
+#include "Pisqpipe.h"
 
 using namespace std;
 
 void selfPlay(int argc, char *argv[]) {
-    std::string shard;
+    string shard;
+    int partNum = 1;
     if (argc > 1) {
-        std::string firstArg = argv[1];
-        std::cout << "当前分片：" << firstArg << std::endl;
+        string firstArg = argv[1];
+        partNum = std::stoi(argv[2]);;
+        cout << "current shard " << firstArg << endl;
         shard = "_" + firstArg;
     }
 
     int numGames = 1;
-    int sumSimulations = 200;
+    int sumSimulations = 800;
     float temperatureDefault = 1;
     float explorationFactor = 3;
     int boardSize = 20;
 
-    recordSelfPlay(boardSize, numGames, sumSimulations, temperatureDefault,
-                   explorationFactor, shard);
+    std::vector<std::thread> threads; // 存储线程的容器
+    // 创建n个线程并将函数作为入口点
+    for (int i = 0; i < partNum; ++i) {
+        auto part = shard + "_" + std::to_string(i);
+        threads.emplace_back(recordSelfPlay, boardSize, numGames, sumSimulations, temperatureDefault,
+                             explorationFactor, part);
+    }
+
+    // 等待所有线程执行完毕
+    for (auto &thread: threads) {
+        thread.join();
+    }
 }
 
 void test() {
@@ -31,7 +45,10 @@ void test() {
             testGetSleepyFourMoves,
             testGetSleepyFourMoves2,
             testGetThreeDefenceMoves,
-            testGetThreeDefenceMoves2
+            testGetThreeDefenceMoves2,
+            testGetState,
+            testGetState2,
+            testGetState3
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);
@@ -40,16 +57,16 @@ void test() {
         bool result = func();
         if (result) {
             succeedCount += 1;
-            cout << "成功" << endl;
+            cout << "succeed" << endl;
         } else {
-            cout << "失败" << endl;
+            cout << "faid" << endl;
         }
     }
-    cout << "总计样例个数 " << total << endl;
+    cout << "total cases count " << total << endl;
     if (total == succeedCount) {
-        cout << "全部成功" << endl;
+        cout << "all succeed" << endl;
     } else {
-        cout << "存在失败样例 " << total - succeedCount << " 个" << endl;
+        cout << "fail case exist " << total - succeedCount << endl;
     }
 
 }
@@ -57,5 +74,6 @@ void test() {
 int main(int argc, char *argv[]) {
     selfPlay(argc, argv);
 //    test();
+    //piskvork();
     return 0;
 }

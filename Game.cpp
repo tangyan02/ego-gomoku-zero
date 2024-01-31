@@ -47,7 +47,9 @@ std::vector<Point> Game::getEmptyPoints() {
 }
 
 torch::Tensor Game::getState() {
-    torch::Tensor tensor = torch::zeros({4, boardSize, boardSize});
+    torch::Tensor tensor = torch::zeros({16, boardSize, boardSize});
+
+    //当前局面
     for (int row = 0; row < boardSize; row++) {
         for (int col = 0; col < boardSize; col++) {
             if (board[row][col] == currentPlayer) {
@@ -57,11 +59,36 @@ torch::Tensor Game::getState() {
             }
         }
     }
-    if (lastAction.x >= 0 && lastAction.y >= 0) {
-        tensor[2][lastAction.x][lastAction.y] = 1;
+
+    // 构造最近7步的局面
+    int numMoves = 7;
+    if (historyMoves.size() < numMoves) {
+        numMoves = historyMoves.size();
     }
-    if (lastLastAction.x >= 0 && lastLastAction.y >= 0) {
-        tensor[3][lastLastAction.x][lastLastAction.y] = 1;
+    int k = historyMoves.size() - 1;
+    int kPlayer = currentPlayer;
+    int tensorIndex = 2;
+    for (int i = 0; i < numMoves; i++, k--, tensorIndex += 2) {
+        auto p = historyMoves[k];
+        kPlayer = 3 - kPlayer;
+        board[p.x][p.y] = 0;
+
+        for (int row = 0; row < boardSize; row++) {
+            for (int col = 0; col < boardSize; col++) {
+                if (board[row][col] == currentPlayer) {
+                    tensor[tensorIndex][row][col] = 1;
+                } else if (board[row][col] == getOtherPlayer()) {
+                    tensor[tensorIndex + 1][row][col] = 1;
+                }
+            }
+        }
+    }
+
+    k += 1;
+    for (int i = k; i < historyMoves.size(); i++) {
+        auto p = historyMoves[i];
+        board[p.x][p.y] = kPlayer;
+        kPlayer = 3 - kPlayer;
     }
     return tensor;
 }
@@ -111,6 +138,8 @@ bool Game::makeMove(Point p) {
     lastLastAction.y = lastAction.y;
     lastAction.x = row;
     lastAction.y = col;
+
+    historyMoves.emplace_back(p);
 
     return true;
 }

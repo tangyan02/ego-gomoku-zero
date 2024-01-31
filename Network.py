@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from Utils import getDevice
+from Utils import getDevice, getTimeStr
 
 
 # 定义一个Residual block
@@ -34,11 +34,10 @@ class ResidualBlock(nn.Module):
         return out
 
 
-
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
         self.board_size = 20
-        self.input_channels = 4
+        self.input_channels = 16
         self.filters = 128
         super(PolicyValueNetwork, self).__init__()
 
@@ -59,9 +58,9 @@ class PolicyValueNetwork(nn.Module):
         )
 
         # action policy layers
-        self.act_conv1 = nn.Conv2d(self.filters, 2, kernel_size=(1, 1))
-        self.act_bn1 = nn.BatchNorm2d(2)
-        self.act_fc1 = nn.Linear(2 * self.board_size * self.board_size,
+        self.act_conv1 = nn.Conv2d(self.filters, 4, kernel_size=(1, 1))
+        self.act_bn1 = nn.BatchNorm2d(4)
+        self.act_fc1 = nn.Linear(4 * self.board_size * self.board_size,
                                  self.board_size * self.board_size)
         # state value layers
         self.val_conv1 = nn.Conv2d(self.filters, 2, kernel_size=(1, 1))
@@ -81,7 +80,7 @@ class PolicyValueNetwork(nn.Module):
         x_act = self.act_conv1(x)
         x_act = self.act_bn1(x_act)
         x_act = F.relu(x_act)
-        x_act = x_act.view(-1, 2 * self.board_size * self.board_size)
+        x_act = x_act.view(-1, 4 * self.board_size * self.board_size)
         x_act = F.log_softmax(self.act_fc1(x_act), dim=1)
 
         # state value layers
@@ -95,7 +94,7 @@ class PolicyValueNetwork(nn.Module):
         return x_val, x_act
 
 
-def get_network(device=getDevice()):
+def get_network(device):
     network = PolicyValueNetwork()
     if os.path.exists(f"../model/net_latest.mdl"):
         network.load_state_dict(torch.load(f"../model/net_latest.mdl", map_location=torch.device(device)))
