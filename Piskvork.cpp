@@ -14,7 +14,7 @@
 #include <iostream>
 
 
-const char* infotext = "name=\"Ego\", author=\"TangYan\", version=\"7.0\", country=\"China\", email=\"tangyan1412@foxmail.com\"";
+const char* infotext = "name=\"Ego-Zero\", author=\"TangYan\", version=\"1.0\", country=\"China\", email=\"tangyan1412@foxmail.com\"";
 
 static unsigned seed;
 static int boardSize;
@@ -61,7 +61,7 @@ void brain_init()
 	auto fullPath = prefix + subfix;
 
 	setbuf(stdout, NULL);
-	if (width != 15 || height != 15) {
+	if (width != 20 || height != 20) {
 		pipeOut("ERROR size of the board");
 		return;
 	}
