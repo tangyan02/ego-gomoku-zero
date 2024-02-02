@@ -77,6 +77,13 @@ def play():
     data_pickle = pickle.dumps(training_data)
     return Response(data_pickle, mimetype='application/octet-stream')
 
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' in request.files:
+        file = request.files['file']
+        file.save('/model/agent_model.pt')
+        return 'File uploaded successfully'
+    return 'No file part in the request'
 
 if __name__ == '__main__':
     # 启动服务 指定主机和端口

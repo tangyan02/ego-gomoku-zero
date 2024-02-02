@@ -45,7 +45,14 @@ def update_count(k, filepath="model/count.txt"):
 
 
 def callSelfPlayInCpp(shard_num, part_num, worker_num, node_num):
-    response = requests.get(f"http://localhost:8888/play?shard_num={shard_num}&part_num={part_num}&worker_num={worker_num}")
+    # 上传jit模型文件
+    with open('model/model_latest.pt', 'rb') as f:
+        files = {'file': f}
+        response = requests.post('http://localhost:8888/upload', files=files)
+        print(response.text)  # 打印响应
+
+    response = requests.get(
+        f"http://localhost:8888/play?shard_num={shard_num}&part_num={part_num}&worker_num={worker_num}")
     training_data = pickle.loads(response.content)
     return training_data
 

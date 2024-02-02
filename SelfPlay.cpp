@@ -54,7 +54,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
                                                                                         float temperatureDefault,
                                                                                         float explorationFactor) {
     torch::Device device = getDevice();
-    auto network = getNetwork(device);
+    auto network = getNetwork(device, "model/agent_model.pt");
     MonteCarloTree mcts = MonteCarloTree(&network, device, explorationFactor);
     std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> training_data;
 
