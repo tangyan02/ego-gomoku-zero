@@ -40,7 +40,7 @@ def update_count(k, filepath="model/count.txt"):
     with open(filepath, 'w') as f:
         f.write(str(count))
 
-    print(getTimeStr() + f"更新对局计数，当前完成对局 " + count)
+    print(getTimeStr() + f"更新对局计数，当前完成对局 " + str(count))
     return count
 
 
