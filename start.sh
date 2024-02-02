@@ -1,0 +1,1 @@
+nohup python3 -u Main.py 2>&1 &
