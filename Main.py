@@ -5,6 +5,7 @@ import numpy as np
 import requests
 import torch
 
+from concurrent.futures import ThreadPoolExecutor
 from Network import get_network, save_network
 from Train import train
 from Utils import getDevice, getTimeStr, dirPreBuild
@@ -44,16 +45,37 @@ def update_count(k, filepath="model/count.txt"):
     return count
 
 
-def callSelfPlayInCpp(shard_num, part_num, worker_num, node_num):
+def callSelfPlayInCppSingle(shard_num, part_num, worker_num, node_id):
+    host = f"ego-node{node_id}"
     # 上传jit模型文件
     with open('model/model_latest.pt', 'rb') as f:
         files = {'file': f}
-        response = requests.post('http://localhost:8888/upload', files=files)
-        print(response.text)  # 打印响应
+        response = requests.post(f'http://{host}:8888/upload', files=files)
+        print(getTimeStr() + response.text)  # 打印响应
 
+    print(getTimeStr() + f"开始调用{host}")
     response = requests.get(
-        f"http://localhost:8888/play?shard_num={shard_num}&part_num={part_num}&worker_num={worker_num}")
+        f"http://{host}:8888/play?shard_num={shard_num}&part_num={part_num}&worker_num={worker_num}")
     training_data = pickle.loads(response.content)
+    return training_data
+
+
+def callSelfPlayInCpp(shard_num, part_num, worker_num, node_num):
+    training_data = []
+    # 创建一个线程池
+    with ThreadPoolExecutor(max_workers=node_num) as executor:
+        # 创建一个任务列表
+        futures = []
+
+        # 对于每个node_id，创建一个任务
+        for node_id in range(node_num):
+            futures.append(executor.submit(callSelfPlayInCppSingle, shard_num, part_num, worker_num, node_id))
+
+        # 等待所有任务完成，并获取结果
+        results = [future.result() for future in futures]
+
+    for item in results:
+        training_data += item
     return training_data
 
 
@@ -65,7 +87,7 @@ episode = 100000
 shard_num = 5
 worker_num = 5
 part_num = 2
-node_num = 1
+node_num = 3
 
 # 模型初始化
 device = getDevice()

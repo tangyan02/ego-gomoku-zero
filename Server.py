@@ -5,6 +5,8 @@ import numpy as np
 from flask import Flask, request, Response
 import pickle
 
+from Utils import dirPreBuild
+
 # 创建一个服务
 app = Flask(__name__)
 
@@ -88,6 +90,7 @@ def upload_file():
 
 
 if __name__ == '__main__':
+    dirPreBuild()
     # 启动服务 指定主机和端口
     app.run(host='0.0.0.0', port=8888, threaded=True)
     print('server is running...')
