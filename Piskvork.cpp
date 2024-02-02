@@ -57,7 +57,7 @@ void brain_init()
 {
 	const int MAXPATH = 250;
 	auto prefix = getPrefix();
-	auto subfix = string("/model/net_latest.mdl.pt");
+	auto subfix = string("/model/model_latest.pt");
 	auto fullPath = prefix + subfix;
 
 	setbuf(stdout, NULL);

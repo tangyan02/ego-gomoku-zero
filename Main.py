@@ -4,7 +4,6 @@ import time
 
 import numpy as np
 import torch
-from torch import optim
 
 from Network import get_network, save_network
 from Train import train
@@ -83,6 +82,22 @@ def get_extended_data(play_data):
     return extend_data
 
 
+def update_count(k, filepath="model/count.txt"):
+    try:
+        with open(filepath, 'r') as f:
+            count = int(f.read())
+    except FileNotFoundError:
+        count = 0
+
+    count += k
+
+    with open(filepath, 'w') as f:
+        f.write(str(count))
+
+    print(getTimeStr() + f"更新对局计数，当前完成对局 " + count)
+    return count
+
+
 dirPreBuild()
 
 lr = 3e-4
@@ -94,13 +109,11 @@ part_num = 2
 
 # 模型初始化
 device = getDevice()
-network = get_network(device)
-save_network(network)
+network, optimizer = get_network(device, lr)
+
+save_network(network, optimizer)
 network.to("cpu")
 torch.cuda.empty_cache()
-
-# 定义优化器
-optimizer = optim.Adam(network.parameters(), lr)
 
 for i_episode in range(1, episode + 1):
 
@@ -122,9 +135,8 @@ for i_episode in range(1, episode + 1):
     train(extended_data, network, device, optimizer, batch_size, i_episode)
 
     if i_episode % 100 == 0:
-        save_network(network, f"model/net_{i_episode}.mdl")
-        print(getTimeStr() + f"模型已保存 episode:{i_episode}")
-    save_network(network)
+        save_network(network, optimizer, f"_{i_episode}")
+    save_network(network, optimizer)
     print(getTimeStr() + f"最新模型已保存 episode:{i_episode}")
 
     # 网络移动到CPU用，释放内存
@@ -132,3 +144,6 @@ for i_episode in range(1, episode + 1):
     network.to("cpu")
     torch.cuda.empty_cache()
     print(getTimeStr() + f"GPU内存已清理")
+
+    # 更新计数
+    update_count(shard_num * part_num)

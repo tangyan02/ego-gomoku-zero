@@ -122,7 +122,7 @@ void MonteCarloTree::backpropagate(Node *node, float value) {
 }
 
 std::pair<std::vector<int>, std::vector<float>>
-MonteCarloTree::get_action_probabilities(Game game, float temperature) {
+MonteCarloTree::get_action_probabilities(Game game) {
     Node *node = root;
     std::vector<std::pair<int, int>> action_visits;
     for (auto &item: node->children) {

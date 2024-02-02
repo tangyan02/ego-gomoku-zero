@@ -44,7 +44,7 @@ public:
 
     void backpropagate(Node *node, float value);
 
-    std::pair<std::vector<int>, std::vector<float>> get_action_probabilities(Game game, float temperature = 1.0);
+    std::pair<std::vector<int>, std::vector<float>> get_action_probabilities(Game game);
 
     std::vector<float> apply_temperature(std::vector<float> action_probabilities, float temperature);
 

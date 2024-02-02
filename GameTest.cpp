@@ -2,7 +2,7 @@
 #include "Game.h"
 
 using namespace std;
-const int boardSize = 15;
+static const int boardSize = 15;
 
 bool testGetState() {
 
