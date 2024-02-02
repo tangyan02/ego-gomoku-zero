@@ -1,0 +1,1 @@
+ps -ef|grep Server.py | awk '{print $2}' | xargs kill

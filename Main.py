@@ -1,67 +1,13 @@
-import concurrent.futures
-import subprocess
+import pickle
 import time
 
 import numpy as np
+import requests
 import torch
 
 from Network import get_network, save_network
 from Train import train
 from Utils import getDevice, getTimeStr, dirPreBuild
-
-
-def run_program(shard, part_num):
-    # 执行可执行程序，传入参数shard
-    process = subprocess.Popen(['./build/ego-gomoku-zero', str(shard), str(part_num)], stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT)
-
-    # 持续打印输出
-    for line in process.stdout:
-        print(line.decode(), end='')
-
-    # 等待命令执行完成
-    process.wait()
-
-    # 检查命令的返回码
-    if process.returncode == 0:
-        print(f"Command execution successful for shard {shard}.")
-    else:
-        print(f"Command execution failed with return code {process.returncode} for shard {shard}.")
-
-
-def selfPlayInCpp(shard_num, part_num, worker_num):
-    with concurrent.futures.ThreadPoolExecutor(max_workers=worker_num) as executor:
-        # 提交任务给线程池
-        futures = [executor.submit(run_program, shard, part_num) for shard in range(shard_num)]
-        # 等待所有任务完成
-        concurrent.futures.wait(futures)
-
-
-def getFileData(shard_num, part_num):
-    training_data = []
-    for shard in range(shard_num):
-        for part in range(part_num):
-            f = open(f"record/data_{shard}_{part}.txt", "r")
-            count = int(f.readline())
-            for i in range(count):
-                state_shape = f.readline().strip().split(" ")
-                k, x, y = int(state_shape[0]), int(state_shape[1]), int(state_shape[2])
-                state = np.zeros((k, x, y), dtype=float)
-                for r in range(k):
-                    for i in range(x):
-                        arr = f.readline().strip().split(" ")
-                        for j in range(len(arr)):
-                            state[r][i][j] = float(arr[j])
-                f.readline()
-                props_line = f.readline()
-                props = [float(x) for x in props_line.strip().split(" ")]
-                f.readline()
-                values_line = f.readline()
-                values = [float(x) for x in values_line.strip().split(" ")]
-
-                training_data.append((state, np.array(props), np.array(values)))
-
-    return training_data
 
 
 def get_extended_data(play_data):
@@ -98,6 +44,12 @@ def update_count(k, filepath="model/count.txt"):
     return count
 
 
+def callSelfPlayInCpp(shard_num, part_num, worker_num, node_num):
+    response = requests.get(f"http://localhost:8888/play?shard_num={shard_num}&part_num={part_num}&worker_num={worker_num}")
+    training_data = pickle.loads(response.content)
+    return training_data
+
+
 dirPreBuild()
 
 lr = 3e-4
@@ -106,6 +58,7 @@ episode = 100000
 shard_num = 5
 worker_num = 5
 part_num = 2
+node_num = 1
 
 # 模型初始化
 device = getDevice()
@@ -119,12 +72,11 @@ for i_episode in range(1, episode + 1):
 
     start_time = time.time()
 
-    selfPlayInCpp(shard_num, part_num, worker_num)
+    training_data = callSelfPlayInCpp(shard_num, part_num, worker_num, node_num)
 
     end_time = time.time()
     print(getTimeStr() + f"自我对弈完毕，用时 {end_time - start_time} s")
 
-    training_data = getFileData(shard_num, part_num)
     extended_data = get_extended_data(training_data)
     print(getTimeStr() + f"完成扩展自我对弈数据，条数 " + str(len(extended_data)))
 
@@ -146,4 +98,4 @@ for i_episode in range(1, episode + 1):
     print(getTimeStr() + f"GPU内存已清理")
 
     # 更新计数
-    update_count(shard_num * part_num)
+    update_count(shard_num * part_num * node_num)
