@@ -20,8 +20,8 @@ void printGame(Game &game, int action, std::vector<float> &action_probs, float t
          << " temperature " << round(temperature * 100) / 100 << endl;
 }
 
-torch::jit::Module getNetwork(torch::Device device, std::string path = "./model/net_latest.mdl.pt" ) {
-	auto model = torch::jit::load(path);
+torch::jit::Module getNetwork(torch::Device device, std::string path = "model/model_latest.pt") {
+    auto model = torch::jit::load(path);
     model.to(device);
     return model;
 }
@@ -83,6 +83,13 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
             std::vector<float> action_probs;
             std::tie(actions, action_probs) = mcts.get_action_probabilities(game);
             mcts.release(&node);
+
+            //如果是开局，则给每个节点加一点点概率，保证开局多样性
+            if (game.historyMoves.empty()) {
+                for (auto &prob: action_probs) {
+                    prob += 1.0f / (game.boardSize * game.boardSize);
+                }
+            }
 
             float temperature =
                     temperatureDefault * (game.boardSize * game.boardSize - step) / (game.boardSize * game.boardSize);

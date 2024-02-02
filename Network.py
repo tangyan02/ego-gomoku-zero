@@ -3,6 +3,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import optim
 
 from Utils import getDevice, getTimeStr
 
@@ -94,14 +95,23 @@ class PolicyValueNetwork(nn.Module):
         return x_val, x_act
 
 
-def get_network(device):
+def get_network(device, lr):
     network = PolicyValueNetwork()
-    if os.path.exists(f"../model/net_latest.mdl"):
-        network.load_state_dict(torch.load(f"../model/net_latest.mdl", map_location=torch.device(device)))
+    # 定义优化器
+    optimizer = optim.Adam(network.parameters(), lr)
+    if os.path.exists(f"model/checkpoint.pth"):
+        checkpoint = torch.load("model/checkpoint.pth")
+        network.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     network.to(device)
-    return network
+    return network, optimizer
 
 
-def save_network(network, path=f"model/net_latest.mdl"):
-    torch.save(network.state_dict(), path)
-    torch.jit.save(torch.jit.script(network), path + ".pt")
+def save_network(network, optimizer, subfix=""):
+    path = f"model/checkpoint{subfix}.pth"
+    torch.save({
+        'model_state_dict': network.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+    }, path)
+
+    torch.jit.save(torch.jit.script(network), "model/model_latest.pt")
