@@ -109,7 +109,7 @@ for i_episode in range(1, episode + 1):
 
     extended_data = get_extended_data(training_data)
     print(getTimeStr() + f"完成扩展自我对弈数据，条数 " + str(len(extended_data)) + " , " + str(
-        round((end_time - start_time) / len(extended_data), 1)) + " 条/s")
+        round(len(extended_data) / (end_time - start_time), 1)) + " 条/s")
 
     # 网络移动到GPU中
     network.to(device)
