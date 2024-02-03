@@ -97,15 +97,20 @@ class PolicyValueNetwork(nn.Module):
 
 def get_network(device, lr):
     network = PolicyValueNetwork()
+    network.to(device)  # 将网络移动到设备
+
     # 定义优化器
     optimizer = optim.Adam(network.parameters(), lr)
+
     if os.path.exists(f"model/checkpoint.pth"):
         checkpoint = torch.load("model/checkpoint.pth")
         network.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    network.to(device)
-    return network, optimizer
 
+        # 重新定义优化器，确保优化器的状态在正确的设备上
+        optimizer = optim.Adam(network.parameters(), lr)
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+    return network, optimizer
 
 def save_network(network, optimizer, subfix=""):
     path = f"model/checkpoint{subfix}.pth"

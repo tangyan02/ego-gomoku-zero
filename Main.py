@@ -53,10 +53,11 @@ def callSelfPlayInCppSingle(shard_num, part_num, worker_num, node_id):
         response = requests.post(f'http://{host}:8888/upload', files=files)
         print(getTimeStr() + response.text)  # 打印响应
 
-    print(getTimeStr() + f"开始调用{host}")
+    print(getTimeStr() + f"开始调用 {host}")
     response = requests.get(
         f"http://{host}:8888/play?shard_num={shard_num}&part_num={part_num}&worker_num={worker_num}")
     training_data = pickle.loads(response.content)
+    print(getTimeStr() + f"计算完成 {host}")
     return training_data
 
 
