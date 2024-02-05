@@ -14,6 +14,8 @@ public:
     Point();
 
     Point(int x, int y);
+
+    bool isNull();
 };
 
 
@@ -47,12 +49,11 @@ public:
 
     bool isGameOver();
 
-    void printBoard();
+    void printBoard(const std::string &part = "");
 
     bool makeMove(Point p);
 
     bool checkWin(int row, int col, int player);
-
 };
 
 

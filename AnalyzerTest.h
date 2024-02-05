@@ -3,6 +3,9 @@
 #ifndef EGO_GOMOKU_ZERO_ANALYZERTEST_H
 #define EGO_GOMOKU_ZERO_ANALYZERTEST_H
 
+#include "Game.h"
+#include "Analyzer.h"
+
 bool testGetWinnerMove();
 bool testGetActiveFourMoves();
 bool testGetActiveFourMoves2();
@@ -11,5 +14,14 @@ bool testGetSleepyFourMoves();
 bool testGetSleepyFourMoves2();
 bool testGetThreeDefenceMoves();
 bool testGetThreeDefenceMoves2();
+bool testDfsVCF();
+bool testDfsVCF2();
+bool testDfsVCF3();
+bool testGetVCFDefenceMoves();
+bool testGetVCFDefenceMoves2();
+bool testGetVCFDefenceMoves3();
+bool testGetVCFDefenceMoves4();
+bool testGetVCFDefenceMoves5();
+bool testGetNearByEmptyPoints();
 
 #endif //EGO_GOMOKU_ZERO_ANALYZERTEST_H

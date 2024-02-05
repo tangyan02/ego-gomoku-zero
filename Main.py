@@ -88,7 +88,7 @@ episode = 100000
 shard_num = 5
 worker_num = 5
 part_num = 2
-node_num = 3
+node_num = 4
 
 # 模型初始化
 device = getDevice()

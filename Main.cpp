@@ -48,7 +48,16 @@ void test() {
             testGetThreeDefenceMoves2,
             testGetState,
             testGetState2,
-            testGetState3
+            testGetState3,
+            testDfsVCF,
+             testDfsVCF2,
+            testDfsVCF3,
+             testGetVCFDefenceMoves,
+            testGetVCFDefenceMoves2,
+            testGetVCFDefenceMoves3,
+            testGetVCFDefenceMoves4,
+            testGetVCFDefenceMoves5,
+            testGetNearByEmptyPoints
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);
@@ -59,7 +68,7 @@ void test() {
             succeedCount += 1;
             cout << "succeed" << endl;
         } else {
-            cout << "faid" << endl;
+            cout << "fail" << endl;
         }
     }
     cout << "total cases count " << total << endl;

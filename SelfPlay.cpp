@@ -2,8 +2,8 @@
 
 using namespace std;
 
-void printGame(Game &game, int action, std::vector<float> &action_probs, float temperature) {
-    game.printBoard();
+void printGame(Game &game, int action, std::vector<float> &action_probs, float temperature, const std::string &part) {
+    game.printBoard(part);
     std::string line;
     for (int i = 0; i < game.boardSize * game.boardSize; i++) {
         std::stringstream ss;
@@ -15,7 +15,8 @@ void printGame(Game &game, int action, std::vector<float> &action_probs, float t
         }
     }
     std::string pic = (game.getOtherPlayer() == 1) ? "x" : "o";
-    cout << pic << " action is " << game.getPointFromIndex(action).x << "," << game.getPointFromIndex(action).y
+    cout << part << " " << pic << " action is " << game.getPointFromIndex(action).x << ","
+         << game.getPointFromIndex(action).y
          << " on rate " << round(action_probs[action] * 1000) / 1000
          << " temperature " << round(temperature * 100) / 100 << endl;
 }
@@ -39,20 +40,23 @@ void addAction(Game &game, int action,
                std::vector<std::tuple<torch::Tensor, int, std::vector<float>>> &game_data,
                float temperature,
                std::vector<float> &action_probs,
-               std::vector<float> &action_probs_normalized
+               std::vector<float> &action_probs_normalized,
+               const std::string &part
 ) {
     auto state = game.getState();
     std::tuple<torch::Tensor, int, std::vector<float>> record(state, game.currentPlayer, action_probs);
     game.makeMove(game.getPointFromIndex(action));
     game_data.push_back(record);
-    printGame(game, action, action_probs_normalized, temperature);
+    printGame(game, action, action_probs_normalized, temperature, part);
 }
 
 std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> selfPlay(int boardSize,
                                                                                         int numGames,
                                                                                         int numSimulations,
                                                                                         float temperatureDefault,
-                                                                                        float explorationFactor) {
+                                                                                        float explorationFactor,
+                                                                                        const std::string &part
+) {
     torch::Device device = getDevice();
     auto network = getNetwork(device, "model/agent_model.pt");
     MonteCarloTree mcts = MonteCarloTree(&network, device, explorationFactor);
@@ -70,7 +74,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
                 int actionIndex = game.getActionIndex(nextActions[0]);
                 vector<float> probs(game.boardSize * game.boardSize);
                 probs[actionIndex] = 1;
-                addAction(game, actionIndex, game_data, 0, probs, probs);
+                addAction(game, actionIndex, game_data, 0, probs, probs, part);
                 step++;
                 continue;
             }
@@ -102,7 +106,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
                                                          action_probs_normalized.end());
             int action = actions[distribution(gen)];
 
-            addAction(game, action, game_data, temperature, action_probs, action_probs_normalized);
+            addAction(game, action, game_data, temperature, action_probs, action_probs_normalized, part);
             step++;
         }
 
@@ -116,7 +120,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
             training_data.emplace_back(state, mcts_probs, std::vector<float>{value});
         }
 
-        cout << "winner is " << winner << endl;
+        cout << part << "winner is " << winner << endl;
     }
     return training_data;
 }
@@ -133,7 +137,8 @@ void recordSelfPlay(
 
     if (file.is_open()) {
 
-        auto data = selfPlay(boardSize, numGames, numSimulations, temperatureDefault, explorationFactor);
+        auto data = selfPlay(boardSize, numGames, numSimulations, temperatureDefault, explorationFactor,
+                             "[" + part + "] ");
         file << data.size() << endl;
         std::cout << "data count " << data.size() << endl;
         for (auto &item: data) {

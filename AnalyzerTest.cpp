@@ -1,10 +1,9 @@
 
-#include "Game.h"
-#include "Analyzer.h"
+#include "AnalyzerTest.h"
 
 using namespace std;
 
-const int boardSize = 15;
+static const int boardSize = 15;
 
 bool testGetWinnerMove() {
     cout << "testWinnerMove" << endl;
@@ -172,8 +171,7 @@ bool testGetThreeDefenceMoves() {
     game.makeMove(Point(0, 7));
     game.makeMove(Point(1, 2));
 
-    auto moves = game.getEmptyPoints();
-    auto result = getThreeDefenceMoves(2, game, moves);
+    auto result = getThreeDefenceMoves(2, game);
     for (Point &move: result) {
         game.board[move.x][move.y] = 3;
     }
@@ -197,14 +195,300 @@ bool testGetThreeDefenceMoves2() {
     game.makeMove(Point(0, 6));
     game.makeMove(Point(1, 2));
 
-    auto moves = game.getEmptyPoints();
-    auto result = getThreeDefenceMoves(2, game, moves);
+    auto result = getThreeDefenceMoves(2, game);
     for (Point &move: result) {
         game.board[move.x][move.y] = 3;
     }
     game.printBoard();
     cout << result.size() << endl;
     if (result.size() == 2) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool testDfsVCF() {
+    cout << "testDfsVCF" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(1, 4));
+    game.makeMove(Point(2, 0));
+    game.makeMove(Point(1, 5));
+    game.makeMove(Point(2, 1));
+    game.makeMove(Point(1, 6));
+    game.makeMove(Point(2, 2));
+    game.makeMove(Point(2, 6));
+    game.makeMove(Point(1, 3));
+    game.makeMove(Point(3, 5));
+    game.makeMove(Point(0, 8));
+    game.makeMove(Point(6, 6));
+    game.makeMove(Point(7, 8));
+    game.makeMove(Point(7, 7));
+
+    auto result = dfsVCF(1, 1, game, Point(), Point());
+    for (Point &move: result.second) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+
+    cout << result.second.size() << endl;
+    if (result.first) {
+        return true;
+    } else {
+        return false;
+    }
+
+}
+
+
+bool testDfsVCF2() {
+    cout << "testDfsVCF2" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(1, 4));
+    game.makeMove(Point(7, 3));
+    game.makeMove(Point(1, 5));
+    game.makeMove(Point(8, 3));
+    game.makeMove(Point(1, 6));
+    game.makeMove(Point(9, 3));
+    game.makeMove(Point(2, 6));
+    game.makeMove(Point(1, 3));
+    game.makeMove(Point(3, 5));
+    game.makeMove(Point(0, 8));
+    game.makeMove(Point(6, 6));
+    game.makeMove(Point(7, 8));
+    game.makeMove(Point(7, 7));
+
+    auto result = dfsVCF(1, 1, game, Point(), Point());
+    for (Point &move: result.second) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+
+    cout << result.second.size() << endl;
+    if (!result.first) {
+        return true;
+    } else {
+        return false;
+    }
+
+}
+
+
+bool testDfsVCF3() {
+    cout << "testDfsVCF3" << endl;
+    Game game(20);
+    game.currentPlayer = 1;
+    game.makeMove(Point(10, 15));
+    game.makeMove(Point(9, 15));
+    game.makeMove(Point(10, 16));
+    game.makeMove(Point(10, 14));
+    game.makeMove(Point(11, 16));
+    game.makeMove(Point(18, 15));
+    game.makeMove(Point(18, 18));
+    game.makeMove(Point(9, 16));
+    game.makeMove(Point(15, 12));
+    game.makeMove(Point(9, 13));
+    game.makeMove(Point(9, 14));
+    game.makeMove(Point(8, 13));
+    game.makeMove(Point(11, 13));
+    game.makeMove(Point(14, 9));
+    game.makeMove(Point(15, 9));
+    game.makeMove(Point(14, 10));
+    game.makeMove(Point(15, 10));
+    game.makeMove(Point(15, 11));
+    game.makeMove(Point(16, 11));
+    game.makeMove(Point(1, 15));
+    game.makeMove(Point(12, 16));
+    game.makeMove(Point(12, 15));
+    game.makeMove(Point(11, 14));
+    game.makeMove(Point(11, 17));
+    game.makeMove(Point(11, 15));
+    game.makeMove(Point(11, 12));
+    game.makeMove(Point(14, 11));
+    game.makeMove(Point(15, 18));
+    game.makeMove(Point(14, 7));
+
+    auto result = dfsVCF(1, 1, game, Point(), Point());
+    for (Point &move: result.second) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+
+    cout << result.second.size() << endl;
+    if (!result.first) {
+        return true;
+    } else {
+        return false;
+    }
+
+}
+
+bool testGetVCFDefenceMoves() {
+    cout << "testGetVCFDefenceMoves" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(1, 4));
+    game.makeMove(Point(2, 0));
+    game.makeMove(Point(1, 5));
+    game.makeMove(Point(2, 1));
+    game.makeMove(Point(1, 6));
+    game.makeMove(Point(2, 2));
+    game.makeMove(Point(2, 6));
+    game.makeMove(Point(1, 3));
+    game.makeMove(Point(3, 5));
+    game.makeMove(Point(0, 8));
+    game.makeMove(Point(6, 6));
+    game.makeMove(Point(7, 8));
+    game.makeMove(Point(7, 7));
+
+    auto result = getVCFDefenceMoves(2, game);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 15) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+bool testGetVCFDefenceMoves2() {
+    cout << "testGetVCFDefenceMoves2" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(0, 4));
+    game.makeMove(Point(1, 0));
+    game.makeMove(Point(0, 5));
+    game.makeMove(Point(1, 1));
+    game.makeMove(Point(0, 6));
+    game.makeMove(Point(1, 2));
+
+
+    auto result = getVCFDefenceMoves(2, game);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 2) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+bool testGetVCFDefenceMoves3() {
+    cout << "testGetVCFDefenceMoves3" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(0, 4));
+    game.makeMove(Point(1, 0));
+    game.makeMove(Point(0, 5));
+    game.makeMove(Point(1, 1));
+    game.makeMove(Point(0, 7));
+    game.makeMove(Point(1, 2));
+
+
+    auto result = getVCFDefenceMoves(2, game);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 5) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+bool testGetVCFDefenceMoves4() {
+    cout << "testGetVCFDefenceMoves4" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(4, 4));
+    game.makeMove(Point(3, 5));
+    game.makeMove(Point(4, 5));
+    game.makeMove(Point(5, 5));
+    game.makeMove(Point(4, 7));
+    game.makeMove(Point(1, 10));
+    game.makeMove(Point(3, 4));
+
+
+    auto result = getVCFDefenceMoves(game.currentPlayer, game);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 3) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+bool testGetVCFDefenceMoves5() {
+    cout << "testGetVCFDefenceMoves5" << endl;
+    Game game(20);
+    game.currentPlayer = 1;
+    game.makeMove(Point(7, 12));
+    game.makeMove(Point(6, 13));
+    game.makeMove(Point(6, 11));
+    game.makeMove(Point(4, 18));
+    game.makeMove(Point(1, 18));
+    game.makeMove(Point(1, 15));
+    game.makeMove(Point(8, 2));
+    game.makeMove(Point(5, 10));
+    game.makeMove(Point(2, 14));
+    game.makeMove(Point(3, 9));
+    game.makeMove(Point(5, 12));
+    game.makeMove(Point(9, 3));
+    game.makeMove(Point(7, 10));
+    game.makeMove(Point(4, 13));
+    game.makeMove(Point(2, 8));
+    game.makeMove(Point(5, 9));
+    game.makeMove(Point(7, 9));
+    game.makeMove(Point(7, 13));
+    game.makeMove(Point(5, 13));
+    game.makeMove(Point(3, 10));
+    game.makeMove(Point(9, 12));
+    game.makeMove(Point(6, 12));
+    game.makeMove(Point(5, 11));
+
+    auto result = getVCFDefenceMoves(game.currentPlayer, game);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 17) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool testGetNearByEmptyPoints() {
+    cout << "testGetNearByEmptyPoints" << endl;
+    Game game(boardSize);
+    game.makeMove(Point(0, 4));
+    auto result = getNearByEmptyPoints(Point(2, 6), game);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+        cout << move.x << "," << move.y << endl;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 30) {
         return true;
     } else {
         return false;

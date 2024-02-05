@@ -12,6 +12,10 @@ Point::Point(int x, int y) {
     this->y = y;
 }
 
+bool Point::isNull() {
+    return x == -1 && y == -1;
+}
+
 
 Game::Game(int boardSize) {
     currentPlayer = 1;
@@ -102,8 +106,9 @@ bool Game::isGameOver() {
     return getEmptyPoints().empty();
 }
 
-void Game::printBoard() {
+void Game::printBoard(const std::string &part) {
     for (int i = 0; i < boardSize; i++) {
+        std::cout << part;
         for (int j = 0; j < boardSize; j++) {
             switch (board[i][j]) {
                 case NONE_P:
