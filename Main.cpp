@@ -81,8 +81,8 @@ void test() {
 }
 
 int main(int argc, char *argv[]) {
-    selfPlay(argc, argv);
-//    test();
+//    selfPlay(argc, argv);
+    test();
     //piskvork();
     return 0;
 }

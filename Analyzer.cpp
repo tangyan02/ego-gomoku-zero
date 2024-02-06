@@ -5,7 +5,7 @@ static int dx[8] = {0, 0, 1, -1, 1, 1, -1, -1};
 static int dy[8] = {1, -1, 0, 0, 1, -1, 1, -1};
 
 std::vector<Point> getNearByEmptyPoints(Point action, Game &game) {
-    std::vector <Point> empty_points;
+    std::vector<Point> empty_points;
     if (!action.isNull()) {
         int last_row = action.x;
         int last_col = action.y;
@@ -166,15 +166,25 @@ std::vector<Point> getVCFDefenceMoves(int player, Game &game) {
     return removeDuplicates(defenceMoves);
 }
 
+// 创建一个函数来查找特定的点
+bool existPoints(const std::vector<Point> &moves, const Point &target) {
+    for (const auto &item: moves) {
+        if (item.x == target.x && item.y == target.y) {
+            return false;
+        }
+    }
+    return true;
+}
+
 std::pair<bool, std::vector<Point>>
 dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level) {
-    if (level > 30) {
-        cout << " level error " << level << endl;
-        game.printBoard();
-    }
-//    std::cout << "===" << std::endl;
-//    game.printBoard();
-//    std::cout << "===" << std::endl;
+//    if (level > 30) {
+//        cout << " level error " << level << endl;
+//        game.printBoard();
+//    }
+    std::cout << "===" << std::endl;
+    game.printBoard();
+    std::cout << "===" << std::endl;
     std::vector<Point> moves;
     bool attack = checkPlayer == currentPlayer;
 
@@ -182,33 +192,47 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     if (lastLastMove.isNull()) {
         nearMoves = game.getEmptyPoints();
     } else {
-        if(attack) {
+        if (attack) {
             nearMoves = getNearByEmptyPoints(lastLastMove, game);
-        }else{
+        } else {
             nearMoves = getNearByEmptyPoints(lastMove, game);
         }
     }
 
-
     if (attack) {
         auto oppNearMoves = getNearByEmptyPoints(lastMove, game);
+
         auto oppWinMoves = getWinningMoves(3 - currentPlayer, game, oppNearMoves);
-        if (!oppWinMoves.empty()) {
-            return std::make_pair(false, std::vector<Point>());
-        }
-
         auto activeMoves = getActiveFourMoves(currentPlayer, game, nearMoves);
-        if (!activeMoves.empty()) {
-            return std::make_pair(true, activeMoves);
+        auto sleepMoves = getSleepyFourMoves(currentPlayer, game, nearMoves);
+        //如果对方有2个胜利点，则失败
+        if (oppWinMoves.size() > 1) {
+            return std::make_pair(false, std::vector<Point>());
         }
 
-        auto sleepMoves = getSleepyFourMoves(currentPlayer, game, nearMoves);
-        moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
+        //如果有一个胜利点，则看是不是和我方连击点重合，重合则返回
+        if (oppWinMoves.size() == 1) {
+            auto oppWinMove = oppWinMoves[0];
+            if (existPoints(activeMoves, oppWinMove) || existPoints(sleepMoves, oppWinMove)) {
+                moves.emplace_back(oppWinMove);
+            }
+            cout<<"find opp win moves "<< oppWinMove.x << " " << oppWinMove.y<<endl;
+            cout<<"moves count "<< moves.size() <<endl;
+        }
 
-        if (moves.empty()) {
-            return std::make_pair(false, std::vector<Point>());
+        //对方没有胜利点，正常连击
+        if (oppWinMoves.empty()) {
+            if (!activeMoves.empty()) {
+                return std::make_pair(true, activeMoves);
+            }
+
+            moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
+            if (moves.empty()) {
+                return std::make_pair(false, std::vector<Point>());
+            }
         }
     } else {
+        //防守
         auto oppWinMoves = getWinningMoves(checkPlayer, game, nearMoves);
         if (oppWinMoves.empty()) {
             return std::make_pair(false, std::vector<Point>());
