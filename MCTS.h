@@ -26,7 +26,7 @@ public:
 
     std::pair<int, Node *> selectChild(double exploration_factor);
 
-    void expand(Game &game, const std::vector<float> &prior_probs);
+    void expand(Game &game, std::vector<Point> &actions, const std::vector<float> &prior_probs);
 
     void update(double value);
 };

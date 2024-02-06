@@ -478,3 +478,35 @@ bool testGetNearByEmptyPoints() {
         return false;
     }
 }
+
+bool testDfsVCT() {
+    cout << "testDfsVCT" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(10, 4));
+    game.makeMove(Point(2, 0));
+    game.makeMove(Point(1, 5));
+    game.makeMove(Point(2, 1));
+    game.makeMove(Point(1, 6));
+    game.makeMove(Point(2, 2));
+    game.makeMove(Point(2, 6));
+    game.makeMove(Point(10, 3));
+    game.makeMove(Point(3, 5));
+    game.makeMove(Point(0, 8));
+    game.makeMove(Point(6, 6));
+    game.makeMove(Point(7, 8));
+    game.makeMove(Point(7, 7));
+
+    auto result = dfsVCT(1, 1, game, Point(), Point(), false);
+    for (Point &move: result.second) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+
+    cout << result.second.size() << endl;
+    if (result.first) {
+        return true;
+    } else {
+        return false;
+    }
+}

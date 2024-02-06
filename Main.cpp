@@ -57,7 +57,8 @@ void test() {
             testGetVCFDefenceMoves3,
             testGetVCFDefenceMoves4,
             testGetVCFDefenceMoves5,
-            testGetNearByEmptyPoints
+            testGetNearByEmptyPoints,
+            testDfsVCT
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);
@@ -81,8 +82,8 @@ void test() {
 }
 
 int main(int argc, char *argv[]) {
-//    selfPlay(argc, argv);
-    test();
+    selfPlay(argc, argv);
+//    test();
     //piskvork();
     return 0;
 }

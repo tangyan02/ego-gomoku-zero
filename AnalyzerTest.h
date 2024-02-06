@@ -23,5 +23,6 @@ bool testGetVCFDefenceMoves3();
 bool testGetVCFDefenceMoves4();
 bool testGetVCFDefenceMoves5();
 bool testGetNearByEmptyPoints();
+bool testDfsVCT();
 
 #endif //EGO_GOMOKU_ZERO_ANALYZERTEST_H

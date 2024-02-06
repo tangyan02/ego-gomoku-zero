@@ -4,6 +4,13 @@
 static int dx[8] = {0, 0, 1, -1, 1, 1, -1, -1};
 static int dy[8] = {1, -1, 0, 0, 1, -1, 1, -1};
 
+void printVector(vector<Point> &a) {
+    for (const auto &item: a) {
+        cout << "(" << item.x << "," << item.y << ") ";
+    }
+    cout << endl;
+}
+
 std::vector<Point> getNearByEmptyPoints(Point action, Game &game) {
     std::vector<Point> empty_points;
     if (!action.isNull()) {
@@ -136,6 +143,23 @@ std::vector<Point> getThreeDefenceMoves(int player, Game &game) {
     return removeDuplicates(defenceMoves);
 }
 
+
+std::vector<Point> getThreeDefenceMovesAtOnlyDefence(int player, Game &game, std::vector<Point> &basedMoves) {
+    //如果对方有2个活4点，阻止活4点
+    //如果对方只有1个活4点，则阻止活4点和眠4点
+    std::vector<Point> defenceMoves;
+    auto otherActiveFourMoves = getActiveFourMoves(3 - player, game, basedMoves);
+    if (!otherActiveFourMoves.empty()) {
+        if (otherActiveFourMoves.size() >= 2) {
+            return otherActiveFourMoves;
+        }
+        auto otherSleepyFourMoves = getSleepyFourMoves(3 - player, game, basedMoves);
+        defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
+        defenceMoves.insert(defenceMoves.end(), otherSleepyFourMoves.begin(), otherSleepyFourMoves.end());
+    }
+    return removeDuplicates(defenceMoves);
+}
+
 std::vector<Point> getVCFDefenceMoves(int player, Game &game) {
     //如果有2个VCF点，则堵任意一个
     //如果只有一个VCF点，则类似防3处理，阻止活4点和眠4点,加上自己的所有眠4点,在加上阻止活3点
@@ -166,14 +190,45 @@ std::vector<Point> getVCFDefenceMoves(int player, Game &game) {
     return removeDuplicates(defenceMoves);
 }
 
+
+std::vector<Point> getVCTDefenceMoves(int player, Game &game) {
+    //如果有2个以上VCT点，则堵任意一个
+    //如果只有一个VCT点，阻止活4点和眠4点,加上自己的所有眠4点,在加上阻止活3点
+    std::vector<Point> defenceMoves;
+    auto allMoves = game.getEmptyPoints();
+    auto vctResult = dfsVCT(3 - player, 3 - player, game, Point(), Point(), false);
+    if (vctResult.first) {
+        if (vctResult.second.size() >= 2) {
+            return vctResult.second;
+        }
+
+        auto otherActiveFourMoves = getActiveFourMoves(3 - player, game, allMoves);
+        if (otherActiveFourMoves.size() >= 2) {
+            return otherActiveFourMoves;
+        }
+
+        auto otherSleepyFourMoves = getSleepyFourMoves(3 - player, game, allMoves);
+        auto sleepyFourMoves = getSleepyFourMoves(player, game, allMoves);
+        defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
+        defenceMoves.insert(defenceMoves.end(), otherSleepyFourMoves.begin(), otherSleepyFourMoves.end());
+        defenceMoves.insert(defenceMoves.end(), sleepyFourMoves.begin(), sleepyFourMoves.end());
+
+        if (otherActiveFourMoves.empty()) {
+            auto otherActiveThreeMoves = getActiveThreeMoves(3 - player, game, allMoves);
+            defenceMoves.insert(defenceMoves.end(), otherActiveThreeMoves.begin(), otherActiveThreeMoves.end());
+        }
+    }
+    return removeDuplicates(defenceMoves);
+}
+
 // 创建一个函数来查找特定的点
 bool existPoints(const std::vector<Point> &moves, const Point &target) {
     for (const auto &item: moves) {
         if (item.x == target.x && item.y == target.y) {
-            return false;
+            return true;
         }
     }
-    return true;
+    return false;
 }
 
 std::pair<bool, std::vector<Point>>
@@ -182,9 +237,9 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 //        cout << " level error " << level << endl;
 //        game.printBoard();
 //    }
-    std::cout << "===" << std::endl;
-    game.printBoard();
-    std::cout << "===" << std::endl;
+//    std::cout << "===" << std::endl;
+//    game.printBoard();
+//    std::cout << "===" << std::endl;
     std::vector<Point> moves;
     bool attack = checkPlayer == currentPlayer;
 
@@ -216,8 +271,8 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             if (existPoints(activeMoves, oppWinMove) || existPoints(sleepMoves, oppWinMove)) {
                 moves.emplace_back(oppWinMove);
             }
-            cout<<"find opp win moves "<< oppWinMove.x << " " << oppWinMove.y<<endl;
-            cout<<"moves count "<< moves.size() <<endl;
+//            cout << "find opp win moves " << oppWinMove.x << " " << oppWinMove.y << endl;
+//            cout << "moves count " << moves.size() << endl;
         }
 
         //对方没有胜利点，正常连击
@@ -264,7 +319,153 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     return std::make_pair(finalResult, winMoves);
 }
 
-std::vector<Point> selectActions(Game &game) {
+
+std::pair<bool, std::vector<Point>>
+dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, bool fourMode, int level) {
+//    if (level > 30) {
+//        cout << " level error " << level << endl;
+//        game.printBoard();
+//    }
+//    std::cout << "===" << std::endl;
+//    std::cout << "in four" << fourMode << std::endl;
+//    game.printBoard();
+//    std::cout << "===" << std::endl;
+    std::vector<Point> moves;
+    bool attack = checkPlayer == currentPlayer;
+
+    std::vector<Point> nearMoves;
+    if (lastLastMove.isNull()) {
+        nearMoves = game.getEmptyPoints();
+    } else {
+        if (attack) {
+            nearMoves = getNearByEmptyPoints(lastLastMove, game);
+        } else {
+            nearMoves = getNearByEmptyPoints(lastMove, game);
+        }
+    }
+
+    if (attack) {
+        auto oppNearMoves = getNearByEmptyPoints(lastMove, game);
+
+        auto oppWinMoves = getWinningMoves(3 - currentPlayer, game, oppNearMoves);
+        auto activeMoves = getActiveFourMoves(currentPlayer, game, nearMoves);
+        auto sleepMoves = getSleepyFourMoves(currentPlayer, game, nearMoves);
+
+        //如果对方有2个胜利点，则失败
+        if (oppWinMoves.size() > 1) {
+            return std::make_pair(false, std::vector<Point>());
+        }
+
+        //如果有一个胜利点，则看是不是和我方4连击点重合，重合则返回
+        if (oppWinMoves.size() == 1) {
+            auto oppWinMove = oppWinMoves[0];
+            if (existPoints(activeMoves, oppWinMove) ||
+                existPoints(sleepMoves, oppWinMove)) {
+                moves.emplace_back(oppWinMove);
+            }
+//            cout << "find opp win moves " << oppWinMove.x << " " << oppWinMove.y << endl;
+//            cout << "moves count " << moves.size() << endl;
+//            cout << "activeMoves ";
+//            printVector(activeMoves);
+//            cout << "sleepMoves ";
+//            printVector(sleepMoves);
+        }
+
+        //对方没有胜利点，正常连击
+        if (oppWinMoves.empty()) {
+            //我方有活4点直接下
+            if (!activeMoves.empty()) {
+//                cout << "发现我方活4点 " << endl;
+                return std::make_pair(true, activeMoves);
+            }
+
+            if (!fourMode) {
+                auto oppVCFMoves = dfsVCF(3 - currentPlayer, 3 - currentPlayer, game, lastMove, lastMove);
+                //对方有VCF点，则我方仅做长4
+                if (oppVCFMoves.first) {
+//                    cout << "发现对手VCF" << endl;
+                    fourMode = true;
+                    moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
+                    if (moves.empty()) {
+                        return std::make_pair(false, std::vector<Point>());
+                    }
+                }
+            }
+
+            if (!fourMode) {
+                //一种保守下法
+                //对方没有活4点，但是有眠4点，且眠4点，则把对手眠4点设置成障碍，再找活三点和眠4点
+                auto oppSleepyFourMoves = getSleepyFourMoves(3 - currentPlayer, game, oppNearMoves);
+                //设置障碍
+                for (const auto &item: oppSleepyFourMoves) {
+                    game.board[item.x][item.y] = 3;
+                }
+
+                auto threeActiveMoves = getActiveThreeMoves(currentPlayer, game, nearMoves);
+
+                moves.insert(moves.end(), threeActiveMoves.begin(), threeActiveMoves.end());
+                moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
+
+                //恢复障碍
+                for (const auto &item: oppSleepyFourMoves) {
+                    game.board[item.x][item.y] = 0;
+                }
+            }
+        }
+    } else {
+
+        auto oppWinMoves = getWinningMoves(checkPlayer, game, nearMoves);
+        //防守眠4
+        if (oppWinMoves.size() == 1) {
+            moves.emplace_back(oppWinMoves[0]);
+        }
+        //认输
+        if (oppWinMoves.size() > 1) {
+            return std::make_pair(true, oppWinMoves);
+        }
+        if (!fourMode) {
+            if (oppWinMoves.empty()) {
+                //防活3
+                auto threeDefenceMoves = getThreeDefenceMovesAtOnlyDefence
+                        (currentPlayer, game, nearMoves);
+                moves.insert(moves.end(), threeDefenceMoves.begin(), threeDefenceMoves.end());
+            }
+        }
+    }
+
+    if (moves.empty()) {
+        return std::make_pair(false, std::vector<Point>());
+    }
+
+    //去重
+    moves = removeDuplicates(moves);
+
+    bool finalResult = false;
+    std::vector<Point> winMoves;
+    for (const auto &item: moves) {
+        game.board[item.x][item.y] = currentPlayer;
+        auto dfsResult = dfsVCT(checkPlayer, 3 - currentPlayer, game, item, lastMove, fourMode, level + 1);
+
+        if (dfsResult.first) {
+            finalResult = true;
+            winMoves.emplace_back(item);
+            if (level > 0) {
+                game.board[item.x][item.y] = 0;
+                return std::make_pair(true, winMoves);
+            }
+        }
+
+        if (!dfsResult.first && !attack) {
+            game.board[item.x][item.y] = 0;
+            return std::make_pair(false, std::vector<Point>());
+        }
+        game.board[item.x][item.y] = 0;
+    }
+
+    return std::make_pair(finalResult, winMoves);
+}
+
+std::vector<Point> selectActions(Game &game, bool vctMode) {
     auto emptyPoints = game.getEmptyPoints();
     auto nearPoints = getNearByEmptyPoints(game.lastAction, game);
     auto roundPoints = getTwoRoundPoints(game.lastAction, game.lastLastAction, game);
@@ -283,22 +484,32 @@ std::vector<Point> selectActions(Game &game) {
     if (!activeFourMoves.empty()) {
         return activeFourMoves;
     }
-    //我方VCF点
-    auto vcfResult = dfsVCF(game.currentPlayer, game.currentPlayer, game, Point(), Point());
-    if (vcfResult.first) {
-        return vcfResult.second;
-    }
-    //防对方VCF点
-    auto VCFDefenceMoves = getVCFDefenceMoves(game.currentPlayer, game);
-    if (!VCFDefenceMoves.empty()) {
-        return VCFDefenceMoves;
-    }
 
-    //防活3
-//    auto threeDefenceMoves = getThreeDefenceMoves(game.currentPlayer, game, nearPoints);
-//    if (!threeDefenceMoves.empty()) {
-//        return threeDefenceMoves;
-//    }
+    if (!vctMode) {
+        //我方VCF点
+        auto vcfResult = dfsVCF(game.currentPlayer, game.currentPlayer, game, Point(), Point());
+        if (vcfResult.first) {
+            return vcfResult.second;
+        }
+
+        //防对方VCF点
+        auto VCFDefenceMoves = getVCFDefenceMoves(game.currentPlayer, game);
+        if (!VCFDefenceMoves.empty()) {
+            return VCFDefenceMoves;
+        }
+    } else {
+        //我方VCT点
+        auto vctResult = dfsVCT(game.currentPlayer, game.currentPlayer, game, Point(), Point(), false);
+        if (vctResult.first) {
+            return vctResult.second;
+        }
+
+        //防对方VCT点
+        auto VCTDefenceMoves = getVCTDefenceMoves(game.currentPlayer, game);
+        if (!VCTDefenceMoves.empty()) {
+            return VCTDefenceMoves;
+        }
+    }
 
     return emptyPoints;
 }

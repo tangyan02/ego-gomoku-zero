@@ -32,10 +32,7 @@ std::pair<int, Node *> Node::selectChild(double exploration_factor) {
     return std::make_pair(selected_action, children[selected_action]);
 }
 
-void Node::expand(Game &game, const std::vector<float> &prior_probs) {
-
-    std::vector<Point> actions = selectActions(game);
-
+void Node::expand(Game &game, std::vector<Point> &actions, const std::vector<float> &prior_probs) {
     for (auto &action: actions) {
         Node *child = new Node(this);
         int actionIndex = game.getActionIndex(action);
@@ -78,7 +75,12 @@ void MonteCarloTree::simulate(Game game) {
     if (game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer())) {
         value = -1;
     } else {
-        node->expand(game, priorProb);
+        bool useVct = false;
+        if (node->parent == nullptr) {
+            useVct = true;
+        }
+        std::vector<Point> actions = selectActions(game, useVct);
+        node->expand(game, actions, priorProb);
     }
 
     backpropagate(node, -value);
