@@ -7,7 +7,7 @@
 
 using namespace std;
 
-std::vector<Point> selectActions(Game &game, bool vctMode = false);
+pair<bool, vector<Point>> selectActions(Game &game, bool vctMode = false);
 
 std::vector<Point> getWinningMoves(int player, Game &game, std::vector<Point> &basedMoves);
 

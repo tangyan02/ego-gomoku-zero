@@ -68,7 +68,7 @@ void brain_init()
 	boardSize = width;
 	network = getNetwork(device, fullPath);
 	pipeOut("MESSAGE : LOADED");
-	
+
 	game = new Game(boardSize);
 	pipeOut("OK");
 }
@@ -141,11 +141,15 @@ int min(int a,int b) {
 
 void brain_turn()
 {
-    vector<Point> nextActions = selectActions(*game);
-    if (nextActions.size() == 1) {
-        int actionIndex = game->getActionIndex(nextActions[0]);
+    auto nextActions = selectActions(*game);
+    if (nextActions.second.size() == 1 || nextActions.first) {
+        int actionIndex = game->getActionIndex(nextActions.second[0]);
         auto p = game->getPointFromIndex(actionIndex);
-        pipeOut("MESSAGE : action %d,%d", p.x, p.y);
+        string win = "";
+        if(nextAction.first) {
+            win = "win! ^_^"
+        }
+        pipeOut("MESSAGE : action %d,%d %s", p.x, p.y, win);
         do_mymove(p.x, p.y);
         return;
     }
@@ -160,7 +164,7 @@ void brain_turn()
 	pipeOut("MESSAGE current player %d", game->currentPlayer);
 	int timeOut = thisTimeOut / 4 * 3;
 	int comboTimeOut = thisTimeOut - timeOut;
-	
+
 
 	Node node;
 	auto startTime = getSystemTime();

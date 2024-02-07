@@ -58,7 +58,7 @@ void MonteCarloTree::simulate(Game game) {
 
     Node *node = root;
     while (!node->isLeaf()) {
-        std::pair<int, Node *> result = node->selectChild(exploration_factor);
+        std::pair < int, Node * > result = node->selectChild(exploration_factor);
         int action = result.first;
         // cout << action << endl;
         node = result.second;
@@ -67,11 +67,8 @@ void MonteCarloTree::simulate(Game game) {
         // game.printBoard();
     }
 
-    auto state = game.getState();
-    std::pair<float, std::vector<float>>
-            result = evaluate_state(state);
-    float value = result.first;
-    std::vector<float> priorProb = result.second;
+    float value;
+
     if (game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer())) {
         value = -1;
     } else {
@@ -79,8 +76,17 @@ void MonteCarloTree::simulate(Game game) {
         if (node->parent == nullptr) {
             useVct = true;
         }
-        std::vector<Point> actions = selectActions(game, useVct);
-        node->expand(game, actions, priorProb);
+        auto actions = selectActions(game, useVct);
+        if (actions.first && node->parent != nullptr) {
+            value = 1;
+        } else {
+            auto state = game.getState();
+            std::pair<float, std::vector<float>>
+                    result = evaluate_state(state);
+            value = result.first;
+            std::vector<float> priorProb = result.second;
+            node->expand(game, actions.second, priorProb);
+        }
     }
 
     backpropagate(node, -value);

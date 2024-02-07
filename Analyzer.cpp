@@ -465,51 +465,54 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     return std::make_pair(finalResult, winMoves);
 }
 
-std::vector<Point> selectActions(Game &game, bool vctMode) {
+/**
+ * 返回两个值，第一个值代表返回值是否是必胜点
+ */
+pair<bool, vector<Point>> selectActions(Game &game, bool vctMode) {
     auto emptyPoints = game.getEmptyPoints();
     auto nearPoints = getNearByEmptyPoints(game.lastAction, game);
     auto roundPoints = getTwoRoundPoints(game.lastAction, game.lastLastAction, game);
     //我方长5
     auto currentWinnerMoves = getWinningMoves(game.currentPlayer, game, roundPoints);
     if (!currentWinnerMoves.empty()) {
-        return currentWinnerMoves;
+        return make_pair(true, currentWinnerMoves);
     }
     //防止对手长5
     auto otherWinnerMoves = getWinningMoves(game.getOtherPlayer(), game, nearPoints);
     if (!otherWinnerMoves.empty()) {
-        return otherWinnerMoves;
+        return make_pair(false, otherWinnerMoves);
     }
     //我方活4
     auto activeFourMoves = getActiveFourMoves(game.currentPlayer, game, roundPoints);
     if (!activeFourMoves.empty()) {
-        return activeFourMoves;
+        return make_pair(true, activeFourMoves);
     }
 
     if (!vctMode) {
         //我方VCF点
         auto vcfResult = dfsVCF(game.currentPlayer, game.currentPlayer, game, Point(), Point());
         if (vcfResult.first) {
-            return vcfResult.second;
+            return make_pair(true, vcfResult.second);
         }
 
         //防对方VCF点
         auto VCFDefenceMoves = getVCFDefenceMoves(game.currentPlayer, game);
         if (!VCFDefenceMoves.empty()) {
-            return VCFDefenceMoves;
+            return make_pair(false, VCFDefenceMoves);
         }
     } else {
         //我方VCT点
         auto vctResult = dfsVCT(game.currentPlayer, game.currentPlayer, game, Point(), Point(), false);
         if (vctResult.first) {
-            return vctResult.second;
+            return make_pair(true, vctResult.second);
         }
 
         //防对方VCT点
         auto VCTDefenceMoves = getVCTDefenceMoves(game.currentPlayer, game);
         if (!VCTDefenceMoves.empty()) {
-            return VCTDefenceMoves;
+            return make_pair(false, VCTDefenceMoves);
         }
     }
 
-    return emptyPoints;
+    return make_pair(false, emptyPoints);
 }

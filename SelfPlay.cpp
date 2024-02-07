@@ -2,7 +2,8 @@
 
 using namespace std;
 
-void printGame(Game &game, int action, std::vector<float> &action_probs, float temperature, const std::string &part) {
+void printGame(Game &game, int action, std::vector<float> &action_probs,
+               float temperature, const std::string &part, bool foundWinMove) {
     game.printBoard(part);
     std::string line;
     for (int i = 0; i < game.boardSize * game.boardSize; i++) {
@@ -18,7 +19,11 @@ void printGame(Game &game, int action, std::vector<float> &action_probs, float t
     cout << part << " " << pic << " action is " << game.getPointFromIndex(action).x << ","
          << game.getPointFromIndex(action).y
          << " on rate " << round(action_probs[action] * 1000) / 1000
-         << " temperature " << round(temperature * 100) / 100 << endl;
+         << " temperature " << round(temperature * 100) / 100;
+    if (foundWinMove) {
+        cout << " found win move ^_^";
+    }
+    cout << endl;
 }
 
 torch::jit::Module getNetwork(torch::Device device, std::string path = "model/model_latest.pt") {
@@ -36,18 +41,15 @@ torch::Device getDevice() {
 //    return torch::kCPU;
 }
 
-void addAction(Game &game, int action,
+void addAction(Game &game,
+               int action,
                std::vector<std::tuple<torch::Tensor, int, std::vector<float>>> &game_data,
-               float temperature,
-               std::vector<float> &action_probs,
-               std::vector<float> &action_probs_normalized,
-               const std::string &part
+               std::vector<float> &action_probs
 ) {
     auto state = game.getState();
     std::tuple<torch::Tensor, int, std::vector<float>> record(state, game.currentPlayer, action_probs);
     game.makeMove(game.getPointFromIndex(action));
     game_data.push_back(record);
-    printGame(game, action, action_probs_normalized, temperature, part);
 }
 
 std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> selfPlay(int boardSize,
@@ -69,12 +71,13 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
         int step = 0;
         while (!game.isGameOver()) {
             //如果只有唯一选择，则直接选择
-            vector<Point> nextActions = selectActions(game);
-            if (nextActions.size() == 1) {
-                int actionIndex = game.getActionIndex(nextActions[0]);
+            auto nextActions = selectActions(game, true);
+            if (nextActions.second.size() == 1) {
+                int actionIndex = game.getActionIndex(nextActions.second[0]);
                 vector<float> probs(game.boardSize * game.boardSize);
                 probs[actionIndex] = 1;
-                addAction(game, actionIndex, game_data, 0, probs, probs, part);
+                addAction(game, actionIndex, game_data, probs);
+                printGame(game, actionIndex, probs, 0, part, nextActions.first);
                 step++;
                 continue;
             }
@@ -106,7 +109,8 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
                                                          action_probs_normalized.end());
             int action = actions[distribution(gen)];
 
-            addAction(game, action, game_data, temperature, action_probs, action_probs_normalized, part);
+            addAction(game, action, game_data, action_probs);
+            printGame(game, action, action_probs_normalized, temperature, part, nextActions.first);
             step++;
         }
 
