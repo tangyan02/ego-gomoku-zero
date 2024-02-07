@@ -510,3 +510,29 @@ bool testDfsVCT() {
         return false;
     }
 }
+
+
+bool testDfsVCT2() {
+    cout << "testDfsVCT2" << endl;
+    Game game(20);
+    game.currentPlayer = 1;
+    game.makeMove(Point(16, 14));
+    game.makeMove(Point(15, 15));
+    game.makeMove(Point(15, 17));
+    game.makeMove(Point(16, 5));
+    game.makeMove(Point(16, 16));
+    game.makeMove(Point(16, 17));
+
+    auto result = dfsVCT(1, 1, game, Point(), Point(), false);
+    for (Point &move: result.second) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+
+    cout << result.second.size() << endl;
+    if (!result.first) {
+        return true;
+    } else {
+        return false;
+    }
+}

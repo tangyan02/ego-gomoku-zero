@@ -58,7 +58,7 @@ void MonteCarloTree::simulate(Game game) {
 
     Node *node = root;
     while (!node->isLeaf()) {
-        std::pair < int, Node * > result = node->selectChild(exploration_factor);
+        std::pair<int, Node *> result = node->selectChild(exploration_factor);
         int action = result.first;
         // cout << action << endl;
         node = result.second;

@@ -50,15 +50,16 @@ void test() {
             testGetState2,
             testGetState3,
             testDfsVCF,
-             testDfsVCF2,
+            testDfsVCF2,
             testDfsVCF3,
-             testGetVCFDefenceMoves,
+            testGetVCFDefenceMoves,
             testGetVCFDefenceMoves2,
             testGetVCFDefenceMoves3,
             testGetVCFDefenceMoves4,
             testGetVCFDefenceMoves5,
             testGetNearByEmptyPoints,
-            testDfsVCT
+            testDfsVCT,
+            testDfsVCT2
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);
@@ -78,7 +79,6 @@ void test() {
     } else {
         cout << "fail case exist " << total - succeedCount << endl;
     }
-
 }
 
 int main(int argc, char *argv[]) {

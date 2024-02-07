@@ -321,11 +321,16 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
 
 std::pair<bool, std::vector<Point>>
-dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, bool fourMode, int level) {
+dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, bool fourMode, int level,
+       int threeCount) {
 //    if (level > 30) {
 //        cout << " level error " << level << endl;
 //        game.printBoard();
 //    }
+    //使用有限点长3，防止检索范围爆炸
+    if (threeCount <= 0) {
+        fourMode = true;
+    }
 //    std::cout << "===" << std::endl;
 //    std::cout << "in four" << fourMode << std::endl;
 //    game.printBoard();
@@ -403,8 +408,8 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
                 auto threeActiveMoves = getActiveThreeMoves(currentPlayer, game, nearMoves);
 
-                moves.insert(moves.end(), threeActiveMoves.begin(), threeActiveMoves.end());
                 moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
+                moves.insert(moves.end(), threeActiveMoves.begin(), threeActiveMoves.end());
 
                 //恢复障碍
                 for (const auto &item: oppSleepyFourMoves) {
@@ -437,27 +442,37 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         return std::make_pair(false, std::vector<Point>());
     }
 
+    if (!attack && moves.size() > 1) {
+        threeCount--;
+    }
+
     //去重
     moves = removeDuplicates(moves);
 
     bool finalResult = false;
+    if (!attack) {
+        finalResult = true;
+    }
     std::vector<Point> winMoves;
     for (const auto &item: moves) {
         game.board[item.x][item.y] = currentPlayer;
-        auto dfsResult = dfsVCT(checkPlayer, 3 - currentPlayer, game, item, lastMove, fourMode, level + 1);
+        auto dfsResult = dfsVCT(checkPlayer, 3 - currentPlayer, game, item, lastMove, fourMode, level + 1, threeCount);
 
-        if (dfsResult.first) {
-            finalResult = true;
-            winMoves.emplace_back(item);
-            if (level > 0) {
-                game.board[item.x][item.y] = 0;
-                return std::make_pair(true, winMoves);
+        if (attack) {
+            if (dfsResult.first) {
+                finalResult = true;
+                winMoves.emplace_back(item);
+                if (level > 0) {
+                    game.board[item.x][item.y] = 0;
+                    return std::make_pair(true, winMoves);
+                }
             }
-        }
-
-        if (!dfsResult.first && !attack) {
-            game.board[item.x][item.y] = 0;
-            return std::make_pair(false, std::vector<Point>());
+        } else {
+            //防守时，默认为true，发现一个失败则为false
+            if (!dfsResult.first) {
+                game.board[item.x][item.y] = 0;
+                return std::make_pair(false, std::vector<Point>());
+            }
         }
         game.board[item.x][item.y] = 0;
     }
