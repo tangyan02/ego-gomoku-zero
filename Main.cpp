@@ -2,6 +2,7 @@
 #include "AnalyzerTest.h"
 #include "GameTest.h"
 #include "Pisqpipe.h"
+#include "Console.h"
 
 using namespace std;
 
@@ -85,5 +86,6 @@ int main(int argc, char *argv[]) {
     selfPlay(argc, argv);
 //    test();
     //piskvork();
+//    startConsole();
     return 0;
 }
