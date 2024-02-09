@@ -56,6 +56,7 @@ Point aiMove() {
 }
 
 void aiAction() {
+    cout << "计算中..." << endl;
     Point p = aiMove();
     board[p.x][p.y] = 'O';
     system("clear");
@@ -98,7 +99,6 @@ int startConsole() {
                 system("clear");
                 game.makeMove(Point(cursorX, cursorY));
                 printBoard();
-
                 aiAction();
                 break;
             }
