@@ -86,6 +86,6 @@ int main(int argc, char *argv[]) {
     selfPlay(argc, argv);
 //    test();
     //piskvork();
-//    startConsole();
+//    startConsole(true);
     return 0;
 }

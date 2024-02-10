@@ -193,7 +193,7 @@ std::vector<Point> getVCFDefenceMoves(int player, Game &game) {
 
 std::vector<Point> getVCTDefenceMoves(int player, Game &game) {
     //如果有2个以上VCT点，则堵任意一个
-    //如果只有一个VCT点，阻止活4点和眠4点,加上自己的所有眠4点,在加上阻止活3点
+    //如果只有一个VCT点，阻止活4点和眠4点,加上自己的所有眠4点,在加上阻止活3点,加上自己活3点
     std::vector<Point> defenceMoves;
     auto allMoves = game.getEmptyPoints();
     auto vctResult = dfsVCT(3 - player, 3 - player, game, Point(), Point(), false);
@@ -216,6 +216,9 @@ std::vector<Point> getVCTDefenceMoves(int player, Game &game) {
         if (otherActiveFourMoves.empty()) {
             auto otherActiveThreeMoves = getActiveThreeMoves(3 - player, game, allMoves);
             defenceMoves.insert(defenceMoves.end(), otherActiveThreeMoves.begin(), otherActiveThreeMoves.end());
+
+            auto activeThreeMoves = getActiveThreeMoves(player, game, allMoves);
+            defenceMoves.insert(defenceMoves.end(), activeThreeMoves.begin(), activeThreeMoves.end());
         }
     }
     return removeDuplicates(defenceMoves);

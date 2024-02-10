@@ -1,4 +1,4 @@
-#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+#if (defined(__APPLE__) && defined(__MACH__))
 
 #include "Console.h"
 #include <iostream>
@@ -58,52 +58,68 @@ Point aiMove() {
 void aiAction() {
     cout << "计算中..." << endl;
     Point p = aiMove();
-    board[p.x][p.y] = 'O';
+    char player = game.currentPlayer == 1 ? 'X' : 'O';
+    board[p.x][p.y] = player;
     system("clear");
     game.makeMove(p);
     printBoard();
     cout << "ai move " << p.x << "," << p.y << "" << endl;
 }
 
-int startConsole() {
-
+int startConsole(bool selfPlay) {
     aiAction();
-
-    setRawMode();
-    char input;
-    printBoard(); // Print the board initially
-    while ((input = getchar()) != 'q') {
-        switch (input) {
-            case 'w':
-                if (cursorX > 0) --cursorX;
-                system("clear");
-                printBoard();
-                break;
-            case 'a':
-                if (cursorY > 0) --cursorY;
-                system("clear");
-                printBoard();
-                break;
-            case 's':
-                if (cursorX < BOARD_SIZE - 1) ++cursorX;
-                system("clear");
-                printBoard();
-                break;
-            case 'd':
-                if (cursorY < BOARD_SIZE - 1) ++cursorY;
-                system("clear");
-                printBoard();
-                break;
-            case 'e': {
-                board[cursorX][cursorY] = 'X';
-                system("clear");
-                game.makeMove(Point(cursorX, cursorY));
-                printBoard();
-                aiAction();
+    if (selfPlay) {
+        cursorX = -1;
+        cursorY = -1;
+        printBoard(); // Print the board initially
+        while (true) {
+            aiAction();
+            system("clear");
+            printBoard(); // Print the board initially
+            if (game.isGameOver()) {
                 break;
             }
-            default:
-                std::cout << "Invalid input!\n";
+        }
+    } else {
+        setRawMode();
+        printBoard(); // Print the board initially
+        char input;
+        while ((input = getchar()) != 'q') {
+            switch (input) {
+                case 'w':
+                    if (cursorX > 0) --cursorX;
+                    system("clear");
+                    printBoard();
+                    break;
+                case 'a':
+                    if (cursorY > 0) --cursorY;
+                    system("clear");
+                    printBoard();
+                    break;
+                case 's':
+                    if (cursorX < BOARD_SIZE - 1) ++cursorX;
+                    system("clear");
+                    printBoard();
+                    break;
+                case 'd':
+                    if (cursorY < BOARD_SIZE - 1) ++cursorY;
+                    system("clear");
+                    printBoard();
+                    break;
+                case 'e': {
+                    board[cursorX][cursorY] = 'X';
+                    system("clear");
+                    game.makeMove(Point(cursorX, cursorY));
+                    printBoard();
+                    aiAction();
+                    break;
+                }
+                default:
+                    std::cout << "Invalid input!\n";
+            }
+            if (game.isGameOver()) {
+                break;
+            }
         }
     }
     return 0;
