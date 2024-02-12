@@ -415,6 +415,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
                 }
 
                 auto threeActiveMoves = getActiveThreeMoves(currentPlayer, game, nearMoves);
+                moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
                 moves.insert(moves.end(), threeActiveMoves.begin(), threeActiveMoves.end());
 
                 //恢复障碍

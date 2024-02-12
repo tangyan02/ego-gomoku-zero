@@ -27,5 +27,6 @@ bool testDfsVCT();
 bool testDfsVCT2();
 bool testDfsVCT3();
 bool testDfsVCT4();
+bool testDfsVCT5();
 
 #endif //EGO_GOMOKU_ZERO_ANALYZERTEST_H
