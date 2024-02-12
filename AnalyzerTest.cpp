@@ -536,3 +536,132 @@ bool testDfsVCT2() {
         return false;
     }
 }
+
+
+bool testDfsVCT3() {
+    cout << "testDfsVCT3" << endl;
+    Game game(20);
+    game.currentPlayer = 1;
+    game.makeMove(Point(3,17));
+    game.makeMove(Point(2,18));
+    game.makeMove(Point(3,15));
+    game.makeMove(Point(3,16));
+    game.makeMove(Point(2,16));
+    game.makeMove(Point(1,17));
+    game.makeMove(Point(1,18));
+    game.makeMove(Point(2,3));
+    game.makeMove(Point(6,15));
+    game.makeMove(Point(4,15));
+    game.makeMove(Point(1,2));
+    game.makeMove(Point(5,14));
+    game.makeMove(Point(6,13));
+    game.makeMove(Point(6,16));
+    game.makeMove(Point(5,16));
+    game.makeMove(Point(4,17));
+    game.makeMove(Point(7,14));
+    game.makeMove(Point(8,13));
+    game.makeMove(Point(8,15));
+    game.makeMove(Point(5,12));
+    game.makeMove(Point(7,15));
+    game.makeMove(Point(9,15));
+    game.makeMove(Point(7,16));
+    game.makeMove(Point(7,17));
+    game.makeMove(Point(5,13));
+    game.makeMove(Point(3,13));
+    game.makeMove(Point(5,15));
+    game.makeMove(Point(6,14));
+    game.makeMove(Point(9,16));
+    game.makeMove(Point(10,17));
+    game.makeMove(Point(5,18));
+    game.makeMove(Point(6,17));
+    game.makeMove(Point(5,17));
+    game.makeMove(Point(5,19));
+    game.makeMove(Point(6,18));
+    game.makeMove(Point(4,16));
+    game.makeMove(Point(4,18));
+    game.makeMove(Point(7,18));
+    game.makeMove(Point(8,17));
+    game.makeMove(Point(9,18));
+    game.makeMove(Point(8,16));
+    game.makeMove(Point(4,14));
+    game.makeMove(Point(4,13));
+    game.makeMove(Point(8,14));
+    game.makeMove(Point(1,15));
+    game.makeMove(Point(0,14));
+    game.makeMove(Point(2,15));
+    game.makeMove(Point(11,16));
+    game.makeMove(Point(8,19));
+    game.makeMove(Point(8,18));
+    game.makeMove(Point(7,13));
+    game.makeMove(Point(7,12));
+    game.makeMove(Point(10,15));
+    game.makeMove(Point(11,18));
+    game.makeMove(Point(10,18));
+    game.makeMove(Point(11,17));
+    game.makeMove(Point(11,14));
+    game.makeMove(Point(12,13));
+    game.makeMove(Point(10,16));
+    game.makeMove(Point(11,19));
+    game.makeMove(Point(11,15));
+    game.makeMove(Point(13,17));
+    game.makeMove(Point(12,17));
+    game.makeMove(Point(8,12));
+    game.makeMove(Point(6,12));
+    game.makeMove(Point(8,11));
+    game.makeMove(Point(8,10));
+
+    auto result = dfsVCT(2, 2, game, Point(), Point(), false);
+    for (Point &move: result.second) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+
+    cout << result.second.size() << endl;
+    if (!result.first) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+bool testDfsVCT4() {
+    cout << "testDfsVCT4" << endl;
+    Game game(20);
+    game.currentPlayer = 1;
+    game.makeMove(Point(3,16));
+    game.makeMove(Point(4,15));
+    game.makeMove(Point(4,17));
+    game.makeMove(Point(2,15));
+    game.makeMove(Point(3,15));
+    game.makeMove(Point(3,18));
+    game.makeMove(Point(2,16));
+    game.makeMove(Point(3,14));
+    game.makeMove(Point(1,17));
+    game.makeMove(Point(4,14));
+    game.makeMove(Point(5,16));
+    game.makeMove(Point(1,16));
+    game.makeMove(Point(4,16));
+    game.makeMove(Point(6,16));
+    game.makeMove(Point(0,17));
+    game.makeMove(Point(4,13));
+    game.makeMove(Point(5,12));
+    game.makeMove(Point(12,19));
+    game.makeMove(Point(3,17));
+    game.makeMove(Point(2,17));
+    game.makeMove(Point(5,15));
+    game.makeMove(Point(6,14));
+
+    auto result = dfsVCT(1, 1, game, Point(), Point(), false);
+    for (Point &move: result.second) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+
+    cout << result.second.size() << endl;
+    if (result.first) {
+        return true;
+    } else {
+        return false;
+    }
+}

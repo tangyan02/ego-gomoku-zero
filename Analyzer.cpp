@@ -66,6 +66,9 @@ std::vector<Point> getWinningMoves(int player, Game &game, std::vector<Point> &b
     for (const auto &point: basedMoves) {
         int row = point.x;
         int col = point.y;
+        if (game.board[row][col] != 0) {
+            continue;
+        }
         game.board[row][col] = player;
         if (game.checkWin(row, col, player)) {
             winning_moves.emplace_back(row, col);
@@ -81,6 +84,9 @@ std::vector<Point> getActiveThreeMoves(int player, Game &game, std::vector<Point
     for (const auto &point: basedMoves) {
         int row = point.x;
         int col = point.y;
+        if (game.board[row][col] != 0) {
+            continue;
+        }
         game.board[row][col] = player;
         auto nearByEmptyPoints = getNearByEmptyPoints(point, game);
         auto winMoves = getActiveFourMoves(player, game, nearByEmptyPoints);
@@ -97,6 +103,9 @@ std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point>
     for (const auto &point: basedMoves) {
         int row = point.x;
         int col = point.y;
+        if (game.board[row][col] != 0) {
+            continue;
+        }
         game.board[row][col] = player;
         auto nearByEmptyPoints = getNearByEmptyPoints(point, game);
         auto winMoves = getWinningMoves(player, game, nearByEmptyPoints);
@@ -393,31 +402,29 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
                 if (oppVCFMoves.first) {
 //                    cout << "发现对手VCF" << endl;
                     fourMode = true;
-                    moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
-                    if (moves.empty()) {
-                        return std::make_pair(false, std::vector<Point>());
-                    }
                 }
             }
 
             if (!fourMode) {
                 //一种保守下法
                 //对方没有活4点，但是有眠4点，且眠4点，则把对手眠4点设置成障碍，再找活三点和眠4点
-                auto oppSleepyFourMoves = getSleepyFourMoves(3 - currentPlayer, game, oppNearMoves);
+                auto oppSleepyFourMoves = getSleepyFourMoves(3 - currentPlayer, game, nearMoves);
                 //设置障碍
                 for (const auto &item: oppSleepyFourMoves) {
                     game.board[item.x][item.y] = 3;
                 }
 
                 auto threeActiveMoves = getActiveThreeMoves(currentPlayer, game, nearMoves);
-
-                moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
                 moves.insert(moves.end(), threeActiveMoves.begin(), threeActiveMoves.end());
 
                 //恢复障碍
                 for (const auto &item: oppSleepyFourMoves) {
                     game.board[item.x][item.y] = 0;
                 }
+            }
+
+            if (fourMode) {
+                moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
             }
         }
     } else {
