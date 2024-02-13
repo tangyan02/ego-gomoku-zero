@@ -22,7 +22,7 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
 std::pair<bool, std::vector<Point>>
 dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, bool fourMode,
-       int level = 0, int threeCount = 5);
+       int level = 0, int threeCount = 0);
 
 std::vector<Point> getVCFDefenceMoves(int player, Game &game);
 

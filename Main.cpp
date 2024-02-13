@@ -63,7 +63,8 @@ void test() {
             testDfsVCT2,
             testDfsVCT3,
             testDfsVCT4,
-            testDfsVCT5
+            testDfsVCT5,
+            testDfsVCT6
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);
