@@ -1,3 +1,4 @@
+rm -rf build
 if [ ! -d "build" ]; then
     mkdir build
     echo "Created build directory."
