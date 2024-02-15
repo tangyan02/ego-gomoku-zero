@@ -146,8 +146,8 @@ void brain_turn()
         int actionIndex = game->getActionIndex(nextActions.second[0]);
         auto p = game->getPointFromIndex(actionIndex);
         string win = "";
-        if(nextAction.first) {
-            win = "win! ^_^"
+        if(nextActions.first) {
+			win = "win! ^_^";
         }
         pipeOut("MESSAGE : action %d,%d %s", p.x, p.y, win);
         do_mymove(p.x, p.y);
