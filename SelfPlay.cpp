@@ -3,7 +3,7 @@
 using namespace std;
 
 void printGame(Game &game, int action, std::vector<float> &action_probs,
-               float temperature, const std::string &part, bool foundWinMove) {
+               float temperature, const std::string &part, const string selectInfo) {
     game.printBoard(part);
     std::string line;
     for (int i = 0; i < game.boardSize * game.boardSize; i++) {
@@ -19,11 +19,8 @@ void printGame(Game &game, int action, std::vector<float> &action_probs,
     cout << part << " " << pic << " action is " << game.getPointFromIndex(action).x << ","
          << game.getPointFromIndex(action).y
          << " on rate " << round(action_probs[action] * 1000) / 1000
-         << " temperature " << round(temperature * 100) / 100;
-    if (foundWinMove) {
-        cout << " found win move ^_^";
-    }
-    cout << endl;
+         << " temperature " << round(temperature * 100) / 100
+         << selectInfo << endl;
 }
 
 torch::jit::Module getNetwork(torch::Device device, std::string path = "model/model_latest.pt") {
@@ -67,16 +64,32 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
         Game game(boardSize);
         std::vector<std::tuple<torch::Tensor, int, std::vector<float>>> game_data;
 
+        //开局先随机下3个点
+        for (int j = 0; j < 3; j++) {
+            auto moves = game.getEmptyPoints();
+            // 创建一个随机数生成器
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<> dis(0, moves.size() - 1);
+
+            // 生成一个随机索引
+            int random_index = dis(gen);
+
+            // 使用随机索引从数组中获取一个元素
+            auto random_element = moves[random_index];
+            game.makeMove(random_element);
+        }
+
         int step = 0;
         while (!game.isGameOver()) {
             //如果只有唯一选择，则直接选择
             auto nextActions = selectActions(game, true);
-            if (nextActions.second.size() == 1) {
-                int actionIndex = game.getActionIndex(nextActions.second[0]);
+            if (get<1>(nextActions).size() == 1) {
+                int actionIndex = game.getActionIndex(get<1>(nextActions)[0]);
                 vector<float> probs(game.boardSize * game.boardSize);
                 probs[actionIndex] = 1;
                 addAction(game, actionIndex, game_data, probs);
-                printGame(game, actionIndex, probs, 0, part, nextActions.first);
+                printGame(game, actionIndex, probs, 0, part, get<2>(nextActions));
                 step++;
                 continue;
             }
@@ -109,7 +122,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
             int action = actions[distribution(gen)];
 
             addAction(game, action, game_data, action_probs);
-            printGame(game, action, action_probs_normalized, temperature, part, nextActions.first);
+            printGame(game, action, action_probs_normalized, temperature, part, get<2>(nextActions));
             step++;
         }
 

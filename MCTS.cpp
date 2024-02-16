@@ -58,7 +58,7 @@ void MonteCarloTree::simulate(Game game) {
 
     Node *node = root;
     while (!node->isLeaf()) {
-        std::pair<int, Node *> result = node->selectChild(exploration_factor);
+        std::pair < int, Node * > result = node->selectChild(exploration_factor);
         int action = result.first;
         // cout << action << endl;
         node = result.second;
@@ -77,7 +77,7 @@ void MonteCarloTree::simulate(Game game) {
             useVct = true;
         }
         auto actions = selectActions(game, useVct);
-        if (actions.first && node->parent != nullptr) {
+        if (get<0>(actions) && node->parent != nullptr) {
             value = 1;
         } else {
             auto state = game.getState();
@@ -85,7 +85,7 @@ void MonteCarloTree::simulate(Game game) {
                     result = evaluate_state(state);
             value = result.first;
             std::vector<float> priorProb = result.second;
-            node->expand(game, actions.second, priorProb);
+            node->expand(game, get<1>(actions), priorProb);
         }
     }
 

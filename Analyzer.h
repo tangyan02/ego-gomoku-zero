@@ -7,7 +7,7 @@
 
 using namespace std;
 
-pair<bool, vector<Point>> selectActions(Game &game, bool vctMode = false);
+tuple<bool, vector<Point>, string> selectActions(Game &game, bool vctMode = false);
 
 std::vector<Point> getWinningMoves(int player, Game &game, std::vector<Point> &basedMoves);
 
@@ -21,8 +21,8 @@ std::pair<bool, std::vector<Point>>
 dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level = 0);
 
 std::pair<bool, std::vector<Point>>
-dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, bool fourMode,
-       int level = 0, int threeCount = 0);
+dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, Point attackPoint,
+       bool fourMode, int level = 0, int threeCount = 0);
 
 std::vector<Point> getVCFDefenceMoves(int player, Game &game);
 

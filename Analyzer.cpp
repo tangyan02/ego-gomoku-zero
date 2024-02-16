@@ -208,7 +208,7 @@ std::vector<Point> getVCTDefenceMoves(int player, Game &game) {
     //如果只有一个VCT点，阻止活4点和眠4点,加上自己的所有眠4点,在加上阻止活3点,加上自己活3点
     std::vector<Point> defenceMoves;
     auto allMoves = game.getEmptyPoints();
-    auto vctResult = dfsVCT(3 - player, 3 - player, game, Point(), Point(), false);
+    auto vctResult = dfsVCT(3 - player, 3 - player, game, Point(), Point(), Point(), false);
     if (vctResult.first) {
         if (vctResult.second.size() >= 2) {
             return vctResult.second;
@@ -336,12 +336,9 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
 
 std::pair<bool, std::vector<Point>>
-dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, bool fourMode, int level,
-       int threeCount) {
-//    if (level > 30) {
-//        cout << " level error " << level << endl;
-//        game.printBoard();
-//    }
+dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, Point attackPoint,
+       bool fourMode, int level, int threeCount) {
+
     //使用有限点长3，防止检索范围爆炸
     if (threeCount >= 5) {
         fourMode = true;
@@ -352,6 +349,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 //    std::cout << "===" << std::endl;
     std::vector<Point> moves;
     bool attack = checkPlayer == currentPlayer;
+    bool attackMove = true;
 
     std::vector<Point> nearMoves;
     if (lastLastMove.isNull()) {
@@ -363,6 +361,10 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             nearMoves = getNearByEmptyPoints(lastMove, game);
         }
     }
+
+    auto attackNearMoves = getNearByEmptyPoints(attackPoint, game);
+    nearMoves.insert(nearMoves.end(), attackNearMoves.begin(), attackNearMoves.end());
+    nearMoves = removeDuplicates(nearMoves);
 
     if (attack) {
         auto oppNearMoves = getNearByEmptyPoints(lastMove, game);
@@ -376,13 +378,17 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             return std::make_pair(false, std::vector<Point>());
         }
 
-        //如果有一个胜利点，则看是不是和我方4连击点重合，重合则返回
+        //如果对手有一个胜利点，则必下胜利点
         if (oppWinMoves.size() == 1) {
             auto oppWinMove = oppWinMoves[0];
             if (existPoints(activeMoves, oppWinMove) ||
                 existPoints(sleepMoves, oppWinMove)) {
-                moves.emplace_back(oppWinMove);
+                attackMove = true;
+            } else {
+                attackMove = false;
             }
+
+            moves.emplace_back(oppWinMove);
 //            cout << "find opp win moves " << oppWinMove.x << " " << oppWinMove.y << endl;
 //            cout << "moves count " << moves.size() << endl;
 //            cout << "activeMoves ";
@@ -407,36 +413,12 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
                     fourMode = true;
                 }
             }
-
-            //一种保守下法
-            //对方没有活4点，但是有眠4点，且眠4点，则把对手眠4点设置成障碍，再找活三点和眠4点
-            //注意，这种下发还是有漏洞，因为障碍就没有考虑对手连续冲4的情况
-            auto oppSleepyFourMoves = getSleepyFourMoves(3 - currentPlayer, game, nearMoves);
-            //设置障碍
-            for (const auto &item: oppSleepyFourMoves) {
-                //对于3模式来说，一定要加障碍，对于4模式来说，下过一次活三就要设置障碍
-                if (threeCount >= 1 || !fourMode) {
-                    game.board[item.x][item.y] = 3;
-                }
-            }
-
             //活三模式考虑活三点
             if (!fourMode) {
                 auto threeActiveMoves = getActiveThreeMoves(currentPlayer, game, nearMoves);
                 moves.insert(moves.end(), threeActiveMoves.begin(), threeActiveMoves.end());
             }
-
-            if (threeCount >= 1) {
-                auto realSleepyFourMoves = getSleepyFourMoves(currentPlayer, game, nearMoves);
-                moves.insert(moves.end(), realSleepyFourMoves.begin(), realSleepyFourMoves.end());
-            } else {
-                moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
-            }
-
-            //恢复障碍
-            for (const auto &item: oppSleepyFourMoves) {
-                game.board[item.x][item.y] = 0;
-            }
+            moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
         }
     } else {
 
@@ -454,7 +436,16 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
                 //防活3
                 auto threeDefenceMoves = getThreeDefenceMovesAtOnlyDefence
                         (currentPlayer, game, nearMoves);
+
+                //如果无需防御，则连击终止
+                if (threeDefenceMoves.empty()) {
+                    return std::make_pair(false, std::vector<Point>());
+                }
+
                 moves.insert(moves.end(), threeDefenceMoves.begin(), threeDefenceMoves.end());
+                //长4
+                auto sleepMoves = getSleepyFourMoves(currentPlayer, game, nearMoves);
+                moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
             }
         }
     }
@@ -477,7 +468,9 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     std::vector<Point> winMoves;
     for (const auto &item: moves) {
         game.board[item.x][item.y] = currentPlayer;
-        auto dfsResult = dfsVCT(checkPlayer, 3 - currentPlayer, game, item, lastMove, fourMode, level + 1, threeCount);
+        auto nextAttackMove = attack && attackMove ? item : attackPoint;
+        auto dfsResult = dfsVCT(checkPlayer, 3 - currentPlayer, game, item, lastMove, nextAttackMove,
+                                fourMode, level + 1, threeCount);
 
         if (attack) {
             if (dfsResult.first) {
@@ -504,51 +497,51 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 /**
  * 返回两个值，第一个值代表返回值是否是必胜点
  */
-pair<bool, vector<Point>> selectActions(Game &game, bool vctMode) {
+tuple<bool, vector<Point>, string> selectActions(Game &game, bool vctMode) {
     auto emptyPoints = game.getEmptyPoints();
     auto nearPoints = getNearByEmptyPoints(game.lastAction, game);
     auto roundPoints = getTwoRoundPoints(game.lastAction, game.lastLastAction, game);
     //我方长5
     auto currentWinnerMoves = getWinningMoves(game.currentPlayer, game, roundPoints);
     if (!currentWinnerMoves.empty()) {
-        return make_pair(true, currentWinnerMoves);
+        return make_tuple(true, currentWinnerMoves, " 长5 ^_^");
     }
     //防止对手长5
     auto otherWinnerMoves = getWinningMoves(game.getOtherPlayer(), game, nearPoints);
     if (!otherWinnerMoves.empty()) {
-        return make_pair(false, otherWinnerMoves);
+        return make_tuple(false, otherWinnerMoves, " 防5");
     }
     //我方活4
     auto activeFourMoves = getActiveFourMoves(game.currentPlayer, game, roundPoints);
     if (!activeFourMoves.empty()) {
-        return make_pair(true, activeFourMoves);
+        return make_tuple(true, activeFourMoves, " 活4 ^_^");
     }
 
     if (!vctMode) {
         //我方VCF点
         auto vcfResult = dfsVCF(game.currentPlayer, game.currentPlayer, game, Point(), Point());
         if (vcfResult.first) {
-            return make_pair(true, vcfResult.second);
+            return make_tuple(true, vcfResult.second, " VCF! ^_^");
         }
 
         //防对方VCF点
         auto VCFDefenceMoves = getVCFDefenceMoves(game.currentPlayer, game);
         if (!VCFDefenceMoves.empty()) {
-            return make_pair(false, VCFDefenceMoves);
+            return make_tuple(false, VCFDefenceMoves, " 防VCF O_o");
         }
     } else {
         //我方VCT点
-        auto vctResult = dfsVCT(game.currentPlayer, game.currentPlayer, game, Point(), Point(), false);
+        auto vctResult = dfsVCT(game.currentPlayer, game.currentPlayer, game, Point(), Point(), Point(), false);
         if (vctResult.first) {
-            return make_pair(true, vctResult.second);
+            return make_tuple(true, vctResult.second, " VCT! ^_^");
         }
 
         //防对方VCT点
         auto VCTDefenceMoves = getVCTDefenceMoves(game.currentPlayer, game);
         if (!VCTDefenceMoves.empty()) {
-            return make_pair(false, VCTDefenceMoves);
+            return make_tuple(false, VCTDefenceMoves, " 防VCT O_o");
         }
     }
 
-    return make_pair(false, emptyPoints);
+    return make_tuple(false, emptyPoints, "");
 }
