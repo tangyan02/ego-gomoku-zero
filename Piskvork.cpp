@@ -142,14 +142,10 @@ int min(int a,int b) {
 void brain_turn()
 {
     auto nextActions = selectActions(*game);
-    if (nextActions.second.size() == 1 || nextActions.first) {
-        int actionIndex = game->getActionIndex(nextActions.second[0]);
+	if (get<1>(nextActions).size() == 1 || get<0>(nextActions)) {
+        int actionIndex = game->getActionIndex(get<1>(nextActions)[0]);
         auto p = game->getPointFromIndex(actionIndex);
-        string win = "";
-        if(nextActions.first) {
-			win = "win! ^_^";
-        }
-        pipeOut("MESSAGE : action %d,%d %s", p.x, p.y, win);
+        pipeOut("MESSAGE : action %d,%d %s", p.x, p.y, get<2>(nextActions));
         do_mymove(p.x, p.y);
         return;
     }
@@ -192,7 +188,7 @@ void brain_turn()
 
 	auto p = game->getPointFromIndex(action);
 
-	pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %f simi num %d", p.x, p.y, max, node.visits, (float)max / node.visits, simiNum);
+	pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %f simi num %d info %s", p.x, p.y, max, node.visits, (float)max / node.visits, simiNum, get<2>(nextActions));
 	do_mymove(p.x, p.y);
 }
 

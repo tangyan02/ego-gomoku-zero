@@ -504,42 +504,42 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, bool vctMode) {
     //我方长5
     auto currentWinnerMoves = getWinningMoves(game.currentPlayer, game, roundPoints);
     if (!currentWinnerMoves.empty()) {
-        return make_tuple(true, currentWinnerMoves, " 长5 ^_^");
+        return make_tuple(true, currentWinnerMoves, " win move  ");
     }
     //防止对手长5
     auto otherWinnerMoves = getWinningMoves(game.getOtherPlayer(), game, nearPoints);
     if (!otherWinnerMoves.empty()) {
-        return make_tuple(false, otherWinnerMoves, " 防5");
+        return make_tuple(false, otherWinnerMoves, " defence 5");
     }
     //我方活4
     auto activeFourMoves = getActiveFourMoves(game.currentPlayer, game, roundPoints);
     if (!activeFourMoves.empty()) {
-        return make_tuple(true, activeFourMoves, " 活4 ^_^");
+        return make_tuple(true, activeFourMoves, "  active 4 ");
     }
 
     if (!vctMode) {
         //我方VCF点
         auto vcfResult = dfsVCF(game.currentPlayer, game.currentPlayer, game, Point(), Point());
         if (vcfResult.first) {
-            return make_tuple(true, vcfResult.second, " VCF! ^_^");
+            return make_tuple(true, vcfResult.second, " VCF! ");
         }
 
         //防对方VCF点
         auto VCFDefenceMoves = getVCFDefenceMoves(game.currentPlayer, game);
         if (!VCFDefenceMoves.empty()) {
-            return make_tuple(false, VCFDefenceMoves, " 防VCF O_o");
+            return make_tuple(false, VCFDefenceMoves, " defence VCF ");
         }
     } else {
         //我方VCT点
         auto vctResult = dfsVCT(game.currentPlayer, game.currentPlayer, game, Point(), Point(), Point(), false);
         if (vctResult.first) {
-            return make_tuple(true, vctResult.second, " VCT! ^_^");
+            return make_tuple(true, vctResult.second, " VCT! ");
         }
 
         //防对方VCT点
         auto VCTDefenceMoves = getVCTDefenceMoves(game.currentPlayer, game);
         if (!VCTDefenceMoves.empty()) {
-            return make_tuple(false, VCTDefenceMoves, " 防VCT O_o");
+            return make_tuple(false, VCTDefenceMoves, " defence VCT ");
         }
     }
 
