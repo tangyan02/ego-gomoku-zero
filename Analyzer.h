@@ -26,6 +26,8 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
 std::vector<Point> getVCFDefenceMoves(int player, Game &game);
 
+std::vector<Point> getVCTDefenceMoves(int player, Game &game);
+
 std::vector<Point> getNearByEmptyPoints(Point action, Game &game);
 
 #endif //EGO_GOMOKU_ZERO_ANALYZER_H

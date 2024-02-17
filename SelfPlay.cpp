@@ -66,8 +66,8 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
         Game game(boardSize);
         std::vector<std::tuple<torch::Tensor, int, std::vector<float>>> game_data;
 
-        //开局先随机下3个点
-        for (int j = 0; j < 3; j++) {
+        //开局先随机下1个点
+        for (int j = 0; j < 1; j++) {
             auto moves = game.getEmptyPoints();
             // 创建一个随机数生成器
             std::random_device rd;

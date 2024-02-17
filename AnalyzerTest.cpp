@@ -800,3 +800,28 @@ bool testDfsVCT6() {
         return false;
     }
 }
+
+
+bool testGetVCTDefenceMoves() {
+    cout << "testGetVCTDefenceMoves" << endl;
+    Game game(20);
+    game.currentPlayer = 1;
+    game.makeMove(Point(4, 9));
+    game.makeMove(Point(2, 16));
+    game.makeMove(Point(4, 10));
+    game.makeMove(Point(6, 10));
+    game.makeMove(Point(3, 10));
+
+
+    auto result = getVCTDefenceMoves(game.currentPlayer, game);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 9) {
+        return true;
+    } else {
+        return false;
+    }
+}
