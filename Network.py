@@ -13,10 +13,10 @@ class ResidualBlock(nn.Module):
     def __init__(self, channels):
         super(ResidualBlock, self).__init__()
 
-        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(channels)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(channels)
 
     def forward(self, x):
@@ -40,32 +40,32 @@ class PolicyValueNetwork(nn.Module):
         self.board_size = 20
         # self.input_channels = 16
         self.input_channels = 2
-        self.filters = 128
+        self.residual_channels = 128
         super(PolicyValueNetwork, self).__init__()
 
         # common layers
-        self.conv1 = nn.Conv2d(self.input_channels, self.filters, kernel_size=(3, 3), padding=1)
+        self.conv1 = nn.Conv2d(self.input_channels, self.residual_channels, kernel_size=(3, 3), padding=1)
 
         self.residual_blocks = nn.Sequential(
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters)
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels)
         )
 
         # action policy layers
-        self.act_conv1 = nn.Conv2d(self.filters, 4, kernel_size=(1, 1))
+        self.act_conv1 = nn.Conv2d(self.residual_channels, 4, kernel_size=(1, 1), bias=False)
         self.act_bn1 = nn.BatchNorm2d(4)
         self.act_fc1 = nn.Linear(4 * self.board_size * self.board_size,
                                  self.board_size * self.board_size)
         # state value layers
-        self.val_conv1 = nn.Conv2d(self.filters, 2, kernel_size=(1, 1))
+        self.val_conv1 = nn.Conv2d(self.residual_channels, 2, kernel_size=(1, 1), bias=False)
         self.val_bn1 = nn.BatchNorm2d(2)
         self.val_fc1 = nn.Linear(2 * self.board_size * self.board_size, 64)
         self.val_fc2 = nn.Linear(64, 1)
@@ -112,6 +112,7 @@ def get_network(device, lr):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     return network, optimizer
+
 
 def save_network(network, optimizer, subfix=""):
     path = f"model/checkpoint{subfix}.pth"

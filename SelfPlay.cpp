@@ -25,6 +25,8 @@ void printGame(Game &game, int action, std::vector<float> &action_probs,
 
 torch::jit::Module getNetwork(torch::Device device, std::string path = "model/model_latest.pt") {
     auto model = torch::jit::load(path, device);
+    model.eval();
+    torch::NoGradGuard no_grad;
     return model;
 }
 
