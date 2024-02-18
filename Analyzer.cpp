@@ -32,18 +32,8 @@ std::vector<Point> getNearByEmptyPoints(Point action, Game &game) {
     return empty_points;
 }
 
-struct PointHash {
-    std::size_t operator()(const Point &p) const {
-        return std::hash<int>()(p.x) ^ std::hash<int>()(p.y);
-    }
-};
-
-bool operator==(const Point &p1, const Point &p2) {
-    return p1.x == p2.x && p1.y == p2.y;
-}
-
 std::vector<Point> removeDuplicates(const std::vector<Point> &points) {
-    std::unordered_set<Point, PointHash> uniquePoints(points.begin(), points.end());
+    std::unordered_set<Point, PointHash, PointEqual> uniquePoints(points.begin(), points.end());
     return {uniquePoints.begin(), uniquePoints.end()};
 }
 

@@ -37,8 +37,36 @@ Point Game::getPointFromIndex(int actionIndex) {
     return {actionIndex / boardSize, actionIndex % boardSize};
 }
 
+std::vector<Point> Game::getNearEmptyPoints() {
+    std::unordered_set<Point, PointHash, PointEqual> nearbyPointsSet;
+    int range = 3;
+    for (int row = 0; row < boardSize; row++) {
+        for (int col = 0; col < boardSize; col++) {
+            if (board[row][col] != 0) { // 非空点
+                // 检查附近的点
+                for (int dx = -range; dx <= range; dx++) {
+                    for (int dy = -range; dy <= range; dy++) {
+                        int newRow = row + dx;
+                        int newCol = col + dy;
+                        // 检查新点是否在棋盘内并且是非空的
+                        if (newRow >= 0 && newRow < boardSize && newCol >= 0 && newCol < boardSize) {
+                            if (board[newRow][newCol] == 0) {
+                                nearbyPointsSet.insert(Point(newRow, newCol));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return {nearbyPointsSet.begin(), nearbyPointsSet.end()};
+}
 
 std::vector<Point> Game::getEmptyPoints() {
+    if(!historyMoves.empty()) {
+        return getNearEmptyPoints();
+    }
     std::vector<Point> emptyPoints;
     for (int row = 0; row < boardSize; row++) {
         for (int col = 0; col < boardSize; col++) {
@@ -47,8 +75,10 @@ std::vector<Point> Game::getEmptyPoints() {
             }
         }
     }
+
     return emptyPoints;
 }
+
 
 torch::Tensor Game::getState() {
     torch::Tensor tensor = torch::zeros({16, boardSize, boardSize});

@@ -59,13 +59,14 @@ void test() {
             testGetVCFDefenceMoves4,
             testGetVCFDefenceMoves5,
             testGetNearByEmptyPoints,
+            testGetNearEmptyPoints,
             testDfsVCT,
             testDfsVCT2,
             testDfsVCT3,
             testDfsVCT4,
             testDfsVCT5,
             testDfsVCT6,
-            testGetVCTDefenceMoves
+            testGetVCTDefenceMoves,
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);

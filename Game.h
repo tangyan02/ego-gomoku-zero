@@ -18,6 +18,17 @@ public:
     bool isNull();
 };
 
+struct PointHash {
+    std::size_t operator()(const Point &p) const {
+        return std::hash<int>()(p.x) ^ std::hash<int>()(p.y);
+    }
+};
+
+struct PointEqual {
+    bool operator()(const Point &lhs, const Point &rhs) const {
+        return lhs.x == rhs.x && lhs.y == rhs.y;
+    }
+};
 
 const int MAX_BOARD_SIZE = 20;
 const int CONNECT = 5;
@@ -44,6 +55,8 @@ public:
     Point getPointFromIndex(int actionIndex);
 
     std::vector<Point> getEmptyPoints();
+
+    std::vector<Point> getNearEmptyPoints();
 
     torch::Tensor getState();
 
