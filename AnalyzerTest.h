@@ -30,5 +30,6 @@ bool testDfsVCT4();
 bool testDfsVCT5();
 bool testDfsVCT6();
 bool testGetVCTDefenceMoves();
+bool testDfsVCTIter();
 
 #endif //EGO_GOMOKU_ZERO_ANALYZERTEST_H

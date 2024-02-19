@@ -3,7 +3,7 @@
 using namespace std;
 
 void printGame(Game &game, int action, std::vector<float> &action_probs,
-               float temperature, const std::string &part, const string selectInfo) {
+               float temperature, const std::string &part, const string selectInfo, MonteCarloTree *mcts) {
     game.printBoard(part);
     std::string line;
     for (int i = 0; i < game.boardSize * game.boardSize; i++) {
@@ -15,11 +15,20 @@ void printGame(Game &game, int action, std::vector<float> &action_probs,
             line = "";
         }
     }
+
+    float value = 1;
+    if (mcts != nullptr) {
+        auto state = game.getState();
+        auto eval = mcts->evaluate_state(state);
+        value = eval.first;
+    }
+
     std::string pic = (game.getOtherPlayer() == 1) ? "x" : "o";
     cout << part << " " << pic << " action is " << game.getPointFromIndex(action).x << ","
          << game.getPointFromIndex(action).y
          << " on rate " << round(action_probs[action] * 1000) / 1000
          << " temperature " << round(temperature * 100) / 100
+         << " value " << value
          << selectInfo << endl;
 }
 
@@ -85,13 +94,13 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
         int step = 0;
         while (!game.isGameOver()) {
             //如果只有唯一选择，则直接选择
-            auto nextActions = selectActions(game, true);
+            auto nextActions = selectActions(game, false);
             if (get<1>(nextActions).size() == 1) {
                 int actionIndex = game.getActionIndex(get<1>(nextActions)[0]);
                 vector<float> probs(game.boardSize * game.boardSize);
                 probs[actionIndex] = 1;
                 addAction(game, actionIndex, game_data, probs);
-                printGame(game, actionIndex, probs, 0, part, get<2>(nextActions));
+                printGame(game, actionIndex, probs, 0, part, get<2>(nextActions), nullptr);
                 step++;
                 continue;
             }
@@ -124,7 +133,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
             int action = actions[distribution(gen)];
 
             addAction(game, action, game_data, action_probs);
-            printGame(game, action, action_probs_normalized, temperature, part, get<2>(nextActions));
+            printGame(game, action, action_probs_normalized, temperature, part, node.selectInfo, &mcts);
             step++;
         }
 

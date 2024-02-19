@@ -19,6 +19,7 @@ public:
     double prior_prob;
     double ucb{};
     std::unordered_map<int, Node *> children;
+    string selectInfo;
 
     Node(Node *parent = nullptr);
 
@@ -36,9 +37,9 @@ public:
     MonteCarloTree(torch::jit::Module *network, torch::Device device,
                    float exploration_factor = 5);
 
-    void simulate(Game game);
+    void simulate(Game game, int vctTimeLimit);
 
-    void search(Game &game, Node *node, int num_simulations);
+    void search(Game &game, Node *node, int num_simulations, int vctTimeLimit = 3000);
 
     std::pair<float, std::vector<float>> evaluate_state(torch::Tensor &state);
 

@@ -51,14 +51,14 @@ MonteCarloTree::MonteCarloTree(torch::jit::Module *network, torch::Device device
         : network(network), root(nullptr), device(device), exploration_factor(exploration_factor) {
 }
 
-void MonteCarloTree::simulate(Game game) {
+void MonteCarloTree::simulate(Game game, int vctTimeLimit) {
     if (game.isGameOver()) {
         return;
     }
 
     Node *node = root;
     while (!node->isLeaf()) {
-        std::pair < int, Node * > result = node->selectChild(exploration_factor);
+        std::pair<int, Node *> result = node->selectChild(exploration_factor);
         int action = result.first;
         // cout << action << endl;
         node = result.second;
@@ -76,7 +76,8 @@ void MonteCarloTree::simulate(Game game) {
         if (node->parent == nullptr) {
             useVct = true;
         }
-        auto actions = selectActions(game, useVct);
+        auto actions = selectActions(game, useVct, vctTimeLimit);
+        node->selectInfo = get<2>(actions);
         if (get<0>(actions) && node->parent != nullptr) {
             value = 1;
         } else {
@@ -92,12 +93,12 @@ void MonteCarloTree::simulate(Game game) {
     backpropagate(node, -value);
 }
 
-void MonteCarloTree::search(Game &game, Node *node, int num_simulations) {
+void MonteCarloTree::search(Game &game, Node *node, int num_simulations, int vctTimeLimit) {
     root = node;
 
     for (int i = 0; i < num_simulations; i++) {
         // cout << "开始模拟，次数 " << i << endl;
-        simulate(game);
+        simulate(game, vctTimeLimit);
     }
 }
 

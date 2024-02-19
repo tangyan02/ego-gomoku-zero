@@ -67,6 +67,7 @@ void test() {
             testDfsVCT5,
             testDfsVCT6,
             testGetVCTDefenceMoves,
+            testDfsVCTIter
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);

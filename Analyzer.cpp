@@ -193,39 +193,6 @@ std::vector<Point> getVCFDefenceMoves(int player, Game &game) {
 }
 
 
-std::vector<Point> getVCTDefenceMoves(int player, Game &game) {
-    //如果有2个以上VCT点，则堵任意一个
-    //如果只有一个VCT点，阻止活4点和眠4点,加上自己的所有眠4点,在加上阻止活3点,加上自己活3点
-    std::vector<Point> defenceMoves;
-    auto allMoves = game.getEmptyPoints();
-    auto vctResult = dfsVCT(3 - player, 3 - player, game, Point(), Point(), Point(), false);
-    if (vctResult.first) {
-        if (vctResult.second.size() >= 2) {
-            return vctResult.second;
-        }
-
-        auto otherActiveFourMoves = getActiveFourMoves(3 - player, game, allMoves);
-        if (otherActiveFourMoves.size() >= 2) {
-            return otherActiveFourMoves;
-        }
-
-        auto otherSleepyFourMoves = getSleepyFourMoves(3 - player, game, allMoves);
-        auto sleepyFourMoves = getSleepyFourMoves(player, game, allMoves);
-        defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
-        defenceMoves.insert(defenceMoves.end(), otherSleepyFourMoves.begin(), otherSleepyFourMoves.end());
-        defenceMoves.insert(defenceMoves.end(), sleepyFourMoves.begin(), sleepyFourMoves.end());
-
-        if (otherActiveFourMoves.empty()) {
-            auto otherActiveThreeMoves = getActiveThreeMoves(3 - player, game, allMoves);
-            defenceMoves.insert(defenceMoves.end(), otherActiveThreeMoves.begin(), otherActiveThreeMoves.end());
-
-            auto activeThreeMoves = getActiveThreeMoves(player, game, allMoves);
-            defenceMoves.insert(defenceMoves.end(), activeThreeMoves.begin(), activeThreeMoves.end());
-        }
-    }
-    return removeDuplicates(defenceMoves);
-}
-
 // 创建一个函数来查找特定的点
 bool existPoints(const std::vector<Point> &moves, const Point &target) {
     for (const auto &item: moves) {
@@ -327,10 +294,19 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
 std::pair<bool, std::vector<Point>>
 dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, Point attackPoint,
-       bool fourMode, int level, int threeCount) {
+       bool fourMode, int &nodeRecord, int level, int threeCount, int maxThreeCount, long long timeout) {
+
+    nodeRecord++;
+
+    if (timeout > 0) {
+        if (getSystemTime() > timeout) {
+            return std::make_pair(false, std::vector<Point>());
+        }
+    }
 
     //使用有限点长3，防止检索范围爆炸
-    if (threeCount >= 5) {
+    if (threeCount >= maxThreeCount) {
+//        cout<<"判定转换长4"<<endl;
         fourMode = true;
     }
 //    std::cout << "===" << std::endl;
@@ -431,6 +407,9 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
                 if (threeDefenceMoves.empty()) {
                     return std::make_pair(false, std::vector<Point>());
                 }
+                if (threeDefenceMoves.size() > 1) {
+
+                }
 
                 moves.insert(moves.end(), threeDefenceMoves.begin(), threeDefenceMoves.end());
                 //长4
@@ -460,7 +439,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         game.board[item.x][item.y] = currentPlayer;
         auto nextAttackMove = attack && attackMove ? item : attackPoint;
         auto dfsResult = dfsVCT(checkPlayer, 3 - currentPlayer, game, item, lastMove, nextAttackMove,
-                                fourMode, level + 1, threeCount);
+                                fourMode, nodeRecord, level + 1, threeCount, maxThreeCount, timeout);
 
         if (attack) {
             if (dfsResult.first) {
@@ -484,10 +463,75 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     return std::make_pair(finalResult, winMoves);
 }
 
+
+tuple<bool, vector<Point>, int> dfsVCTIter(int player, Game &game, int timeLimit) {
+    long long startTime = getSystemTime();
+    long long timeout = getSystemTime() + static_cast<long long>(timeLimit);
+    int threeCount = 1;
+    if (timeLimit == 0) {
+        timeout = 0;
+    }
+    int lastNodeRecord = 0;
+    for (; threeCount <= 20; threeCount++) {
+//        cout << "threeCount=" << threeCount << " startTime=" << startTime << " timeout=" << timeout << " timeLimit="
+//             << timeLimit << endl;
+        int nodeRecord = 0;
+        auto dfsResult = dfsVCT(player, player, game, Point(), Point(), Point(),
+                                false, nodeRecord, 0, 0, threeCount, timeout);
+//        cout << "nodeRecord=" << nodeRecord << endl;
+        if (lastNodeRecord == nodeRecord || (getSystemTime() > timeout && timeout > 0)) {
+            break;
+        }
+        lastNodeRecord = nodeRecord;
+        if (dfsResult.first) {
+//            cout << "time cost " << getSystemTime() - startTime << endl;
+            return make_tuple(dfsResult.first, dfsResult.second, threeCount);
+        }
+    }
+//    cout << " time cost " << getSystemTime() - startTime << endl;
+    return make_tuple(false, std::vector<Point>(), threeCount);
+}
+
+
+std::vector<Point> getVCTDefenceMoves(int player, Game &game, int &dfsThreeCount, int timeLimit) {
+    //如果有2个以上VCT点，则堵任意一个
+    //如果只有一个VCT点，阻止活4点和眠4点,加上自己的所有眠4点,在加上阻止活3点,加上自己活3点
+    std::vector<Point> defenceMoves;
+    auto allMoves = game.getEmptyPoints();
+    auto vctResult = dfsVCTIter(3 - player, game, timeLimit);
+    dfsThreeCount = get<2>(vctResult);
+    if (get<0>(vctResult)) {
+        if (get<1>(vctResult).size() >= 2) {
+            return get<1>(vctResult);
+        }
+
+        auto otherActiveFourMoves = getActiveFourMoves(3 - player, game, allMoves);
+        if (otherActiveFourMoves.size() >= 2) {
+            return otherActiveFourMoves;
+        }
+
+        auto otherSleepyFourMoves = getSleepyFourMoves(3 - player, game, allMoves);
+        auto sleepyFourMoves = getSleepyFourMoves(player, game, allMoves);
+        defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
+        defenceMoves.insert(defenceMoves.end(), otherSleepyFourMoves.begin(), otherSleepyFourMoves.end());
+        defenceMoves.insert(defenceMoves.end(), sleepyFourMoves.begin(), sleepyFourMoves.end());
+
+        if (otherActiveFourMoves.empty()) {
+            auto otherActiveThreeMoves = getActiveThreeMoves(3 - player, game, allMoves);
+            defenceMoves.insert(defenceMoves.end(), otherActiveThreeMoves.begin(), otherActiveThreeMoves.end());
+
+            auto activeThreeMoves = getActiveThreeMoves(player, game, allMoves);
+            defenceMoves.insert(defenceMoves.end(), activeThreeMoves.begin(), activeThreeMoves.end());
+        }
+    }
+    return removeDuplicates(defenceMoves);
+}
+
+
 /**
  * 返回两个值，第一个值代表返回值是否是必胜点
  */
-tuple<bool, vector<Point>, string> selectActions(Game &game, bool vctMode) {
+tuple<bool, vector<Point>, string> selectActions(Game &game, bool vctMode, int timeLimit) {
     auto emptyPoints = game.getEmptyPoints();
     auto nearPoints = getNearByEmptyPoints(game.lastAction, game);
     auto roundPoints = getTwoRoundPoints(game.lastAction, game.lastLastAction, game);
@@ -520,16 +564,20 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, bool vctMode) {
             return make_tuple(false, VCFDefenceMoves, " defence VCF ");
         }
     } else {
+        int maxThreeCount = 1;
+        int halfTimeLimit = timeLimit / 2;
+
         //我方VCT点
-        auto vctResult = dfsVCT(game.currentPlayer, game.currentPlayer, game, Point(), Point(), Point(), false);
-        if (vctResult.first) {
-            return make_tuple(true, vctResult.second, " VCT! ");
+        auto vctResult = dfsVCTIter(game.currentPlayer, game, halfTimeLimit);
+        if (get<0>(vctResult)) {
+            return make_tuple(true, get<1>(vctResult), " VCT! threeCount=" + to_string(get<2>(vctResult)));
         }
 
         //防对方VCT点
-        auto VCTDefenceMoves = getVCTDefenceMoves(game.currentPlayer, game);
+        int dfsThreeCount = 0;
+        auto VCTDefenceMoves = getVCTDefenceMoves(game.currentPlayer, game, dfsThreeCount, halfTimeLimit);
         if (!VCTDefenceMoves.empty()) {
-            return make_tuple(false, VCTDefenceMoves, " defence VCT ");
+            return make_tuple(false, VCTDefenceMoves, " defence VCT treeCount=" + to_string(dfsThreeCount));
         }
     }
 

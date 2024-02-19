@@ -8,10 +8,10 @@
 #include "Game.h"
 #include "MCTS.h"
 #include "math.h"
-#include <sys/timeb.h>
 #include "SelfPlay.h"
 #include <direct.h>
 #include <iostream>
+#include "Utils.h"
 
 
 const char* infotext = "name=\"Ego-Zero\", author=\"TangYan\", version=\"1.0\", country=\"China\", email=\"tangyan1412@foxmail.com\"";
@@ -25,12 +25,6 @@ static torch::jit::Module network;
 static auto device = torch::kCPU;
 
 using namespace std;
-
-long long getSystemTime() {
-	struct timeb t;
-	ftime(&t);
-	return 1000 * t.time + t.millitm;
-}
 
 string getPrefix() {
 	char path[MAX_PATH];

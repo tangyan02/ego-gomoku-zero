@@ -497,7 +497,8 @@ bool testDfsVCT() {
     game.makeMove(Point(7, 8));
     game.makeMove(Point(7, 7));
 
-    auto result = dfsVCT(1, 1, game, Point(), Point(), Point(), false);
+    int nodeRecord = 0;
+    auto result = dfsVCT(1, 1, game, Point(), Point(), Point(), false, nodeRecord);
     for (Point &move: result.second) {
         game.board[move.x][move.y] = 3;
     }
@@ -523,7 +524,8 @@ bool testDfsVCT2() {
     game.makeMove(Point(16, 16));
     game.makeMove(Point(16, 17));
 
-    auto result = dfsVCT(1, 1, game, Point(), Point(), Point(), false);
+    int nodeRecord = 0;
+    auto result = dfsVCT(1, 1, game, Point(), Point(), Point(), false, nodeRecord);
     for (Point &move: result.second) {
         game.board[move.x][move.y] = 3;
     }
@@ -610,7 +612,8 @@ bool testDfsVCT3() {
     game.makeMove(Point(8, 11));
     game.makeMove(Point(8, 10));
 
-    auto result = dfsVCT(2, 2, game, Point(), Point(), Point(), false);
+    int nodeRecord = 0;
+    auto result = dfsVCT(2, 2, game, Point(), Point(), Point(), false, nodeRecord);
     for (Point &move: result.second) {
         game.board[move.x][move.y] = 3;
     }
@@ -652,7 +655,8 @@ bool testDfsVCT4() {
     game.makeMove(Point(5, 15));
     game.makeMove(Point(6, 14));
 
-    auto result = dfsVCT(1, 1, game, Point(), Point(), Point(), false);
+    int nodeRecord = 0;
+    auto result = dfsVCT(1, 1, game, Point(), Point(), Point(), false, nodeRecord);
     for (Point &move: result.second) {
         game.board[move.x][move.y] = 3;
     }
@@ -706,7 +710,8 @@ bool testDfsVCT5() {
     game.makeMove(Point(17, 18));
     game.makeMove(Point(15, 14));
     game.makeMove(Point(15, 13));
-    auto result = dfsVCT(2, 2, game, Point(), Point(), Point(), false);
+    int nodeRecord = 0;
+    auto result = dfsVCT(2, 2, game, Point(), Point(), Point(), false, nodeRecord);
     for (Point &move: result.second) {
         game.board[move.x][move.y] = 3;
     }
@@ -787,7 +792,8 @@ bool testDfsVCT6() {
     game.makeMove(Point(10, 1));
     game.makeMove(Point(11, 0));
 
-    auto result = dfsVCT(game.currentPlayer, game.currentPlayer, game, Point(), Point(), Point(), false);
+    int nodeRecord = 0;
+    auto result = dfsVCT(game.currentPlayer, game.currentPlayer, game, Point(), Point(), Point(), false, nodeRecord);
     for (Point &move: result.second) {
         game.board[move.x][move.y] = 3;
     }
@@ -812,14 +818,48 @@ bool testGetVCTDefenceMoves() {
     game.makeMove(Point(6, 10));
     game.makeMove(Point(3, 10));
 
-
-    auto result = getVCTDefenceMoves(game.currentPlayer, game);
+    int threeCount = 0;
+    auto result = getVCTDefenceMoves(game.currentPlayer, game, threeCount);
     for (Point &move: result) {
         game.board[move.x][move.y] = 3;
     }
     game.printBoard();
+    cout << "threeCount=" << threeCount << endl;
     cout << result.size() << endl;
-    if (result.size() == 9) {
+    if (result.size() == 10) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool testDfsVCTIter() {
+    cout << "testDfsVCTIter" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(10, 4));
+    game.makeMove(Point(2, 0));
+    game.makeMove(Point(1, 5));
+    game.makeMove(Point(2, 1));
+    game.makeMove(Point(1, 6));
+    game.makeMove(Point(2, 2));
+    game.makeMove(Point(2, 6));
+    game.makeMove(Point(10, 3));
+    game.makeMove(Point(3, 5));
+    game.makeMove(Point(0, 8));
+    game.makeMove(Point(6, 6));
+    game.makeMove(Point(7, 8));
+    game.makeMove(Point(7, 7));
+
+    auto result = dfsVCTIter(1, game, 1000);
+    for (Point &move: get<1>(result)) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << "break level " << get<2>(result) << endl;
+    cout << "size " << get<1>(result).size() << endl;
+    cout << get<0>(result) << endl;
+    if (get<0>(result)) {
         return true;
     } else {
         return false;
