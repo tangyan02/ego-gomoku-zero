@@ -577,7 +577,7 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, bool vctMode, int t
         int dfsThreeCount = 0;
         auto VCTDefenceMoves = getVCTDefenceMoves(game.currentPlayer, game, dfsThreeCount, halfTimeLimit);
         if (!VCTDefenceMoves.empty()) {
-            return make_tuple(false, VCTDefenceMoves, " defence VCT treeCount=" + to_string(dfsThreeCount));
+            return make_tuple(false, VCTDefenceMoves, " defence VCT threeCount=" + to_string(dfsThreeCount));
         }
     }
 

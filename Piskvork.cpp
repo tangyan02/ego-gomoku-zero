@@ -152,7 +152,6 @@ void brain_turn()
 	int thisTimeOut = info_time_left / 10;
 	thisTimeOut = min(info_timeout_turn, thisTimeOut);
 
-	//��һ������ռ��һ��0.6��ʱ�䣬Ԥ�ȴ������
 	if (firstCost == -1) {
 		firstCost = info_timeout_match - info_time_left;
 		thisTimeOut -= firstCost;

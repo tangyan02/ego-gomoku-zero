@@ -73,14 +73,15 @@ void MonteCarloTree::simulate(Game game, int &vctTimeLimit) {
         value = -1;
     } else {
         bool useVct = false;
-        if (vctTimeLimit > 0) {
+        int vctTimeLimitMin = 30;
+        if (vctTimeLimit > vctTimeLimitMin) {
 //            cout << "剩余vctTime" << vctTimeLimit << endl;
             useVct = true;
         }
         auto startTime = getSystemTime();
         auto actions = selectActions(game, useVct, vctTimeLimit);
         auto costTime = getSystemTime() - startTime;
-        if (vctTimeLimit > 0) {
+        if (vctTimeLimit > vctTimeLimitMin) {
             vctTimeLimit -= costTime;
         }
         node->selectInfo = get<2>(actions);
