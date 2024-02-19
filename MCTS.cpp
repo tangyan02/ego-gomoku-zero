@@ -51,7 +51,7 @@ MonteCarloTree::MonteCarloTree(torch::jit::Module *network, torch::Device device
         : network(network), root(nullptr), device(device), exploration_factor(exploration_factor) {
 }
 
-void MonteCarloTree::simulate(Game game, int &vctTimeLimit) {
+void MonteCarloTree::simulate(Game game, int &vctTimeLimit, bool realPlay) {
     if (game.isGameOver()) {
         return;
     }
@@ -79,7 +79,7 @@ void MonteCarloTree::simulate(Game game, int &vctTimeLimit) {
             useVct = true;
         }
         auto startTime = getSystemTime();
-        auto actions = selectActions(game, useVct, vctTimeLimit);
+        auto actions = selectActions(game, useVct, vctTimeLimit, realPlay);
         auto costTime = getSystemTime() - startTime;
         if (vctTimeLimit > vctTimeLimitMin) {
             vctTimeLimit -= costTime;
@@ -100,12 +100,12 @@ void MonteCarloTree::simulate(Game game, int &vctTimeLimit) {
     backpropagate(node, -value);
 }
 
-void MonteCarloTree::search(Game &game, Node *node, int num_simulations, int &vctTimeLimit) {
+void MonteCarloTree::search(Game &game, Node *node, int num_simulations, int &vctTimeLimit, bool realPlay) {
     root = node;
 
     for (int i = 0; i < num_simulations; i++) {
         // cout << "开始模拟，次数 " << i << endl;
-        simulate(game, vctTimeLimit);
+        simulate(game, vctTimeLimit, realPlay);
     }
 }
 

@@ -107,7 +107,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
 
             //开始mcts预测
             Node node;
-            int vctTimeLimit = 3000;
+            int vctTimeLimit = 2000;
             mcts.search(game, &node, numSimulations, vctTimeLimit);
 
             std::vector<int> actions;
