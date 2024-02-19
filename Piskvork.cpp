@@ -152,9 +152,7 @@ void brain_turn()
 
 	pipeOut("MESSAGE time limit %d", thisTimeOut);
 	pipeOut("MESSAGE current player %d", game->currentPlayer);
-	int timeOut = thisTimeOut / 4 * 3;
-	int comboTimeOut = thisTimeOut - timeOut;
-
+	int comboTimeOut = thisTimeOut * 1 / 3;
 
 	Node node;
 	auto startTime = getSystemTime();
@@ -162,7 +160,7 @@ void brain_turn()
 	while (true) {
 		auto currentTime = getSystemTime();
 
-		mcts.search(*game, &node, 1);
+		mcts.search(*game, &node, 1, comboTimeOut);
 		auto passTime = currentTime - startTime;
 		simiNum += 1;
 		if (passTime > thisTimeOut) {
@@ -175,14 +173,15 @@ void brain_turn()
 	for (auto item : node.children) {
 		int visit = item.second->visits;
 		if (visit > max) {
-			action = item.first;
+			actnewnewion = item.first;
 			max = visit;
 		}
 	}
 
 	auto p = game->getPointFromIndex(action);
 
-	pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %f simi num %d info %s", p.x, p.y, max, node.visits, (float)max / node.visits, simiNum, get<2>(nextActions));
+	pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %f simi num %d info %s", p.x, p.y, max, node.visits, (float)max / node.visits, simiNum, node.selectInfo.c_str());
+	mcts.release(&node);
 	do_mymove(p.x, p.y);
 }
 
