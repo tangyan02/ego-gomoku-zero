@@ -22,6 +22,8 @@ static bool piskvorkMessageEnable;
 static Game* game;
 static torch::jit::Module network;
 
+static int firstCost = -1;
+
 static auto device = torch::kCPU;
 
 using namespace std;
@@ -150,6 +152,13 @@ void brain_turn()
 	int thisTimeOut = info_time_left / 10;
 	thisTimeOut = min(info_timeout_turn, thisTimeOut);
 
+	//第一步总是占用一点0.6秒时间，预先处理掉。
+	if (firstCost == -1) {
+		firstCost = info_timeout_match - info_time_left;
+		thisTimeOut -= firstCost;
+		firstCost = 0;
+	}
+
 	pipeOut("MESSAGE time limit %d", thisTimeOut);
 	pipeOut("MESSAGE current player %d", game->currentPlayer);
 	int comboTimeOut = thisTimeOut * 1 / 3;
@@ -158,10 +167,8 @@ void brain_turn()
 	auto startTime = getSystemTime();
 	int simiNum = 0;
 	while (true) {
-		auto currentTime = getSystemTime();
-
 		mcts.search(*game, &node, 1, comboTimeOut);
-		auto passTime = currentTime - startTime;
+		auto passTime = getSystemTime() - startTime;
 		simiNum += 1;
 		if (passTime > thisTimeOut) {
 			break;
