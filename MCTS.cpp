@@ -74,7 +74,7 @@ void MonteCarloTree::simulate(Game game, int &vctTimeLimit) {
     } else {
         bool useVct = false;
         if (vctTimeLimit > 0) {
-//            cout << "剩余vctTime" << vctTimeLimit << endl;
+            cout << "剩余vctTime" << vctTimeLimit << endl;
             useVct = true;
         }
         auto startTime = getSystemTime();
@@ -99,7 +99,7 @@ void MonteCarloTree::simulate(Game game, int &vctTimeLimit) {
     backpropagate(node, -value);
 }
 
-void MonteCarloTree::search(Game &game, Node *node, int num_simulations, int vctTimeLimit) {
+void MonteCarloTree::search(Game &game, Node *node, int num_simulations, int &vctTimeLimit) {
     root = node;
 
     for (int i = 0; i < num_simulations; i++) {

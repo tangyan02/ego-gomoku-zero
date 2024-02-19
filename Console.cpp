@@ -40,7 +40,8 @@ Point aiMove() {
 
     MonteCarloTree mcts = MonteCarloTree(&network, torch::kCPU, 1);
     Node node;
-    mcts.search(game, &node, 200);
+    int vctTimeLimit = 3000;
+    mcts.search(game, &node, 200, vctTimeLimit);
 
     int max = 0;
     int action = -1;

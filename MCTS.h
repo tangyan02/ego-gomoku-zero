@@ -39,7 +39,7 @@ public:
 
     void simulate(Game game, int &vctTimeLimit);
 
-    void search(Game &game, Node *node, int num_simulations, int vctTimeLimit = 3000);
+    void search(Game &game, Node *node, int num_simulations, int &vctTimeLimit);
 
     std::pair<float, std::vector<float>> evaluate_state(torch::Tensor &state);
 

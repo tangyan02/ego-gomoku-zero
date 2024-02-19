@@ -152,7 +152,7 @@ void brain_turn()
 	int thisTimeOut = info_time_left / 10;
 	thisTimeOut = min(info_timeout_turn, thisTimeOut);
 
-	//µÚÒ»²½×ÜÊÇÕ¼ÓÃÒ»µã0.6ÃëÊ±¼ä£¬Ô¤ÏÈ´¦Àíµô¡£
+	//ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ¼ï¿½ï¿½Ò»ï¿½ï¿½0.6ï¿½ï¿½Ê±ï¿½ä£¬Ô¤ï¿½È´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	if (firstCost == -1) {
 		firstCost = info_timeout_match - info_time_left;
 		thisTimeOut -= firstCost;
@@ -167,6 +167,7 @@ void brain_turn()
 	auto startTime = getSystemTime();
 	int simiNum = 0;
 	while (true) {
+        int vctTimeLimit = comboTimeOut;
 		mcts.search(*game, &node, 1, comboTimeOut);
 		auto passTime = getSystemTime() - startTime;
 		simiNum += 1;
