@@ -37,7 +37,7 @@ public:
     MonteCarloTree(torch::jit::Module *network, torch::Device device,
                    float exploration_factor = 5);
 
-    void simulate(Game game, int vctTimeLimit);
+    void simulate(Game game, int &vctTimeLimit);
 
     void search(Game &game, Node *node, int num_simulations, int vctTimeLimit = 3000);
 
