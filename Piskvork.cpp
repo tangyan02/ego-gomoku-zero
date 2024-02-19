@@ -167,7 +167,7 @@ void brain_turn()
 	int simiNum = 0;
 	while (true) {
         int vctTimeLimit = comboTimeOut;
-		mcts.search(*game, &node, 1, comboTimeOut);
+		mcts.search(*game, &node, 1, comboTimeOut, true);
 		auto passTime = getSystemTime() - startTime;
 		simiNum += 1;
 		if (passTime > thisTimeOut) {
