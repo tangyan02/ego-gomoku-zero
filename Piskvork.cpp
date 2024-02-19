@@ -173,7 +173,7 @@ void brain_turn()
 	for (auto item : node.children) {
 		int visit = item.second->visits;
 		if (visit > max) {
-			actnewnewion = item.first;
+			action = item.first;
 			max = visit;
 		}
 	}
