@@ -4,24 +4,19 @@
 static int dx[8] = {0, 0, 1, -1, 1, 1, -1, -1};
 static int dy[8] = {1, -1, 0, 0, 1, -1, 1, -1};
 
-void printVector(vector<Point> &a) {
+void printVector(vector <Point> &a) {
     for (const auto &item: a) {
         cout << "(" << item.x << "," << item.y << ") ";
     }
     cout << endl;
 }
 
-std::vector<Point> getNearByEmptyPoints(Point action, Game &game, int direct) {
-    std::vector<Point> empty_points;
+std::vector <Point> getNearByEmptyPoints(Point action, Game &game) {
+    std::vector <Point> empty_points;
     if (!action.isNull()) {
         int last_row = action.x;
         int last_col = action.y;
         for (int i = 0; i < 8; i++) {
-            if (direct > 0) {
-                if (direct != i) {
-                    continue;
-                }
-            }
             int x = dx[i];
             int y = dy[i];
             for (int k = 1; k <= 5; k++) {
@@ -37,14 +32,14 @@ std::vector<Point> getNearByEmptyPoints(Point action, Game &game, int direct) {
     return empty_points;
 }
 
-std::vector<Point> removeDuplicates(const std::vector<Point> &points) {
-    std::unordered_set<Point, PointHash, PointEqual> uniquePoints(points.begin(), points.end());
+std::vector <Point> removeDuplicates(const std::vector <Point> &points) {
+    std::unordered_set <Point, PointHash, PointEqual> uniquePoints(points.begin(), points.end());
     return {uniquePoints.begin(), uniquePoints.end()};
 }
 
-std::vector<Point> getTwoRoundPoints(Point one, Point two, Game &game) {
-    std::vector<Point> empty_points;
-    std::vector<Point> empty_points_last;
+std::vector <Point> getTwoRoundPoints(Point one, Point two, Game &game) {
+    std::vector <Point> empty_points;
+    std::vector <Point> empty_points_last;
     if (one.x >= 0 && one.y >= 0) {
         empty_points = getNearByEmptyPoints(one, game);
     }
@@ -56,8 +51,8 @@ std::vector<Point> getTwoRoundPoints(Point one, Point two, Game &game) {
     return unique_points;
 }
 
-std::vector<Point> getWinningMoves(int player, Game &game, std::vector<Point> &basedMoves) {
-    std::vector<Point> winning_moves;
+std::vector <Point> getWinningMoves(int player, Game &game, std::vector <Point> &basedMoves) {
+    std::vector <Point> winning_moves;
     for (const auto &point: basedMoves) {
         int row = point.x;
         int col = point.y;
@@ -74,8 +69,8 @@ std::vector<Point> getWinningMoves(int player, Game &game, std::vector<Point> &b
 }
 
 
-std::vector<Point> getActiveThreeMoves(int player, Game &game, std::vector<Point> &basedMoves) {
-    std::vector<Point> result;
+std::vector <Point> getActiveThreeMoves(int player, Game &game, std::vector <Point> &basedMoves) {
+    std::vector <Point> result;
     for (const auto &point: basedMoves) {
         int row = point.x;
         int col = point.y;
@@ -83,13 +78,9 @@ std::vector<Point> getActiveThreeMoves(int player, Game &game, std::vector<Point
             continue;
         }
         game.board[row][col] = player;
-        vector<Point> winMoves;
-        for (int direct = 0; direct < 8; direct++) {
-            auto nearByEmptyPointsInDirect = getNearByEmptyPoints(point, game, direct);
-            auto winMovesInDirect = getActiveFourMoves(player, game, nearByEmptyPointsInDirect, direct);
-            winMoves.insert(winMoves.end(), winMovesInDirect.begin(), winMovesInDirect.end());
-        }
-        if (!winMoves.empty()) {
+        auto nearByEmptyPoints = getNearByEmptyPoints(point, game);
+        auto winMoves = getActiveFourMoves(player, game, nearByEmptyPoints);
+        if (winMoves.size() >= 1) {
             result.emplace_back(point);
         }
         game.board[row][col] = 0;
@@ -97,8 +88,8 @@ std::vector<Point> getActiveThreeMoves(int player, Game &game, std::vector<Point
     return result;
 }
 
-std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point> &basedMoves, int direct) {
-    std::vector<Point> result;
+std::vector <Point> getActiveFourMoves(int player, Game &game, std::vector <Point> &basedMoves) {
+    std::vector <Point> result;
     for (const auto &point: basedMoves) {
         int row = point.x;
         int col = point.y;
@@ -106,7 +97,7 @@ std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point>
             continue;
         }
         game.board[row][col] = player;
-        auto nearByEmptyPoints = getNearByEmptyPoints(point, game, direct);
+        auto nearByEmptyPoints = getNearByEmptyPoints(point, game);
         auto winMoves = getWinningMoves(player, game, nearByEmptyPoints);
         if (winMoves.size() >= 2) {
             result.emplace_back(point);
@@ -116,8 +107,8 @@ std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point>
     return result;
 }
 
-std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point> &basedMoves) {
-    std::vector<Point> result;
+std::vector <Point> getSleepyFourMoves(int player, Game &game, std::vector <Point> &basedMoves) {
+    std::vector <Point> result;
     for (const auto &point: basedMoves) {
         int row = point.x;
         int col = point.y;
@@ -135,10 +126,10 @@ std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point>
     return result;
 }
 
-std::vector<Point> getThreeDefenceMoves(int player, Game &game) {
+std::vector <Point> getThreeDefenceMoves(int player, Game &game) {
     //如果对方有2个活4点，阻止活4点
     //如果对方只有1个活4点，则阻止活4点和眠4点,加上自己的所有眠4点
-    std::vector<Point> defenceMoves;
+    std::vector <Point> defenceMoves;
     auto allMoves = game.getEmptyPoints();
     auto otherActiveFourMoves = getActiveFourMoves(3 - player, game, allMoves);
     if (!otherActiveFourMoves.empty()) {
@@ -155,10 +146,10 @@ std::vector<Point> getThreeDefenceMoves(int player, Game &game) {
 }
 
 
-std::vector<Point> getThreeDefenceMovesAtOnlyDefence(int player, Game &game, std::vector<Point> &basedMoves) {
+std::vector <Point> getThreeDefenceMovesAtOnlyDefence(int player, Game &game, std::vector <Point> &basedMoves) {
     //如果对方有2个活4点，阻止活4点
     //如果对方只有1个活4点，则阻止活4点和眠4点
-    std::vector<Point> defenceMoves;
+    std::vector <Point> defenceMoves;
     auto otherActiveFourMoves = getActiveFourMoves(3 - player, game, basedMoves);
     if (!otherActiveFourMoves.empty()) {
         if (otherActiveFourMoves.size() >= 2) {
@@ -171,10 +162,10 @@ std::vector<Point> getThreeDefenceMovesAtOnlyDefence(int player, Game &game, std
     return removeDuplicates(defenceMoves);
 }
 
-std::vector<Point> getVCFDefenceMoves(int player, Game &game) {
+std::vector <Point> getVCFDefenceMoves(int player, Game &game) {
     //如果有2个VCF点，则堵任意一个
     //如果只有一个VCF点，则类似防3处理，阻止活4点和眠4点,加上自己的所有眠4点,在加上阻止活3点
-    std::vector<Point> defenceMoves;
+    std::vector <Point> defenceMoves;
     auto allMoves = game.getEmptyPoints();
     auto vcfResult = dfsVCF(3 - player, 3 - player, game, Point(), Point());
     if (vcfResult.first) {
@@ -203,7 +194,7 @@ std::vector<Point> getVCFDefenceMoves(int player, Game &game) {
 
 
 // 创建一个函数来查找特定的点
-bool existPoints(const std::vector<Point> &moves, const Point &target) {
+bool existPoints(const std::vector <Point> &moves, const Point &target) {
     for (const auto &item: moves) {
         if (item.x == target.x && item.y == target.y) {
             return true;
@@ -214,14 +205,14 @@ bool existPoints(const std::vector<Point> &moves, const Point &target) {
 
 std::pair<bool, std::vector<Point>>
 dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level,
-       unordered_set<Point, PointHash, PointEqual> *attackHistory) {
+       unordered_set <Point, PointHash, PointEqual> *attackHistory) {
 //    std::cout << "===" << std::endl;
 //    game.printBoard();
 //    std::cout << "===" << std::endl;
-    std::vector<Point> moves;
+    std::vector <Point> moves;
     bool attack = checkPlayer == currentPlayer;
 
-    std::vector<Point> nearMoves;
+    std::vector <Point> nearMoves;
     if (lastLastMove.isNull()) {
         nearMoves = game.getEmptyPoints();
     } else {
@@ -288,7 +279,7 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     }
 
     bool finalResult = false;
-    std::vector<Point> winMoves;
+    std::vector <Point> winMoves;
     for (const auto &item: moves) {
         game.board[item.x][item.y] = currentPlayer;
         auto dfsResult = dfsVCF(checkPlayer, 3 - currentPlayer, game, item, lastMove, level + 1);
@@ -329,11 +320,11 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 //    std::cout << "in four " << fourMode << std::endl;
 //    game.printBoard();
 //    std::cout << "===" << std::endl;
-    std::vector<Point> moves;
+    std::vector <Point> moves;
     bool attack = checkPlayer == currentPlayer;
     bool attackMove = true;
 
-    std::vector<Point> nearMoves;
+    std::vector <Point> nearMoves;
     if (lastLastMove.isNull()) {
         nearMoves = game.getEmptyPoints();
     } else {
@@ -388,7 +379,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
                 return std::make_pair(true, activeMoves);
             }
 
-            unordered_set<Point, PointHash, PointEqual> attackHistory;
+            unordered_set <Point, PointHash, PointEqual> attackHistory;
             if (!fourMode) {
 //                auto oppVCFMoves = dfsVCF(3 - currentPlayer, 3 - currentPlayer,
 //                                          game, Point(), game.lastAction, 0, &attackHistory);
@@ -470,7 +461,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     if (!attack) {
         finalResult = true;
     }
-    std::vector<Point> winMoves;
+    std::vector <Point> winMoves;
     for (const auto &item: moves) {
         game.board[item.x][item.y] = currentPlayer;
         auto nextAttackMove = attack && attackMove ? item : attackPoint;
@@ -526,9 +517,9 @@ tuple<bool, vector<Point>, int> dfsVCTIter(int player, Game &game, int timeLimit
     return make_tuple(false, std::vector<Point>(), threeCount);
 }
 
-std::vector<Point> getAllDefenceMoves(int player, Game &game) {
+std::vector <Point> getAllDefenceMoves(int player, Game &game) {
     auto allMoves = game.getEmptyPoints();
-    std::vector<Point> defenceMoves;
+    std::vector <Point> defenceMoves;
 
     auto otherActiveFourMoves = getActiveFourMoves(3 - player, game, allMoves);
     if (otherActiveFourMoves.size() >= 2) {
@@ -631,10 +622,10 @@ tuple<bool, vector<Point>, int> dfsVCTDefenceIter(int player, Game &game, int ti
     return make_tuple(needDefence, result, threeCount);
 }
 
-std::vector<Point> getVCTDefenceMoves(int player, Game &game, int &dfsThreeCount, int timeLimit, bool realPlay) {
+std::vector <Point> getVCTDefenceMoves(int player, Game &game, int &dfsThreeCount, int timeLimit, bool realPlay) {
     //如果有2个以上VCT点，则堵任意一个
     //如果只有一个VCT点，阻止活4点和眠4点,加上自己的所有眠4点,在加上阻止活3点,加上自己活3点
-    std::vector<Point> defenceMoves;
+    std::vector <Point> defenceMoves;
     auto allMoves = game.getEmptyPoints();
     auto vctResult = dfsVCTIter(3 - player, game, timeLimit, realPlay);
     dfsThreeCount = get<2>(vctResult);

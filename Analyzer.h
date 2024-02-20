@@ -13,7 +13,7 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, bool vctMode = fals
 
 std::vector<Point> getWinningMoves(int player, Game &game, std::vector<Point> &basedMoves);
 
-std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point> &basedMoves, int direct = -1);
+std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point> &basedMoves);
 
 std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point> &basedMoves);
 
@@ -37,6 +37,6 @@ std::vector<Point> getVCFDefenceMoves(int player, Game &game);
 std::vector<Point> getVCTDefenceMoves(int player, Game &game, int &levelResult,
                                       int timeLimit = 0, bool realPlay = false);
 
-std::vector<Point> getNearByEmptyPoints(Point action, Game &game, int direct = -1);
+std::vector<Point> getNearByEmptyPoints(Point action, Game &game);
 
 #endif //EGO_GOMOKU_ZERO_ANALYZER_H
