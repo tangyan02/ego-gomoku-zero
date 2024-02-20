@@ -141,7 +141,7 @@ void brain_turn()
 	if (get<1>(nextActions).size() == 1 || get<0>(nextActions)) {
         int actionIndex = game->getActionIndex(get<1>(nextActions)[0]);
         auto p = game->getPointFromIndex(actionIndex);
-        pipeOut("MESSAGE : action %d,%d %s", p.x, p.y, get<2>(nextActions));
+        pipeOut("MESSAGE : action %d,%d %s", p.x, p.y, get<2>(nextActions).c_str());
         do_mymove(p.x, p.y);
         return;
     }
@@ -149,7 +149,7 @@ void brain_turn()
 
 	piskvorkMessageEnable = true;
 
-	int thisTimeOut = info_time_left / 10;
+	int thisTimeOut = info_time_left / 20;
 	thisTimeOut = min(info_timeout_turn, thisTimeOut);
 
 	if (firstCost == -1) {
