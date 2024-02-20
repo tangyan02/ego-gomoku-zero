@@ -20,7 +20,7 @@ void printGame(Game &game, int action, std::vector<float> &action_probs,
     if (mcts != nullptr) {
         auto state = game.getState();
         auto eval = mcts->evaluate_state(state);
-        value = eval.first;
+        value = -eval.first;
     }
 
     std::string pic = (game.getOtherPlayer() == 1) ? "x" : "o";

@@ -204,11 +204,8 @@ bool existPoints(const std::vector<Point> &moves, const Point &target) {
 }
 
 std::pair<bool, std::vector<Point>>
-dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level) {
-//    if (level > 30) {
-//        cout << " level error " << level << endl;
-//        game.printBoard();
-//    }
+dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level,
+       unordered_set<Point, PointHash, PointEqual> *attackHistory) {
 //    std::cout << "===" << std::endl;
 //    game.printBoard();
 //    std::cout << "===" << std::endl;
@@ -241,6 +238,9 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         if (oppWinMoves.size() == 1) {
             auto oppWinMove = oppWinMoves[0];
             if (existPoints(activeMoves, oppWinMove) || existPoints(sleepMoves, oppWinMove)) {
+                if (attackHistory != nullptr) {
+                    attackHistory->insert(oppWinMove);
+                }
                 moves.emplace_back(oppWinMove);
             }
 //            cout << "find opp win moves " << oppWinMove.x << " " << oppWinMove.y << endl;
@@ -250,10 +250,16 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         //对方没有胜利点，正常连击
         if (oppWinMoves.empty()) {
             if (!activeMoves.empty()) {
+                if (attackHistory != nullptr) {
+                    attackHistory->insert(activeMoves.begin(), activeMoves.end());
+                }
                 return std::make_pair(true, activeMoves);
             }
 
             moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
+            if (attackHistory != nullptr) {
+                attackHistory->insert(sleepMoves.begin(), sleepMoves.end());
+            }
             if (moves.empty()) {
                 return std::make_pair(false, std::vector<Point>());
             }
@@ -307,18 +313,18 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
     //使用有限点长3，防止检索范围爆炸
     if (threeCount >= maxThreeCount) {
-//        cout<<"判定转换长4"<<endl;
+//        cout << "判定转换长4" << endl;
         fourMode = true;
     }
 //    std::cout << "===" << std::endl;
-//    std::cout << "in four" << fourMode << std::endl;
+//    std::cout << "in four " << fourMode << std::endl;
 //    game.printBoard();
 //    std::cout << "===" << std::endl;
-    std::vector<Point> moves;
+    std::vector <Point> moves;
     bool attack = checkPlayer == currentPlayer;
     bool attackMove = true;
 
-    std::vector<Point> nearMoves;
+    std::vector <Point> nearMoves;
     if (lastLastMove.isNull()) {
         nearMoves = game.getEmptyPoints();
     } else {
@@ -329,9 +335,10 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         }
     }
 
-    auto attackNearMoves = getNearByEmptyPoints(attackPoint, game);
-    nearMoves.insert(nearMoves.end(), attackNearMoves.begin(), attackNearMoves.end());
-    nearMoves = removeDuplicates(nearMoves);
+    // attackPoint废弃，不再计算防守端的进攻
+//    auto attackNearMoves = getNearByEmptyPoints(attackPoint, game);
+//    nearMoves.insert(nearMoves.end(), attackNearMoves.begin(), attackNearMoves.end());
+//    nearMoves = removeDuplicates(nearMoves);
 
     if (attack) {
         auto oppNearMoves = getNearByEmptyPoints(lastMove, game);
@@ -372,20 +379,44 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
                 return std::make_pair(true, activeMoves);
             }
 
+            unordered_set <Point, PointHash, PointEqual> attackHistory;
             if (!fourMode) {
-                auto oppVCFMoves = dfsVCF(3 - currentPlayer, 3 - currentPlayer, game, lastMove, lastMove);
+//                auto oppVCFMoves = dfsVCF(3 - currentPlayer, 3 - currentPlayer,
+//                                          game, Point(), game.lastAction, 0, &attackHistory);
+                auto oppVCFMoves = dfsVCF(3 - currentPlayer, 3 - currentPlayer,
+                                          game, Point(), Point(), 0, &attackHistory);
                 //对方有VCF点，则我方仅做长4
                 if (oppVCFMoves.first) {
 //                    cout << "发现对手VCF" << endl;
                     fourMode = true;
                 }
             }
+//            cout << "attackHistory";
+//            vector <Point> attackHistoryList = {attackHistory.begin(), attackHistory.end()};
+//            printVector(attackHistoryList);
+
+            //活三模式，对于长三点，需要屏蔽对手连4点
+            //如果已经有过一次活3，则长4也需要屏蔽对手连4点
+            for (const auto &item: attackHistory) {
+                game.board[item.x][item.y] = 3;
+            }
+
             //活三模式考虑活三点
             if (!fourMode) {
                 auto threeActiveMoves = getActiveThreeMoves(currentPlayer, game, nearMoves);
                 moves.insert(moves.end(), threeActiveMoves.begin(), threeActiveMoves.end());
             }
-            moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
+
+            if (threeCount >= 1) {
+                auto sleepMovesInBaned = getSleepyFourMoves(currentPlayer, game, nearMoves);
+                moves.insert(moves.end(), sleepMovesInBaned.begin(), sleepMovesInBaned.end());
+            } else {
+                moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
+            }
+
+            for (const auto &item: attackHistory) {
+                game.board[item.x][item.y] = 0;
+            }
         }
     } else {
 
@@ -410,9 +441,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
                 }
 
                 moves.insert(moves.end(), threeDefenceMoves.begin(), threeDefenceMoves.end());
-                //长4
-                auto sleepMoves = getSleepyFourMoves(currentPlayer, game, nearMoves);
-                moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
+
             }
         }
     }
@@ -432,7 +461,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     if (!attack) {
         finalResult = true;
     }
-    std::vector<Point> winMoves;
+    std::vector <Point> winMoves;
     for (const auto &item: moves) {
         game.board[item.x][item.y] = currentPlayer;
         auto nextAttackMove = attack && attackMove ? item : attackPoint;

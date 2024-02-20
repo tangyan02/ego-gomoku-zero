@@ -20,7 +20,8 @@ std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point>
 std::vector<Point> getThreeDefenceMoves(int player, Game &game);
 
 std::pair<bool, std::vector<Point>>
-dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level = 0);
+dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level = 0,
+       unordered_set<Point, PointHash, PointEqual> *attackHistory = nullptr);
 
 std::pair<bool, std::vector<Point>>
 dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, Point attackPoint,
