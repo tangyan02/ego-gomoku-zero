@@ -29,9 +29,9 @@ bool testDfsVCT3();
 bool testDfsVCT4();
 bool testDfsVCT5();
 bool testDfsVCT6();
-bool testGetVCTDefenceMoves();
-bool testGetVCTDefenceMoves2();
 bool testDfsVCTIter();
 bool testDfsVCTDefenceIter();
+bool testDfsVCTDefenceIter2();
+bool testDfsVCTDefenceIter3();
 
 #endif //EGO_GOMOKU_ZERO_ANALYZERTEST_H

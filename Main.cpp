@@ -66,10 +66,10 @@ void test() {
             testDfsVCT4,
             testDfsVCT5,
             testDfsVCT6,
-            testGetVCTDefenceMoves,
-            testGetVCTDefenceMoves2,
             testDfsVCTIter,
-            testDfsVCTDefenceIter
+            testDfsVCTDefenceIter,
+            testDfsVCTDefenceIter2,
+            testDfsVCTDefenceIter3
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);
@@ -94,7 +94,7 @@ void test() {
 int main(int argc, char *argv[]) {
     selfPlay(argc, argv);
 //    test();
-    //piskvork();
+//    piskvork();
 //    startConsole(true);
     return 0;
 }
