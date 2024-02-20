@@ -936,13 +936,20 @@ bool testDfsVCTDefenceIter3() {
     Game game(20);
     game.currentPlayer = 1;
     game.makeMove(Point(4, 8));
+//    game.makeMove(Point(4, 9));
     game.makeMove(Point(2, 16));
     game.makeMove(Point(4, 10));
     game.makeMove(Point(6, 10));
     game.makeMove(Point(3, 10));
 
     int timeLimit = 30000;
+
+
+    auto startTime = getSystemTime();
     auto result = dfsVCTDefenceIter(game.currentPlayer, game, timeLimit);
+    auto costTime = getSystemTime() - startTime;
+    cout << "cost time " << costTime << endl;
+
     for (Point &move: get<1>(result)) {
         game.board[move.x][move.y] = 3;
     }

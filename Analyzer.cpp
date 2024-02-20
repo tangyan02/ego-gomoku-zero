@@ -61,7 +61,7 @@ std::vector<Point> getWinningMoves(int player, Game &game, std::vector<Point> &b
         }
         game.board[row][col] = player;
         if (game.checkWin(row, col, player)) {
-            winning_moves.emplace_back(row, col);
+            winning_moves.emplace_back(point);
         }
         game.board[row][col] = 0;
     }
@@ -105,8 +105,8 @@ std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point>
             continue;
         }
         game.board[row][col] = player;
-        auto nearByEmptyPoints = getNearByEmptyPoints(point, game);
-        auto winMoves = getWinningMoves(player, game, nearByEmptyPoints);
+        //auto nearByEmptyPoints = getNearByEmptyPoints(point, game);
+        auto winMoves = getWinningMoves(player, game, basedMoves);
         if (winMoves.size() >= 2) {
             result.emplace_back(point);
         }
@@ -124,8 +124,7 @@ std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point>
             continue;
         }
         game.board[row][col] = player;
-        auto nearByEmptyPoints = getNearByEmptyPoints(point, game);
-        auto winMoves = getWinningMoves(player, game, nearByEmptyPoints);
+        auto winMoves = getWinningMoves(player, game, basedMoves);
         if (winMoves.size() == 1) {
             result.emplace_back(point);
         }
