@@ -30,6 +30,8 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
 tuple<bool, vector<Point>, int> dfsVCTIter(int player, Game &game, int timeLimit = 0, bool realPlay = false);
 
+tuple<bool, vector<Point>, int> dfsVCTDefenceIter(int player, Game &game, int timeLimit);
+
 std::vector<Point> getVCFDefenceMoves(int player, Game &game);
 
 std::vector<Point> getVCTDefenceMoves(int player, Game &game, int &levelResult,

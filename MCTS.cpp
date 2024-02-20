@@ -73,9 +73,8 @@ void MonteCarloTree::simulate(Game game, int &vctTimeLimit, bool realPlay) {
         value = -1;
     } else {
         bool useVct = false;
-        int vctTimeLimitMin = 30;
+        int vctTimeLimitMin = 0;
         if (vctTimeLimit > vctTimeLimitMin) {
-//            cout << "剩余vctTime" << vctTimeLimit << endl;
             useVct = true;
         }
         auto startTime = getSystemTime();
