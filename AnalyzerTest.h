@@ -12,6 +12,7 @@ bool testGetActiveFourMoves2();
 bool testGetActiveFourMoves3();
 bool testGetSleepyFourMoves();
 bool testGetSleepyFourMoves2();
+bool testGetActiveThreeMoves();
 bool testGetThreeDefenceMoves();
 bool testGetThreeDefenceMoves2();
 bool testDfsVCF();
@@ -33,5 +34,6 @@ bool testDfsVCTIter();
 bool testDfsVCTDefenceIter();
 bool testDfsVCTDefenceIter2();
 bool testDfsVCTDefenceIter3();
+
 
 #endif //EGO_GOMOKU_ZERO_ANALYZERTEST_H

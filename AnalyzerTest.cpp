@@ -109,6 +109,31 @@ bool testGetActiveFourMoves3() {
     }
 }
 
+bool testGetActiveThreeMoves() {
+    cout << "testGetActiveThreeMoves" << endl;
+    Game game(20);
+    game.currentPlayer = 1;
+    game.makeMove(Point(4, 9));
+    game.makeMove(Point(2, 16));
+    game.makeMove(Point(4, 10));
+    game.makeMove(Point(6, 10));
+    game.makeMove(Point(3, 10));
+    game.makeMove(Point(6, 11));
+
+    auto allMoves = game.getEmptyPoints();
+    auto result = getActiveThreeMoves(game.currentPlayer, game, allMoves);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 14) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 bool testGetSleepyFourMoves() {
     cout << "testGetSleepyFourMoves" << endl;
     Game game(boardSize);
@@ -884,13 +909,13 @@ bool testDfsVCTDefenceIter2() {
     cout << "testDfsVCTDefenceIter2" << endl;
     Game game(20);
     game.currentPlayer = 1;
-    game.makeMove(Point(15,9));
-    game.makeMove(Point(12,10));
-    game.makeMove(Point(14,8));
-    game.makeMove(Point(13,14));
-    game.makeMove(Point(12,9));
-    game.makeMove(Point(14,9));
-    game.makeMove(Point(12,6));
+    game.makeMove(Point(15, 9));
+    game.makeMove(Point(12, 10));
+    game.makeMove(Point(14, 8));
+    game.makeMove(Point(13, 14));
+    game.makeMove(Point(12, 9));
+    game.makeMove(Point(14, 9));
+    game.makeMove(Point(12, 6));
     int limit = 3000;
     auto result = dfsVCTDefenceIter(game.currentPlayer, game, limit);
     for (Point &move: get<1>(result)) {
@@ -910,7 +935,7 @@ bool testDfsVCTDefenceIter3() {
     cout << "testDfsVCTDefenceIter3" << endl;
     Game game(20);
     game.currentPlayer = 1;
-    game.makeMove(Point(4, 9));
+    game.makeMove(Point(4, 8));
     game.makeMove(Point(2, 16));
     game.makeMove(Point(4, 10));
     game.makeMove(Point(6, 10));
@@ -923,7 +948,7 @@ bool testDfsVCTDefenceIter3() {
     }
     game.printBoard();
     cout << get<1>(result).size() << endl;
-    if (get<1>(result).size() == 1) {
+    if (get<1>(result).size() == 2) {
         return true;
     } else {
         return false;

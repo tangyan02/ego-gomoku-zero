@@ -15,6 +15,8 @@ std::vector<Point> getWinningMoves(int player, Game &game, std::vector<Point> &b
 
 std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point> &basedMoves);
 
+std::vector<Point> getActiveThreeMoves(int player, Game &game, std::vector<Point> &basedMoves);
+
 std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point> &basedMoves);
 
 std::vector<Point> getThreeDefenceMoves(int player, Game &game);

@@ -78,10 +78,18 @@ std::vector<Point> getActiveThreeMoves(int player, Game &game, std::vector<Point
             continue;
         }
         game.board[row][col] = player;
-        auto nearByEmptyPoints = getNearByEmptyPoints(point, game);
-        auto winMoves = getActiveFourMoves(player, game, nearByEmptyPoints);
-        if (winMoves.size() >= 1) {
-            result.emplace_back(point);
+        for (const auto &point2: basedMoves) {
+            int row2 = point2.x;
+            int col2 = point2.y;
+            if (game.board[row2][col2] != 0) {
+                continue;
+            }
+            game.board[row2][col2] = player;
+            auto winMoves = getWinningMoves(player, game, basedMoves);
+            if (winMoves.size() >= 2) {
+                result.emplace_back(point);
+            }
+            game.board[row2][col2] = 0;
         }
         game.board[row][col] = 0;
     }
