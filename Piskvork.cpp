@@ -25,6 +25,7 @@ static torch::jit::Module network;
 static int firstCost = -1;
 
 static auto device = torch::kCPU;
+static Node *node;
 
 using namespace std;
 
@@ -66,6 +67,7 @@ void brain_init()
 	pipeOut("MESSAGE : LOADED");
 
 	game = new Game(boardSize);
+	node = new Node();
 	pipeOut("OK");
 }
 
@@ -73,6 +75,9 @@ void brain_restart()
 {
 	delete game;
 	game = new Game(boardSize);
+	MonteCarloTree mcts = MonteCarloTree(&network, device, 1);
+	mcts.release(node);
+	node = new Node();
 	pipeOut("MESSAGE : RESTARTED");
 	pipeOut("OK");
 }
@@ -98,8 +103,25 @@ void brain_opponents(int x, int y)
 	if (isFree(x, y)) {
 		game->currentPlayer = 2;
 		game->makeMove(Point(x, y));
-	}
-	else {
+		Node* select = nullptr;
+		for (auto item : node->children) {
+			int visit = item.second->visits;
+			if (game->getActionIndex(Point(x, y)) == item.first) {
+				select = item.second;
+			}
+		}
+
+		MonteCarloTree mcts = MonteCarloTree(&network, device, 1);
+		for (auto item : node->children) {
+			if (item.second != select) {
+				mcts.release(item.second);
+			}
+		}
+
+		if (select != nullptr) {
+			node = select;
+		}
+	} else {
 		pipeOut("ERROR opponents's move [%d,%d]", x, y);
 	}
 }
@@ -137,14 +159,6 @@ int min(int a,int b) {
 
 void brain_turn()
 {
-    auto nextActions = selectActions(*game);
-	if (get<1>(nextActions).size() == 1 || get<0>(nextActions)) {
-        int actionIndex = game->getActionIndex(get<1>(nextActions)[0]);
-        auto p = game->getPointFromIndex(actionIndex);
-        pipeOut("MESSAGE : action %d,%d %s", p.x, p.y, get<2>(nextActions).c_str());
-        do_mymove(p.x, p.y);
-        return;
-    }
 	MonteCarloTree mcts = MonteCarloTree(&network, device, 1);
 
 	piskvorkMessageEnable = true;
@@ -160,36 +174,49 @@ void brain_turn()
 
 	pipeOut("MESSAGE time limit %d", thisTimeOut);
 	pipeOut("MESSAGE current player %d", game->currentPlayer);
-	int comboTimeOut = thisTimeOut * 1 / 3;
 
-	Node node;
 	auto startTime = getSystemTime();
 	int simiNum = 0;
 	while (true) {
-        int vctTimeLimit = comboTimeOut;
-		mcts.search(*game, &node, 1, comboTimeOut, true);
+		mcts.search(*game, node, 1);
 		auto passTime = getSystemTime() - startTime;
 		simiNum += 1;
 		if (passTime > thisTimeOut) {
+			break;
+		}
+		if (node->children.size() == 1) {
 			break;
 		}
 	}
 
 	int max = 0;
 	int action = -1;
-	for (auto item : node.children) {
+	Node* select;
+	string info = node->selectInfo;
+	int total = node->visits;
+	for (auto item : node->children) {
 		int visit = item.second->visits;
 		if (visit > max) {
 			action = item.first;
 			max = visit;
+			select = item.second;
 		}
 	}
 
+	for (auto item : node->children) {
+		if (item.second != select) {
+			mcts.release(item.second);
+		}
+	}
+
+
 	auto p = game->getPointFromIndex(action);
 
-	pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %f simi num %d info %s", p.x, p.y, max, node.visits, (float)max / node.visits, simiNum, node.selectInfo.c_str());
-	mcts.release(&node);
+	pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %f simi num %d info %s", p.x, p.y, max, total, (float)max / total, simiNum, info.c_str());
 	do_mymove(p.x, p.y);
+
+	node = select;
+	mcts.search(*game, node, 1);
 }
 
 void brain_end()
