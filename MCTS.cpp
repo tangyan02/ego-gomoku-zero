@@ -51,7 +51,7 @@ MonteCarloTree::MonteCarloTree(torch::jit::Module *network, torch::Device device
         : network(network), root(nullptr), device(device), exploration_factor(exploration_factor) {
 }
 
-void MonteCarloTree::simulate(Game game, int &vctTimeLimit, bool realPlay) {
+void MonteCarloTree::simulate(Game game) {
     if (game.isGameOver()) {
         return;
     }
@@ -72,17 +72,7 @@ void MonteCarloTree::simulate(Game game, int &vctTimeLimit, bool realPlay) {
     if (game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer())) {
         value = -1;
     } else {
-        bool useVct = false;
-        int vctTimeLimitMin = 0;
-        if (vctTimeLimit > vctTimeLimitMin) {
-            useVct = true;
-        }
-        auto startTime = getSystemTime();
-        auto actions = selectActions(game, useVct, vctTimeLimit, realPlay);
-        auto costTime = getSystemTime() - startTime;
-        if (vctTimeLimit > vctTimeLimitMin) {
-            vctTimeLimit -= costTime;
-        }
+        auto actions = selectActions(game);
         node->selectInfo = get<2>(actions);
         if (get<0>(actions) && node->parent != nullptr) {
             value = 1;
@@ -99,12 +89,12 @@ void MonteCarloTree::simulate(Game game, int &vctTimeLimit, bool realPlay) {
     backpropagate(node, -value);
 }
 
-void MonteCarloTree::search(Game &game, Node *node, int num_simulations, int &vctTimeLimit, bool realPlay) {
+void MonteCarloTree::search(Game &game, Node *node, int num_simulations) {
     root = node;
 
     for (int i = 0; i < num_simulations; i++) {
         // cout << "开始模拟，次数 " << i << endl;
-        simulate(game, vctTimeLimit, realPlay);
+        simulate(game);
     }
 }
 
@@ -166,9 +156,6 @@ MonteCarloTree::get_action_probabilities(Game game) {
 
     std::vector<float> probs(game.boardSize * game.boardSize, 0);
     for (int i = 0; i < actions.size(); i++) {
-//        //劣势的情况下会有大量节点只访问一次，并影响了原有的概率，自我对战时不考虑选点
-//        if (visits[i] == 1)
-//            action_probs[i] = 0;
         probs[actions[i]] = action_probs[i];
     }
 

@@ -94,7 +94,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
         int step = 0;
         while (!game.isGameOver()) {
             //如果只有唯一选择，则直接选择
-            auto nextActions = selectActions(game, false);
+            auto nextActions = selectActions(game);
             if (get<1>(nextActions).size() == 1) {
                 int actionIndex = game.getActionIndex(get<1>(nextActions)[0]);
                 vector<float> probs(game.boardSize * game.boardSize);
@@ -107,8 +107,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
 
             //开始mcts预测
             Node node;
-            int vctTimeLimit = 2000;
-            mcts.search(game, &node, numSimulations, vctTimeLimit);
+            mcts.search(game, &node, numSimulations);
 
             std::vector<int> actions;
             std::vector<float> action_probs;

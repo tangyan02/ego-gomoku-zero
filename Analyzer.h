@@ -8,8 +8,7 @@
 
 using namespace std;
 
-tuple<bool, vector<Point>, string> selectActions(Game &game, bool vctMode = false,
-                                                 int timeLimit = 2000, bool realPlay = false);
+tuple<bool, vector<Point>, string> selectActions(Game &game);
 
 std::vector<Point> getWinningMoves(int player, Game &game, std::vector<Point> &basedMoves);
 
@@ -19,23 +18,12 @@ std::vector<Point> getActiveThreeMoves(int player, Game &game, std::vector<Point
 
 std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point> &basedMoves);
 
-std::pair<bool, std::vector<Point>>
-dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level = 0,
-       unordered_set<Point, PointHash, PointEqual> *attackHistory = nullptr);
+std::vector<Point> getThreeDefenceMoves(int player, Game &game);
 
 std::pair<bool, std::vector<Point>>
-dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, Point attackPoint,
-       bool fourMode, int &nodeRecord, int level = 0, int threeCount = 0, int maxThreeCount = 5, long long timeout = 0,
-       bool realPlay = false);
-
-tuple<bool, vector<Point>, int> dfsVCTIter(int player, Game &game, int timeLimit = 0, bool realPlay = false);
-
-tuple<bool, vector<Point>, int> dfsVCTDefenceIter(int player, Game &game, int timeLimit);
+dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level = 0);
 
 std::vector<Point> getVCFDefenceMoves(int player, Game &game);
-
-std::vector<Point> getVCTDefenceMoves(int player, Game &game, int &levelResult,
-                                      int timeLimit = 0, bool realPlay = false);
 
 std::vector<Point> getNearByEmptyPoints(Point action, Game &game);
 
