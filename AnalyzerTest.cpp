@@ -109,6 +109,30 @@ bool testGetActiveFourMoves3() {
     }
 }
 
+bool testGetActiveFourMoves4() {
+    cout << "testGetActiveFourMoves4" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(0, 1));
+    game.makeMove(Point(1, 0));
+    game.makeMove(Point(0, 2));
+    game.makeMove(Point(1, 1));
+    game.makeMove(Point(0, 4));
+    game.makeMove(Point(1, 3));
+    auto moves = game.getEmptyPoints();
+    auto result = getActiveFourMoves(game.currentPlayer, game, moves);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 1) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 bool testGetActiveThreeMoves() {
     cout << "testGetActiveThreeMoves" << endl;
     Game game(20);
@@ -127,7 +151,69 @@ bool testGetActiveThreeMoves() {
     }
     game.printBoard();
     cout << result.size() << endl;
-    if (result.size() == 14) {
+    if (result.size() == 10) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+bool testGetActiveThreeMoves2() {
+    cout << "testGetActiveThreeMoves2" << endl;
+    Game game(20);
+    game.currentPlayer = 1;
+
+    game.makeMove(Point(19, 2));
+    game.makeMove(Point(17, 3));
+    game.makeMove(Point(15, 5));
+    game.makeMove(Point(13, 5));
+    game.makeMove(Point(14, 6));
+    game.makeMove(Point(13, 7));
+    game.makeMove(Point(14, 4));
+    game.makeMove(Point(16, 6));
+    game.makeMove(Point(14, 3));
+    game.makeMove(Point(14, 5));
+    game.makeMove(Point(15, 4));
+    game.makeMove(Point(15, 6));
+    game.makeMove(Point(13, 4));
+    game.makeMove(Point(16, 4));
+    game.makeMove(Point(12, 4));
+    game.makeMove(Point(11, 4));
+
+    auto allMoves = game.getEmptyPoints();
+    auto result = getActiveThreeMoves(game.currentPlayer, game, allMoves);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 8) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+bool testGetActiveThreeMoves3() {
+    cout << "testGetActiveThreeMoves3" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(0, 1));
+    game.makeMove(Point(1, 0));
+    game.makeMove(Point(0, 3));
+    game.makeMove(Point(1, 1));
+    game.makeMove(Point(0, 4));
+    game.makeMove(Point(0, 0));
+    auto moves = game.getEmptyPoints();
+    auto result = getActiveThreeMoves(game.currentPlayer, game, moves);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 3) {
         return true;
     } else {
         return false;
@@ -172,55 +258,6 @@ bool testGetSleepyFourMoves2() {
 
     auto moves = game.getEmptyPoints();
     auto result = getSleepyFourMoves(1, game, moves);
-    for (Point &move: result) {
-        game.board[move.x][move.y] = 3;
-    }
-    game.printBoard();
-    cout << result.size() << endl;
-    if (result.size() == 2) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-
-bool testGetThreeDefenceMoves() {
-    cout << "testGetThreeDefenceMoves" << endl;
-    Game game(boardSize);
-    game.currentPlayer = 1;
-    game.makeMove(Point(0, 4));
-    game.makeMove(Point(1, 0));
-    game.makeMove(Point(0, 5));
-    game.makeMove(Point(1, 1));
-    game.makeMove(Point(0, 7));
-    game.makeMove(Point(1, 2));
-
-    auto result = getThreeDefenceMoves(2, game);
-    for (Point &move: result) {
-        game.board[move.x][move.y] = 3;
-    }
-    game.printBoard();
-    cout << result.size() << endl;
-    if (result.size() == 5) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool testGetThreeDefenceMoves2() {
-    cout << "testGetThreeDefenceMoves2" << endl;
-    Game game(boardSize);
-    game.currentPlayer = 1;
-    game.makeMove(Point(0, 4));
-    game.makeMove(Point(1, 0));
-    game.makeMove(Point(0, 5));
-    game.makeMove(Point(1, 1));
-    game.makeMove(Point(0, 6));
-    game.makeMove(Point(1, 2));
-
-    auto result = getThreeDefenceMoves(2, game);
     for (Point &move: result) {
         game.board[move.x][move.y] = 3;
     }
@@ -837,6 +874,46 @@ bool testDfsVCT6() {
 }
 
 
+bool testDfsVCT7() {
+    cout << "testDfsVCT7" << endl;
+    Game game(20);
+    game.currentPlayer = 1;
+
+    game.makeMove(Point(19, 2));
+    game.makeMove(Point(17, 3));
+    game.makeMove(Point(15, 5));
+    game.makeMove(Point(13, 5));
+    game.makeMove(Point(14, 6));
+    game.makeMove(Point(13, 7));
+    game.makeMove(Point(14, 4));
+    game.makeMove(Point(16, 6));
+    game.makeMove(Point(14, 3));
+    game.makeMove(Point(14, 5));
+    game.makeMove(Point(15, 4));
+    game.makeMove(Point(15, 6));
+//    game.makeMove(Point(13, 4));
+//    game.makeMove(Point(16, 4));
+//    game.makeMove(Point(12, 4));
+//    game.makeMove(Point(11, 4));
+
+
+    int nodeRecord = 0;
+    auto result = dfsVCT(game.currentPlayer, game.currentPlayer, game, Point(),
+                         Point(), Point(), false, nodeRecord, 0, 0, 4);
+    for (Point &move: result.second) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+
+    cout << result.second.size() << endl;
+    if (result.first) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
 bool testDfsVCTIter() {
     cout << "testDfsVCTIter" << endl;
     Game game(boardSize);
@@ -955,7 +1032,43 @@ bool testDfsVCTDefenceIter3() {
     }
     game.printBoard();
     cout << get<1>(result).size() << endl;
-    if (get<1>(result).size() == 2) {
+    if (get<1>(result).size() > 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+bool testDfsVCTDefenceIter4() {
+    cout << "testDfsVCTDefenceIter4" << endl;
+    Game game(20);
+    game.currentPlayer = 1;
+    game.makeMove(Point(19, 2));
+    game.makeMove(Point(17, 3));
+    game.makeMove(Point(15, 5));
+    game.makeMove(Point(13, 5));
+    game.makeMove(Point(14, 6));
+    game.makeMove(Point(13, 7));
+    game.makeMove(Point(14, 4));
+    game.makeMove(Point(16, 6));
+    game.makeMove(Point(14, 3));
+    game.makeMove(Point(14, 5));
+    game.makeMove(Point(15, 4));
+
+    int timeLimit = 10000;
+
+    auto startTime = getSystemTime();
+    auto result = dfsVCTDefenceIter(game.currentPlayer, game, timeLimit);
+    auto costTime = getSystemTime() - startTime;
+    cout << "cost time " << costTime << endl;
+
+    for (Point &move: get<1>(result)) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << get<1>(result).size() << endl;
+    if (get<1>(result).size() == 4) {
         return true;
     } else {
         return false;

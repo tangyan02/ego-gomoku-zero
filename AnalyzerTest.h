@@ -10,11 +10,12 @@ bool testGetWinnerMove();
 bool testGetActiveFourMoves();
 bool testGetActiveFourMoves2();
 bool testGetActiveFourMoves3();
+bool testGetActiveFourMoves4();
 bool testGetSleepyFourMoves();
 bool testGetSleepyFourMoves2();
 bool testGetActiveThreeMoves();
-bool testGetThreeDefenceMoves();
-bool testGetThreeDefenceMoves2();
+bool testGetActiveThreeMoves2();
+bool testGetActiveThreeMoves3();
 bool testDfsVCF();
 bool testDfsVCF2();
 bool testDfsVCF3();
@@ -30,10 +31,12 @@ bool testDfsVCT3();
 bool testDfsVCT4();
 bool testDfsVCT5();
 bool testDfsVCT6();
+bool testDfsVCT7();
 bool testDfsVCTIter();
 bool testDfsVCTDefenceIter();
 bool testDfsVCTDefenceIter2();
 bool testDfsVCTDefenceIter3();
+bool testDfsVCTDefenceIter4();
 
 
 #endif //EGO_GOMOKU_ZERO_ANALYZERTEST_H

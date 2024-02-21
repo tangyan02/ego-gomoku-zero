@@ -43,11 +43,12 @@ void test() {
             testGetActiveFourMoves,
             testGetActiveFourMoves2,
             testGetActiveFourMoves3,
+              testGetActiveFourMoves4,
             testGetActiveThreeMoves,
+            testGetActiveThreeMoves2,
+            testGetActiveThreeMoves3,
             testGetSleepyFourMoves,
             testGetSleepyFourMoves2,
-            testGetThreeDefenceMoves,
-            testGetThreeDefenceMoves2,
             testGetState,
             testGetState2,
             testGetState3,
@@ -67,10 +68,12 @@ void test() {
             testDfsVCT4,
             testDfsVCT5,
             testDfsVCT6,
+            testDfsVCT7,
             testDfsVCTIter,
             testDfsVCTDefenceIter,
             testDfsVCTDefenceIter2,
-            testDfsVCTDefenceIter3
+            testDfsVCTDefenceIter3,
+            testDfsVCTDefenceIter4
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);
@@ -93,8 +96,8 @@ void test() {
 }
 
 int main(int argc, char *argv[]) {
-    //selfPlay(argc, argv);
-    test();
+    selfPlay(argc, argv);
+//    test();
 //    piskvork();
 //    startConsole(true);
     return 0;
