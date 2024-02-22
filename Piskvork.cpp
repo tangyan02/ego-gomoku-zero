@@ -87,11 +87,43 @@ int isFree(int x, int y)
 	return x >= 0 && y >= 0 && x < width && y < height && game->board[x][y] == 0;
 }
 
+void tree_down(int x, int y) {
+
+	Node* select = nullptr;
+	for (auto item : node->children) {
+		int visit = item.second->visits;
+		if (game->getActionIndex(Point(x, y)) == item.first) {
+			//pipeOut("MESSAGE selected£¡ ");
+			select = item.second;
+		}
+	}
+
+	MonteCarloTree mcts = MonteCarloTree(&network, device, 1);
+	for (auto item : node->children) {
+		if (item.second != select) {
+			mcts.release(item.second);
+		}
+	}
+
+	if (select != nullptr) {
+		node = select;
+	}
+
+	if (select == nullptr && !game->historyMoves.empty()) {
+		pipeOut("MESSAGE =====renew node£¡====== ");
+		node = new Node();
+	}
+
+}
+
 void brain_my(int x, int y)
 {
 	if (isFree(x, y)) {
 		game->currentPlayer = 1;
+		//pipeOut("MESSAGE my move %d %d", x, y);
 		game->makeMove(Point(x, y));
+
+		tree_down(x,y);
 	}
 	else {
 		pipeOut("ERROR my move [%d,%d]", x, y);
@@ -102,25 +134,10 @@ void brain_opponents(int x, int y)
 {
 	if (isFree(x, y)) {
 		game->currentPlayer = 2;
+		//pipeOut("MESSAGE opp move %d %d", x, y);
 		game->makeMove(Point(x, y));
-		Node* select = nullptr;
-		for (auto item : node->children) {
-			int visit = item.second->visits;
-			if (game->getActionIndex(Point(x, y)) == item.first) {
-				select = item.second;
-			}
-		}
 
-		MonteCarloTree mcts = MonteCarloTree(&network, device, 1);
-		for (auto item : node->children) {
-			if (item.second != select) {
-				mcts.release(item.second);
-			}
-		}
-
-		if (select != nullptr) {
-			node = select;
-		}
+		tree_down(x,y);
 	} else {
 		pipeOut("ERROR opponents's move [%d,%d]", x, y);
 	}
@@ -184,14 +201,25 @@ void brain_turn()
 		if (passTime > thisTimeOut) {
 			break;
 		}
-		if (node->children.size() == 1) {
+		if (node->children.size() <= 1) {
 			break;
 		}
 	}
 
-	int max = 0;
+	pipeOut("MESSAGE children size %d", node->children.size());
+	int max = -1;
 	int action = -1;
-	Node* select;
+
+
+	if (node->children.size() == 0) {
+		auto selectAction = selectActions(*game);
+		if (get<0>(selectAction)) {
+			action = game->getActionIndex(get<1>(selectAction)[0]);
+			max = 1;
+		}
+	}
+
+
 	string info = node->selectInfo;
 	int total = node->visits;
 	for (auto item : node->children) {
@@ -199,23 +227,14 @@ void brain_turn()
 		if (visit > max) {
 			action = item.first;
 			max = visit;
-			select = item.second;
 		}
 	}
-
-	for (auto item : node->children) {
-		if (item.second != select) {
-			mcts.release(item.second);
-		}
-	}
-
 
 	auto p = game->getPointFromIndex(action);
 
-	pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %f simi num %d info %s", p.x, p.y, max, total, (float)max / total, simiNum, info.c_str());
+	pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %f last simi %d info %s", p.x, p.y, max, total, (float)max / total, total-simiNum, info.c_str());
 	do_mymove(p.x, p.y);
 
-	node = select;
 	mcts.search(*game, node, 1);
 }
 
