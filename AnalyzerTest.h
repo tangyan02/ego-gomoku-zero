@@ -15,6 +15,7 @@ bool testGetSleepyFourMoves();
 bool testGetSleepyFourMoves2();
 bool testGetThreeDefenceMoves();
 bool testGetThreeDefenceMoves2();
+bool testGetThreeDefenceMoves3();
 bool testGetActiveThreeMoves();
 bool testGetActiveThreeMoves2();
 bool testGetActiveThreeMoves3();

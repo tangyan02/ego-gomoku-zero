@@ -277,11 +277,24 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
         return make_tuple(true, activeFourMoves, "  active 4 ");
     }
 
+    //我方VCF点
+    auto vcfResult = dfsVCF(game.currentPlayer, game.currentPlayer, game, Point(), Point());
+    if (vcfResult.first) {
+        return make_tuple(true, vcfResult.second, " VCF! ");
+    }
+
+    //防对方VCF点
+    auto VCFDefenceMoves = getVCFDefenceMoves(game.currentPlayer, game);
+    if (!VCFDefenceMoves.empty()) {
+        return make_tuple(false, VCFDefenceMoves, " defence VCF ");
+    }
+
     //防止对手活3
-    auto threeDefenceMoves = getThreeDefenceMoves(3 - game.currentPlayer, game);
+    auto threeDefenceMoves = getThreeDefenceMoves(game.currentPlayer, game);
     if (!threeDefenceMoves.empty()) {
         return make_tuple(true, threeDefenceMoves, " defence three 4 ");
     }
+
 
     return make_tuple(false, emptyPoints, "");
 }

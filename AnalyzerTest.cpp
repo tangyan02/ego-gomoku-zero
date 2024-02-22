@@ -244,6 +244,36 @@ bool testGetThreeDefenceMoves2() {
     }
 }
 
+
+bool testGetThreeDefenceMoves3() {
+    cout << "testGetThreeDefenceMoves3" << endl;
+    Game game(20);
+    game.currentPlayer = 1;
+    game.makeMove(Point(13,9));
+    game.makeMove(Point(15,12));
+    game.makeMove(Point(14,12));
+    game.makeMove(Point(14,13));
+    game.makeMove(Point(14,10));
+    game.makeMove(Point(13,14));
+    game.makeMove(Point(16,11));
+    game.makeMove(Point(12,15));
+    game.makeMove(Point(11,16));
+    game.makeMove(Point(16,14));
+    game.makeMove(Point(12,8));
+
+    auto result = getThreeDefenceMoves(game.currentPlayer, game);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 2) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 bool testGetActiveThreeMoves3() {
     cout << "testGetActiveThreeMoves3" << endl;
     Game game(boardSize);

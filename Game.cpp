@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "Analyzer.h"
 
 using namespace std;
 
@@ -64,7 +65,7 @@ std::vector<Point> Game::getNearEmptyPoints() {
 }
 
 std::vector<Point> Game::getEmptyPoints() {
-    if(!historyMoves.empty()) {
+    if (!historyMoves.empty()) {
         return getNearEmptyPoints();
     }
     std::vector<Point> emptyPoints;
@@ -81,7 +82,7 @@ std::vector<Point> Game::getEmptyPoints() {
 
 
 torch::Tensor Game::getState() {
-    torch::Tensor tensor = torch::zeros({16, boardSize, boardSize});
+    torch::Tensor tensor = torch::zeros({20, boardSize, boardSize});
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
@@ -124,6 +125,28 @@ torch::Tensor Game::getState() {
         board[p.x][p.y] = kPlayer;
         kPlayer = 3 - kPlayer;
     }
+
+    auto allMoves = getEmptyPoints();
+    //构造双方活3点
+    auto myActiveThree = getActiveThreeMoves(currentPlayer, *this, allMoves);
+    auto oppActiveThree = getActiveThreeMoves(3 - currentPlayer, *this, allMoves);
+    for (const auto &item: myActiveThree) {
+        tensor[16][item.x][item.y] = 1;
+    }
+    for (const auto &item: oppActiveThree) {
+        tensor[17][item.x][item.y] = 1;
+    }
+
+    //构造双方长4点
+    auto mySleepyFourMove = getSleepyFourMoves(currentPlayer, *this, allMoves);
+    auto oppSleepyFourMove = getSleepyFourMoves(3 - currentPlayer, *this, allMoves);
+    for (const auto &item: mySleepyFourMove) {
+        tensor[18][item.x][item.y] = 1;
+    }
+    for (const auto &item: oppSleepyFourMove) {
+        tensor[19][item.x][item.y] = 1;
+    }
+
     return tensor;
 }
 
