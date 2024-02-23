@@ -49,9 +49,6 @@ void test() {
             testGetActiveThreeMoves3,
             testGetSleepyFourMoves,
             testGetSleepyFourMoves2,
-            testGetThreeDefenceMoves,
-            testGetThreeDefenceMoves2,
-            testGetThreeDefenceMoves3,
             testGetState,
             testGetState2,
             testGetState3,
@@ -87,8 +84,8 @@ void test() {
 }
 
 int main(int argc, char *argv[]) {
-    selfPlay(argc, argv);
-//    test();
+//    selfPlay(argc, argv);
+    test();
 //    piskvork();
 //    startConsole(true);
     return 0;

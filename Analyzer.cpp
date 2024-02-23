@@ -237,25 +237,6 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     return std::make_pair(finalResult, winMoves);
 }
 
-std::vector<Point> getThreeDefenceMoves(int player, Game &game) {
-    //如果对方有2个活4点，阻止活4点
-    //如果对方只有1个活4点，则阻止活4点和眠4点,加上自己的所有眠4点
-    std::vector<Point> defenceMoves;
-    auto allMoves = game.getEmptyPoints();
-    auto otherActiveFourMoves = getActiveFourMoves(3 - player, game, allMoves);
-    if (!otherActiveFourMoves.empty()) {
-        if (otherActiveFourMoves.size() >= 2) {
-            return otherActiveFourMoves;
-        }
-        auto otherSleepyFourMoves = getSleepyFourMoves(3 - player, game, allMoves);
-        auto sleepyFourMoves = getSleepyFourMoves(player, game, allMoves);
-        defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
-        defenceMoves.insert(defenceMoves.end(), otherSleepyFourMoves.begin(), otherSleepyFourMoves.end());
-        defenceMoves.insert(defenceMoves.end(), sleepyFourMoves.begin(), sleepyFourMoves.end());
-    }
-    return removeDuplicates(defenceMoves);
-}
-
 /**
  * 返回两个值，第一个值代表返回值是否是必胜点
  */
@@ -288,13 +269,6 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     if (!VCFDefenceMoves.empty()) {
         return make_tuple(false, VCFDefenceMoves, " defence VCF ");
     }
-
-    //防止对手活3
-    auto threeDefenceMoves = getThreeDefenceMoves(game.currentPlayer, game);
-    if (!threeDefenceMoves.empty()) {
-        return make_tuple(true, threeDefenceMoves, " defence three 4 ");
-    }
-
 
     return make_tuple(false, emptyPoints, "");
 }
