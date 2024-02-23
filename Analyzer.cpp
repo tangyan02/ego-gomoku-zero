@@ -4,11 +4,31 @@
 static int dx[8] = {0, 0, 1, -1, 1, 1, -1, -1};
 static int dy[8] = {1, -1, 0, 0, 1, -1, 1, -1};
 
+static int ddx[4] = {1, 1, 1, 0};
+static int ddy[4] = {1, 0, -1, 1};
+
 void printVector(vector<Point> &a) {
     for (const auto &item: a) {
         cout << "(" << item.x << "," << item.y << ") ";
     }
     cout << endl;
+}
+
+std::vector<Point> getLineEmptyPoints(Point action, Game &game, int direct) {
+    std::vector<Point> empty_points;
+    if (!action.isNull()) {
+        int x = action.x;
+        int y = action.y;
+        for (int k = -4; k <= 4; k++) {
+            int tx = x + k * ddx[direct];
+            int ty = y + k * ddy[direct];
+            if (tx >= 0 && tx < game.boardSize && ty >= 0 && ty < game.boardSize &&
+                game.board[tx][ty] == 0) {
+                empty_points.emplace_back(tx, ty);
+            }
+        }
+    }
+    return empty_points;
 }
 
 std::vector<Point> getNearByEmptyPoints(Point action, Game &game) {
@@ -55,7 +75,7 @@ std::vector<Point> getWinningMoves(int player, Game &game, std::vector<Point> &b
 }
 
 
-std::vector<Point> getActiveThreeMoves(int player, Game &game, std::vector<Point> &basedMoves) {
+std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point> &basedMoves, int direct) {
     std::vector<Point> result;
     for (const auto &point: basedMoves) {
         int row = point.x;
@@ -64,17 +84,26 @@ std::vector<Point> getActiveThreeMoves(int player, Game &game, std::vector<Point
             continue;
         }
         game.board[row][col] = player;
-        auto nearByEmptyPoints = getNearByEmptyPoints(point, game);
-        auto activeFourMoves = getActiveFourMoves(player, game, nearByEmptyPoints);
-        if (activeFourMoves.size() >= 1) {
-            result.emplace_back(point);
+        for (int i = 0; i < 4; i++) {
+            if (direct != -1) {
+                if (i != direct) {
+                    continue;
+                }
+            }
+            auto nextMoves = getLineEmptyPoints(Point(row, col), game, i);
+            auto nextResultMoves = getWinningMoves(player, game, nextMoves);
+            if (nextResultMoves.size() >= 2) {
+                result.emplace_back(point);
+                game.board[row][col] = 0;
+                break;
+            }
         }
         game.board[row][col] = 0;
     }
     return result;
 }
 
-std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point> &basedMoves) {
+std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point> &basedMoves, int direct) {
     std::vector<Point> result;
     for (const auto &point: basedMoves) {
         int row = point.x;
@@ -83,17 +112,26 @@ std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point>
             continue;
         }
         game.board[row][col] = player;
-        auto nearByEmptyPoints = getNearByEmptyPoints(point, game);
-        auto winMoves = getWinningMoves(player, game, nearByEmptyPoints);
-        if (winMoves.size() >= 2) {
-            result.emplace_back(point);
+        for (int i = 0; i < 4; i++) {
+            if (direct != -1) {
+                if (i != direct) {
+                    continue;
+                }
+            }
+            auto nextMoves = getLineEmptyPoints(Point(row, col), game, i);
+            auto nextResultMoves = getWinningMoves(player, game, nextMoves);
+            if (nextResultMoves.size() == 1) {
+                result.emplace_back(point);
+                game.board[row][col] = 0;
+                break;
+            }
         }
         game.board[row][col] = 0;
     }
     return result;
 }
 
-std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point> &basedMoves) {
+std::vector<Point> getActiveThreeMoves(int player, Game &game, std::vector<Point> &basedMoves, int direct) {
     std::vector<Point> result;
     for (const auto &point: basedMoves) {
         int row = point.x;
@@ -102,10 +140,19 @@ std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point>
             continue;
         }
         game.board[row][col] = player;
-        auto nearByEmptyPoints = getNearByEmptyPoints(point, game);
-        auto winMoves = getWinningMoves(player, game, nearByEmptyPoints);
-        if (winMoves.size() == 1) {
-            result.emplace_back(point);
+        for (int i = 0; i < 4; i++) {
+            if (direct != -1) {
+                if (i != direct) {
+                    continue;
+                }
+            }
+            auto nextMoves = getLineEmptyPoints(Point(row, col), game, i);
+            auto nextResultMoves = getActiveFourMoves(player, game, nextMoves, i);
+            if (nextResultMoves.size() >= 1) {
+                result.emplace_back(point);
+                game.board[row][col] = 0;
+                break;
+            }
         }
         game.board[row][col] = 0;
     }

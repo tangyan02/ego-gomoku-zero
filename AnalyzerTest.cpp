@@ -219,6 +219,31 @@ bool testGetActiveThreeMoves3() {
     }
 }
 
+
+bool testGetActiveThreeMoves4() {
+    cout << "testGetActiveThreeMoves4" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(0, 1));
+    game.makeMove(Point(1, 0));
+    game.makeMove(Point(0, 3));
+    game.makeMove(Point(1, 1));
+    game.makeMove(Point(0, 4));
+    game.makeMove(Point(1, 2));
+    auto moves = game.getEmptyPoints();
+    auto result = getActiveThreeMoves(game.currentPlayer, game, moves);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 3) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 bool testGetSleepyFourMoves() {
     cout << "testGetSleepyFourMoves" << endl;
     Game game(boardSize);
@@ -515,7 +540,7 @@ bool testGetVCFDefenceMoves5() {
     }
     game.printBoard();
     cout << result.size() << endl;
-    if (result.size() == 17) {
+    if (result.size() == 16) {
         return true;
     } else {
         return false;
@@ -529,7 +554,6 @@ bool testGetNearByEmptyPoints() {
     auto result = getNearByEmptyPoints(Point(2, 6), game);
     for (Point &move: result) {
         game.board[move.x][move.y] = 3;
-        cout << move.x << "," << move.y << endl;
     }
     game.printBoard();
     cout << result.size() << endl;
@@ -538,4 +562,22 @@ bool testGetNearByEmptyPoints() {
     } else {
         return false;
     }
+}
+
+bool testGetLineEmptyPoints() {
+    cout << "testGetNearByEmptyPoints" << endl;
+    Game game(boardSize);
+    game.makeMove(Point(0, 4));
+    for (int i = 0; i < 4; i++) {
+        auto result = getLineEmptyPoints(Point(2, 6), game, i);
+        for (Point &move: result) {
+            game.board[move.x][move.y] = 3;
+        }
+        game.printBoard();
+        cout << result.size() << endl;
+        for (Point &move: result) {
+            game.board[move.x][move.y] = 0;
+        }
+    }
+    return true;
 }
