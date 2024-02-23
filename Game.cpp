@@ -185,7 +185,7 @@ void Game::printBoard(const std::string &part) {
 bool Game::makeMove(Point p) {
     int row = p.x, col = p.y;
     if (row < 0 || row >= boardSize || col < 0 || col >= boardSize || board[row][col] != NONE_P) {
-        cout << "move失败!" << endl;
+        cout << "move false! " << row <<" " << col <<" " << board[row][col] << endl;
         return false;
     }
 
