@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 project(ego-gomoku-zero)
 
 execute_process(
-        COMMAND python3 -c "import torch; print(torch.utils.cmake_prefix_path)"
+        COMMAND python -c "import torch; print(torch.utils.cmake_prefix_path)"
         OUTPUT_VARIABLE TORCH_CMAKE_PREFIX_PATH
         OUTPUT_STRIP_TRAILING_WHITESPACE
 )
