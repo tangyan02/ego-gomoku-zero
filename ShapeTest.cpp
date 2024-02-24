@@ -4,7 +4,7 @@
 
 
 bool testGetKeysInGame() {
-    cout << "testGetState" << endl;
+    cout << "testGetKeysInGame" << endl;
     Game game(15);
 
     game.makeMove(Point(0, 1));
