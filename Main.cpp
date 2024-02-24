@@ -3,6 +3,8 @@
 #include "GameTest.h"
 #include "Pisqpipe.h"
 #include "Console.h"
+#include "Shape.h"
+#include "ShapeTest.h"
 
 using namespace std;
 
@@ -44,13 +46,14 @@ void test() {
             testGetActiveFourMoves2,
             testGetActiveFourMoves3,
             testGetActiveFourMoves4,
+            testGetSleepyFourMoves,
+            testGetSleepyFourMoves2,
             testGetActiveThreeMoves,
             testGetActiveThreeMoves2,
             testGetActiveThreeMoves3,
             testGetActiveThreeMoves4,
-            testGetSleepyFourMoves,
-            testGetSleepyFourMoves2,
-            testGetState,
+            testGetSleepyThreeMoves,
+            testGetSleepyThreeMoves2,
             testDfsVCF,
             testDfsVCF2,
             testDfsVCF3,
@@ -61,7 +64,9 @@ void test() {
             testGetVCFDefenceMoves5,
             testGetNearByEmptyPoints,
             testGetNearEmptyPoints,
-            testGetLineEmptyPoints
+            testGetLineEmptyPoints,
+            testGetState,
+            testGetKeysInGame
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);
@@ -84,6 +89,7 @@ void test() {
 }
 
 int main(int argc, char *argv[]) {
+    initShape();
 //    selfPlay(argc, argv);
     test();
 //    piskvork();

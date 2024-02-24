@@ -57,106 +57,59 @@ std::vector<Point> removeDuplicates(const std::vector<Point> &points) {
     return {uniquePoints.begin(), uniquePoints.end()};
 }
 
-std::vector<Point> getWinningMoves(int player, Game &game, std::vector<Point> &basedMoves) {
-    std::vector<Point> winning_moves;
-    for (const auto &point: basedMoves) {
-        int row = point.x;
-        int col = point.y;
-        if (game.board[row][col] != 0) {
-            continue;
-        }
-        game.board[row][col] = player;
-        if (game.checkWin(row, col, player)) {
-            winning_moves.emplace_back(point);
-        }
-        game.board[row][col] = 0;
-    }
-    return winning_moves;
-}
 
-
-std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point> &basedMoves, int direct) {
+vector<Point> getShapeMoves(int player, Game &game, std::vector<Point> &basedMoves, Shape shape) {
     std::vector<Point> result;
     for (const auto &point: basedMoves) {
-        int row = point.x;
-        int col = point.y;
-        if (game.board[row][col] != 0) {
+        if (game.board[point.x][point.y] != 0) {
             continue;
         }
-        game.board[row][col] = player;
         for (int i = 0; i < 4; i++) {
-            if (direct != -1) {
-                if (i != direct) {
-                    continue;
-                }
-            }
-            auto nextMoves = getLineEmptyPoints(Point(row, col), game, i);
-            auto nextResultMoves = getWinningMoves(player, game, nextMoves);
-            if (nextResultMoves.size() >= 2) {
+            auto action = point;
+            if (checkPointDirectShape(game, player, action, i, shape)) {
                 result.emplace_back(point);
-                game.board[row][col] = 0;
                 break;
             }
         }
-        game.board[row][col] = 0;
     }
     return result;
 }
 
-std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point> &basedMoves, int direct) {
-    std::vector<Point> result;
-    for (const auto &point: basedMoves) {
-        int row = point.x;
-        int col = point.y;
-        if (game.board[row][col] != 0) {
-            continue;
-        }
-        game.board[row][col] = player;
-        for (int i = 0; i < 4; i++) {
-            if (direct != -1) {
-                if (i != direct) {
-                    continue;
-                }
-            }
-            auto nextMoves = getLineEmptyPoints(Point(row, col), game, i);
-            auto nextResultMoves = getWinningMoves(player, game, nextMoves);
-            if (nextResultMoves.size() == 1) {
-                result.emplace_back(point);
-                game.board[row][col] = 0;
-                break;
-            }
-        }
-        game.board[row][col] = 0;
-    }
-    return result;
+std::vector<Point>
+getWinningMoves(int player, Game &game, std::vector<Point> &basedMoves,
+                bool outer, int direct, bool allowRepeat) {
+    return getShapeMoves(player, game, basedMoves, LONG_FIVE);
 }
 
-std::vector<Point> getActiveThreeMoves(int player, Game &game, std::vector<Point> &basedMoves, int direct) {
-    std::vector<Point> result;
-    for (const auto &point: basedMoves) {
-        int row = point.x;
-        int col = point.y;
-        if (game.board[row][col] != 0) {
-            continue;
-        }
-        game.board[row][col] = player;
-        for (int i = 0; i < 4; i++) {
-            if (direct != -1) {
-                if (i != direct) {
-                    continue;
-                }
-            }
-            auto nextMoves = getLineEmptyPoints(Point(row, col), game, i);
-            auto nextResultMoves = getActiveFourMoves(player, game, nextMoves, i);
-            if (nextResultMoves.size() >= 1) {
-                result.emplace_back(point);
-                game.board[row][col] = 0;
-                break;
-            }
-        }
-        game.board[row][col] = 0;
-    }
-    return result;
+std::vector<Point>
+getActiveFourMoves(int player, Game &game, std::vector<Point> &basedMoves, bool outer, int direct, bool allowRepeat) {
+    return getShapeMoves(player, game, basedMoves, ACTIVE_FOUR);
+}
+
+std::vector<Point>
+getSleepyFourMoves(int player, Game &game, std::vector<Point> &basedMoves, bool outer, int direct, bool allowRepeat) {
+    return getShapeMoves(player, game, basedMoves, SLEEPY_FOUR);
+}
+
+std::vector<Point>
+getActiveThreeMoves(int player, Game &game, std::vector<Point> &basedMoves, bool outer, int direct, bool allowRepeat) {
+    return getShapeMoves(player, game, basedMoves, ACTIVE_THREE);
+
+}
+
+std::vector<Point>
+getSleepyThreeMoves(int player, Game &game, std::vector<Point> &basedMoves, bool outer, int direct, bool allowRepeat) {
+    return getShapeMoves(player, game, basedMoves, SLEEPY_THREE);
+}
+
+std::vector<Point>
+getActiveTwoMoves(int player, Game &game, std::vector<Point> &basedMoves, bool outer, int direct, bool allowRepeat) {
+    return getShapeMoves(player, game, basedMoves, ACTIVE_TWO);
+}
+
+std::vector<Point>
+getSleepyTwoMoves(int player, Game &game, std::vector<Point> &basedMoves, bool outer, int direct, bool allowRepeat) {
+    return getShapeMoves(player, game, basedMoves, SLEEPY_TWO);
 }
 
 std::vector<Point> getVCFDefenceMoves(int player, Game &game) {

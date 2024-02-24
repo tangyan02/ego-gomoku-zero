@@ -5,18 +5,39 @@
 #include "Game.h"
 #include "Utils.h"
 #include <algorithm>
+#include "Shape.h"
 
 using namespace std;
 
 tuple<bool, vector<Point>, string> selectActions(Game &game);
 
-std::vector<Point> getWinningMoves(int player, Game &game, std::vector<Point> &basedMoves);
+std::vector<Point>
+getWinningMoves(int player, Game &game, std::vector<Point> &basedMoves,
+                bool outer = true, int direct = -1, bool allowRepeat = false);
 
-std::vector<Point> getActiveFourMoves(int player, Game &game, std::vector<Point> &basedMoves, int direct = -1);
+std::vector<Point>
+getActiveFourMoves(int player, Game &game, std::vector<Point> &basedMoves,
+                   bool outer = true, int direct = -1, bool allowRepeat = false);
 
-std::vector<Point> getActiveThreeMoves(int player, Game &game, std::vector<Point> &basedMoves, int direct = -1);
+std::vector<Point>
+getSleepyFourMoves(int player, Game &game, std::vector<Point> &basedMoves,
+                   bool outer = true, int direct = -1, bool allowRepeat = false);
 
-std::vector<Point> getSleepyFourMoves(int player, Game &game, std::vector<Point> &basedMoves, int direct = -1);
+std::vector<Point>
+getActiveThreeMoves(int player, Game &game, std::vector<Point> &basedMoves,
+                    bool outer = true, int direct = -1, bool allowRepeat = false);
+
+std::vector<Point>
+getSleepyThreeMoves(int player, Game &game, std::vector<Point> &basedMoves,
+                    bool outer = true, int direct = -1, bool allowRepeat = false);
+
+std::vector<Point>
+getActiveTwoMoves(int player, Game &game, std::vector<Point> &basedMoves,
+                  bool outer = true, int direct = -1, bool allowRepeat = false);
+
+std::vector<Point>
+getSleepyTwoMoves(int player, Game &game, std::vector<Point> &basedMoves,
+                  bool outer = true, int direct = -1, bool allowRepeat = false);
 
 std::pair<bool, std::vector<Point>>
 dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level = 0);
