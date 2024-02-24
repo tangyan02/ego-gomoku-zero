@@ -82,7 +82,7 @@ std::vector<Point> Game::getEmptyPoints() {
 
 
 torch::Tensor Game::getState() {
-    torch::Tensor tensor = torch::zeros({20, boardSize, boardSize});
+    torch::Tensor tensor = torch::zeros({18, boardSize, boardSize});
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
@@ -95,56 +95,71 @@ torch::Tensor Game::getState() {
         }
     }
 
-    // 构造最近7步的局面
-    int numMoves = 7;
-    if (historyMoves.size() < numMoves) {
-        numMoves = historyMoves.size();
-    }
-    int k = historyMoves.size() - 1;
-    int kPlayer = currentPlayer;
-    int tensorIndex = 2;
-    for (int i = 0; i < numMoves; i++, k--, tensorIndex += 2) {
-        auto p = historyMoves[k];
-        kPlayer = 3 - kPlayer;
-        board[p.x][p.y] = 0;
-
-        for (int row = 0; row < boardSize; row++) {
-            for (int col = 0; col < boardSize; col++) {
-                if (board[row][col] == currentPlayer) {
-                    tensor[tensorIndex][row][col] = 1;
-                } else if (board[row][col] == getOtherPlayer()) {
-                    tensor[tensorIndex + 1][row][col] = 1;
-                }
+    //每一种棋形判断
+    Game game = *this;
+    auto moves = getEmptyPoints();
+    for (const auto &move: moves) {
+        Point action = move;
+        for (int direct = 0; direct < 4; direct++) {
+            int x = action.x;
+            int y = action.y;
+            if (checkPointDirectShape(game, game.currentPlayer, action, direct, LONG_FIVE)) {
+                tensor[2][x][y] += 1;
+            }
+            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, LONG_FIVE)) {
+                tensor[3][x][y] += 1;
+            }
+            if (checkPointDirectShape(game, game.currentPlayer, action, direct, ACTIVE_FOUR)) {
+                tensor[4][x][y] += 1;
+            }
+            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_FOUR)) {
+                tensor[5][x][y] += 1;
+            }
+            if (checkPointDirectShape(game, game.currentPlayer, action, direct, SLEEPY_FOUR)) {
+                tensor[6][x][y] += 1;
+            }
+            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, SLEEPY_FOUR)) {
+                tensor[7][x][y] += 1;
+            }
+            if (checkPointDirectShape(game, game.currentPlayer, action, direct, ACTIVE_THREE)) {
+                tensor[8][x][y] += 1;
+            }
+            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_THREE)) {
+                tensor[9][x][y] += 1;
+            }
+            if (checkPointDirectShape(game, game.currentPlayer, action, direct, SLEEPY_THREE)) {
+                tensor[10][x][y] += 1;
+            }
+            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, SLEEPY_THREE)) {
+                tensor[11][x][y] += 1;
+            }
+            if (checkPointDirectShape(game, game.currentPlayer, action, direct, ACTIVE_TWO)) {
+                tensor[12][x][y] += 1;
+            }
+            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_TWO)) {
+                tensor[13][x][y] += 1;
+            }
+            if (checkPointDirectShape(game, game.currentPlayer, action, direct, SLEEPY_TWO)) {
+                tensor[14][x][y] += 1;
+            }
+            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, SLEEPY_TWO)) {
+                tensor[15][x][y] += 1;
             }
         }
     }
 
-    k += 1;
-    for (int i = k; i < historyMoves.size(); i++) {
-        auto p = historyMoves[i];
-        board[p.x][p.y] = kPlayer;
-        kPlayer = 3 - kPlayer;
+    //VCF点
+    auto myVCF = dfsVCF(game.currentPlayer, game.currentPlayer, game, Point(), Point());
+    if (myVCF.first) {
+        for (const auto &item: myVCF.second) {
+            tensor[16][item.x][item.y] += 1;
+        }
     }
-
-    auto allMoves = getEmptyPoints();
-    //构造双方活3点
-    auto myActiveThree = getActiveThreeMoves(currentPlayer, *this, allMoves);
-    auto oppActiveThree = getActiveThreeMoves(3 - currentPlayer, *this, allMoves);
-    for (const auto &item: myActiveThree) {
-        tensor[16][item.x][item.y] = 1;
-    }
-    for (const auto &item: oppActiveThree) {
-        tensor[17][item.x][item.y] = 1;
-    }
-
-    //构造双方长4点
-    auto mySleepyFourMove = getSleepyFourMoves(currentPlayer, *this, allMoves);
-    auto oppSleepyFourMove = getSleepyFourMoves(3 - currentPlayer, *this, allMoves);
-    for (const auto &item: mySleepyFourMove) {
-        tensor[18][item.x][item.y] = 1;
-    }
-    for (const auto &item: oppSleepyFourMove) {
-        tensor[19][item.x][item.y] = 1;
+    auto oppVCF = dfsVCF(game.getOtherPlayer(), game.getOtherPlayer(), game, Point(), Point());
+    if (oppVCF.first) {
+        for (const auto &item: oppVCF.second) {
+            tensor[17][item.x][item.y] += 1;
+        }
     }
 
     return tensor;
@@ -185,7 +200,7 @@ void Game::printBoard(const std::string &part) {
 bool Game::makeMove(Point p) {
     int row = p.x, col = p.y;
     if (row < 0 || row >= boardSize || col < 0 || col >= boardSize || board[row][col] != NONE_P) {
-        cout << "move false! " << row <<" " << col <<" " << board[row][col] << endl;
+        cout << "move false! " << row << " " << col << " " << board[row][col] << endl;
         return false;
     }
 
@@ -203,73 +218,12 @@ bool Game::makeMove(Point p) {
 }
 
 bool Game::checkWin(int row, int col, int player) {
-    // 水平方向
-    int count = 1;
-    int i = row, j = col - 1;
-    while (j >= 0 && board[i][j] == player) {
-        count++;
-        j--;
+    Game game = *this;
+    Point action = Point(row, col);
+    for (int i = 0; i < 4; i++) {
+        if (checkPointDirectShape(game, player, action, i, LONG_FIVE)) {
+            return true;
+        }
     }
-    j = col + 1;
-    while (j < boardSize && board[i][j] == player) {
-        count++;
-        j++;
-    }
-    if (count >= CONNECT) {
-        return true;
-    }
-
-    // 垂直方向
-    count = 1, i = row - 1;
-    j = col;
-    while (i >= 0 && board[i][j] == player) {
-        count++;
-        i--;
-    }
-    i = row + 1;
-    while (i < boardSize && board[i][j] == player) {
-        count++;
-        i++;
-    }
-    if (count >= CONNECT) {
-        return true;
-    }
-
-    // 左上到右下斜线方向
-    count = 1;
-    i = row - 1, j = col - 1;
-    while (i >= 0 && j >= 0 && board[i][j] == player) {
-        count++;
-        i--;
-        j--;
-    }
-    i = row + 1, j = col + 1;
-    while (i < boardSize && j < boardSize && board[i][j] == player) {
-        count++;
-        i++;
-        j++;
-    }
-    if (count >= CONNECT) {
-        return true;
-    }
-
-    // 右上到左下斜线方向
-    count = 1;
-    i = row - 1, j = col + 1;
-    while (i >= 0 && j < boardSize && board[i][j] == player) {
-        count++;
-        i--;
-        j++;
-    }
-    i = row + 1, j = col - 1;
-    while (i < boardSize && j >= 0 && board[i][j] == player) {
-        count++;
-        i++;
-        j--;
-    }
-    if (count >= CONNECT) {
-        return true;
-    }
-
     return false;
 }
