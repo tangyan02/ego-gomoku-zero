@@ -76,39 +76,38 @@ vector<Point> getShapeMoves(int player, Game &game, std::vector<Point> &basedMov
 }
 
 std::vector<Point>
-getWinningMoves(int player, Game &game, std::vector<Point> &basedMoves,
-                bool outer, int direct, bool allowRepeat) {
+getWinningMoves(int player, Game &game, std::vector<Point> &basedMoves) {
     return getShapeMoves(player, game, basedMoves, LONG_FIVE);
 }
 
 std::vector<Point>
-getActiveFourMoves(int player, Game &game, std::vector<Point> &basedMoves, bool outer, int direct, bool allowRepeat) {
+getActiveFourMoves(int player, Game &game, std::vector<Point> &basedMoves) {
     return getShapeMoves(player, game, basedMoves, ACTIVE_FOUR);
 }
 
 std::vector<Point>
-getSleepyFourMoves(int player, Game &game, std::vector<Point> &basedMoves, bool outer, int direct, bool allowRepeat) {
+getSleepyFourMoves(int player, Game &game, std::vector<Point> &basedMoves) {
     return getShapeMoves(player, game, basedMoves, SLEEPY_FOUR);
 }
 
 std::vector<Point>
-getActiveThreeMoves(int player, Game &game, std::vector<Point> &basedMoves, bool outer, int direct, bool allowRepeat) {
+getActiveThreeMoves(int player, Game &game, std::vector<Point> &basedMoves) {
     return getShapeMoves(player, game, basedMoves, ACTIVE_THREE);
 
 }
 
 std::vector<Point>
-getSleepyThreeMoves(int player, Game &game, std::vector<Point> &basedMoves, bool outer, int direct, bool allowRepeat) {
+getSleepyThreeMoves(int player, Game &game, std::vector<Point> &basedMoves) {
     return getShapeMoves(player, game, basedMoves, SLEEPY_THREE);
 }
 
 std::vector<Point>
-getActiveTwoMoves(int player, Game &game, std::vector<Point> &basedMoves, bool outer, int direct, bool allowRepeat) {
+getActiveTwoMoves(int player, Game &game, std::vector<Point> &basedMoves) {
     return getShapeMoves(player, game, basedMoves, ACTIVE_TWO);
 }
 
 std::vector<Point>
-getSleepyTwoMoves(int player, Game &game, std::vector<Point> &basedMoves, bool outer, int direct, bool allowRepeat) {
+getSleepyTwoMoves(int player, Game &game, std::vector<Point> &basedMoves) {
     return getShapeMoves(player, game, basedMoves, SLEEPY_TWO);
 }
 

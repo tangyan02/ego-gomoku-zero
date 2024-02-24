@@ -376,6 +376,35 @@ bool testGetActiveTwoMoves() {
     }
 }
 
+
+bool testGetSleepyTwoMoves() {
+    cout << "testGetSleepyTwoMoves" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(2, 1));
+    game.makeMove(Point(0, 6));
+    game.makeMove(Point(2, 2));
+    game.makeMove(Point(1, 1));
+    game.makeMove(Point(0, 7));
+    game.makeMove(Point(1, 2));
+    game.makeMove(Point(8, 8));
+
+    auto moves = game.getEmptyPoints();
+//    vector <Point> moves;
+//    moves.emplace_back(0, 1);
+    auto result = getSleepyTwoMoves(game.currentPlayer, game, moves);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 18) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 bool testDfsVCF() {
     cout << "testDfsVCF" << endl;
     Game game(boardSize);

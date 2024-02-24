@@ -54,6 +54,8 @@ void test() {
             testGetActiveThreeMoves4,
             testGetSleepyThreeMoves,
             testGetSleepyThreeMoves2,
+            testGetActiveTwoMoves,
+            testGetSleepyTwoMoves,
             testDfsVCF,
             testDfsVCF2,
             testDfsVCF3,

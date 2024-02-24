@@ -20,6 +20,7 @@ bool testGetActiveThreeMoves4();
 bool testGetSleepyThreeMoves();
 bool testGetSleepyThreeMoves2();
 bool testGetActiveTwoMoves();
+bool testGetSleepyTwoMoves();
 bool testDfsVCF();
 bool testDfsVCF2();
 bool testDfsVCF3();
