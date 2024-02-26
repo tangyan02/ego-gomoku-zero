@@ -31,5 +31,7 @@ bool testGetVCFDefenceMoves4();
 bool testGetVCFDefenceMoves5();
 bool testGetNearByEmptyPoints();
 bool testGetLineEmptyPoints();
+bool testGetThreeDefenceMoves();
+bool testGetThreeDefenceMoves2();
 
 #endif //EGO_GOMOKU_ZERO_ANALYZERTEST_H

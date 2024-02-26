@@ -68,7 +68,9 @@ void test() {
             testGetNearEmptyPoints,
             testGetLineEmptyPoints,
             testGetState,
-            testGetKeysInGame
+            testGetKeysInGame,
+            testGetThreeDefenceMoves,
+            testGetThreeDefenceMoves2
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);
@@ -92,8 +94,8 @@ void test() {
 
 int main(int argc, char *argv[]) {
     initShape();
-    selfPlay(argc, argv);
-//    test();
+//    selfPlay(argc, argv);
+    test();
 //    piskvork();
 //    startConsole(true);
     return 0;

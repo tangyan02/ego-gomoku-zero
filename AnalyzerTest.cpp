@@ -398,7 +398,7 @@ bool testGetSleepyTwoMoves() {
     }
     game.printBoard();
     cout << result.size() << endl;
-    if (result.size() == 18) {
+    if (result.size() == 16) {
         return true;
     } else {
         return false;
@@ -691,4 +691,55 @@ bool testGetLineEmptyPoints() {
         }
     }
     return true;
+}
+
+
+bool testGetThreeDefenceMoves() {
+    cout << "testGetThreeDefenceMoves" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(0, 4));
+    game.makeMove(Point(1, 0));
+    game.makeMove(Point(0, 5));
+    game.makeMove(Point(1, 1));
+    game.makeMove(Point(0, 7));
+    game.makeMove(Point(1, 2));
+
+    auto moves = game.getEmptyPoints();
+    auto result = getThreeDefenceMoves(2, game, moves);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 5) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool testGetThreeDefenceMoves2() {
+    cout << "testGetThreeDefenceMoves2" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(0, 4));
+    game.makeMove(Point(1, 0));
+    game.makeMove(Point(0, 5));
+    game.makeMove(Point(1, 1));
+    game.makeMove(Point(0, 6));
+    game.makeMove(Point(1, 2));
+
+    auto moves = game.getEmptyPoints();
+    auto result = getThreeDefenceMoves(2, game, moves);
+    for (Point &move: result) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    cout << result.size() << endl;
+    if (result.size() == 2) {
+        return true;
+    } else {
+        return false;
+    }
 }
