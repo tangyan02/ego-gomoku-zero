@@ -131,30 +131,30 @@ vector<Point> getThreeDefenceMoves(int player, Game &game, std::vector<Point> &b
     return removeDuplicates(defenceMoves);
 }
 
-std::vector<Point> getVCFDefenceMoves(int player, Game &game) {
+std::vector<Point> getVCFDefenceMoves(Game &game) {
     //如果有2个VCF点，则堵任意一个
     //如果只有一个VCF点，则类似防3处理，阻止活4点和眠4点,加上自己的所有眠4点,在加上阻止活3点
     std::vector<Point> defenceMoves;
     auto allMoves = game.getEmptyPoints();
-    auto vcfResult = dfsVCF(3 - player, 3 - player, game, Point(), Point());
-    if (vcfResult.first) {
-        if (vcfResult.second.size() >= 2) {
-            return vcfResult.second;
+    auto oppVCFMoves = game.getOppVCFMoves();
+    if (!oppVCFMoves.empty()) {
+        if (oppVCFMoves.size() >= 2) {
+            return oppVCFMoves;
         }
 
-        auto otherActiveFourMoves = getActiveFourMoves(3 - player, game, allMoves);
+        auto otherActiveFourMoves = getActiveFourMoves(game.getOtherPlayer(), game, allMoves);
         if (otherActiveFourMoves.size() >= 2) {
             return otherActiveFourMoves;
         }
 
-        auto otherSleepyFourMoves = getSleepyFourMoves(3 - player, game, allMoves);
-        auto sleepyFourMoves = getSleepyFourMoves(player, game, allMoves);
+        auto otherSleepyFourMoves = getSleepyFourMoves(game.getOtherPlayer(), game, allMoves);
+        auto sleepyFourMoves = getSleepyFourMoves(game.currentPlayer, game, allMoves);
         defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
         defenceMoves.insert(defenceMoves.end(), otherSleepyFourMoves.begin(), otherSleepyFourMoves.end());
         defenceMoves.insert(defenceMoves.end(), sleepyFourMoves.begin(), sleepyFourMoves.end());
 
         if (otherActiveFourMoves.empty()) {
-            auto otherActiveThreeMoves = getActiveThreeMoves(3 - player, game, allMoves);
+            auto otherActiveThreeMoves = getActiveThreeMoves(game.getOtherPlayer(), game, allMoves);
             defenceMoves.insert(defenceMoves.end(), otherActiveThreeMoves.begin(), otherActiveThreeMoves.end());
         }
     }
@@ -284,13 +284,13 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     }
 
     //我方VCF点
-    auto vcfResult = dfsVCF(game.currentPlayer, game.currentPlayer, game, Point(), Point());
-    if (vcfResult.first) {
-        return make_tuple(true, vcfResult.second, " VCF! ");
+    auto myVCFMoves = game.getMyVCFMoves();
+    if (!myVCFMoves.empty()) {
+        return make_tuple(true, myVCFMoves, " VCF! ");
     }
 
     //防对方VCF点
-    auto VCFDefenceMoves = getVCFDefenceMoves(game.currentPlayer, game);
+    auto VCFDefenceMoves = getVCFDefenceMoves(game);
     if (!VCFDefenceMoves.empty()) {
         return make_tuple(false, VCFDefenceMoves, " defence VCF ");
     }

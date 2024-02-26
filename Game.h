@@ -1,12 +1,12 @@
 #ifndef EGO_GOMOKU_ZERO_GAME_H
 #define EGO_GOMOKU_ZERO_GAME_H
 
-using namespace std;
-
 #include <iostream>
 #include <vector>
 #include <torch/torch.h>
 #include <unordered_set>
+
+using namespace std;
 
 class Point {
 public:
@@ -76,6 +76,10 @@ public:
     bool checkWin(int row, int col, int player);
 
     void doVCFSearch();
+
+    vector<Point> getMyVCFMoves();
+
+    vector<Point> getOppVCFMoves();
 };
 
 

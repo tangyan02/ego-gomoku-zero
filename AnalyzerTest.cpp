@@ -524,7 +524,8 @@ bool testGetVCFDefenceMoves() {
     game.makeMove(Point(7, 8));
     game.makeMove(Point(7, 7));
 
-    auto result = getVCFDefenceMoves(2, game);
+    cout << "current player is " << game.currentPlayer << endl;
+    auto result = getVCFDefenceMoves(game);
     for (Point &move: result) {
         game.board[move.x][move.y] = 3;
     }
@@ -548,9 +549,10 @@ bool testGetVCFDefenceMoves2() {
     game.makeMove(Point(1, 1));
     game.makeMove(Point(0, 6));
     game.makeMove(Point(1, 2));
+    game.makeMove(Point(2, 0));
 
 
-    auto result = getVCFDefenceMoves(2, game);
+    auto result = getVCFDefenceMoves(game);
     for (Point &move: result) {
         game.board[move.x][move.y] = 3;
     }
@@ -574,9 +576,10 @@ bool testGetVCFDefenceMoves3() {
     game.makeMove(Point(1, 1));
     game.makeMove(Point(0, 7));
     game.makeMove(Point(1, 2));
+    game.makeMove(Point(2, 0));
 
 
-    auto result = getVCFDefenceMoves(2, game);
+    auto result = getVCFDefenceMoves(game);
     for (Point &move: result) {
         game.board[move.x][move.y] = 3;
     }
@@ -603,7 +606,7 @@ bool testGetVCFDefenceMoves4() {
     game.makeMove(Point(3, 4));
 
 
-    auto result = getVCFDefenceMoves(game.currentPlayer, game);
+    auto result = getVCFDefenceMoves(game);
     for (Point &move: result) {
         game.board[move.x][move.y] = 3;
     }
@@ -645,7 +648,7 @@ bool testGetVCFDefenceMoves5() {
     game.makeMove(Point(6, 12));
     game.makeMove(Point(5, 11));
 
-    auto result = getVCFDefenceMoves(game.currentPlayer, game);
+    auto result = getVCFDefenceMoves(game);
     for (Point &move: result) {
         game.board[move.x][move.y] = 3;
     }

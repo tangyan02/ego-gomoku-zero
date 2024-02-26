@@ -149,15 +149,16 @@ torch::Tensor Game::getState() {
     }
 
     //VCF点
-    auto myVCF = dfsVCF(game.currentPlayer, game.currentPlayer, game, Point(), Point());
-    if (myVCF.first) {
-        for (const auto &item: myVCF.second) {
+    auto myVCFMoves = getMyVCFMoves();
+    if (!myVCFMoves.empty()) {
+        for (const auto &item: myVCFMoves) {
             tensor[16][item.x][item.y] += 1;
         }
     }
-    auto oppVCF = dfsVCF(game.getOtherPlayer(), game.getOtherPlayer(), game, Point(), Point());
-    if (oppVCF.first) {
-        for (const auto &item: oppVCF.second) {
+
+    auto oppVCFMoves = getOppVCFMoves();
+    if (!oppVCFMoves.empty()) {
+        for (const auto &item: oppVCFMoves) {
             tensor[17][item.x][item.y] += 1;
         }
     }
@@ -244,4 +245,14 @@ void Game::doVCFSearch() {
     oppVcfMoves = oppVCF.second;
 
     vcfDone = true;
+}
+
+vector<Point> Game::getMyVCFMoves() {
+    doVCFSearch();
+    return myVcfMoves;
+}
+
+vector<Point> Game::getOppVCFMoves() {
+    doVCFSearch();
+    return oppVcfMoves;
 }
