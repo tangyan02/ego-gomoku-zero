@@ -286,7 +286,7 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     //防御活4点
     auto threeDefenceMoves = getThreeDefenceMoves(game.currentPlayer, game, emptyPoints);
     if (!threeDefenceMoves.empty()) {
-        return make_tuple(true, threeDefenceMoves, "  defence 3 ");
+        return make_tuple(false, threeDefenceMoves, "  defence 3 ");
     }
 
     //防对方VCF点
