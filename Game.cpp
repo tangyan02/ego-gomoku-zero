@@ -215,7 +215,8 @@ bool Game::makeMove(Point p) {
 
     historyMoves.emplace_back(p);
 
-    vcfDone = false;
+    myVcfDone = false;
+    oppVcfDone = false;
     myVcfMoves.clear();
     oppVcfMoves.clear();
 
@@ -233,26 +234,24 @@ bool Game::checkWin(int row, int col, int player) {
     return false;
 }
 
-void Game::doVCFSearch() {
-    if (vcfDone) {
-        return;
+vector<Point> Game::getMyVCFMoves() {
+    if (myVcfDone) {
+        return myVcfMoves;
     }
-
     Game game = *this;
     auto myVCF = dfsVCF(currentPlayer, currentPlayer, game, Point(), Point());
     myVcfMoves = myVCF.second;
-    auto oppVCF = dfsVCF(getOtherPlayer(), getOtherPlayer(), game, Point(), Point());
-    oppVcfMoves = oppVCF.second;
-
-    vcfDone = true;
-}
-
-vector<Point> Game::getMyVCFMoves() {
-    doVCFSearch();
+    myVcfDone = true;
     return myVcfMoves;
 }
 
 vector<Point> Game::getOppVCFMoves() {
-    doVCFSearch();
+    if (oppVcfDone) {
+        return oppVcfMoves;
+    }
+    Game game = *this;
+    auto oppVCF = dfsVCF(getOtherPlayer(), getOtherPlayer(), game, Point(), Point());
+    oppVcfMoves = oppVCF.second;
+    oppVcfDone = true;
     return oppVcfMoves;
 }

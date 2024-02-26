@@ -48,7 +48,8 @@ public:
     int boardSize;
     int currentPlayer;
 
-    bool vcfDone = false;
+    bool myVcfDone = false;
+    bool oppVcfDone = false;
     vector<Point> myVcfMoves;
     vector<Point> oppVcfMoves;
 
@@ -74,8 +75,6 @@ public:
     bool makeMove(Point p);
 
     bool checkWin(int row, int col, int player);
-
-    void doVCFSearch();
 
     vector<Point> getMyVCFMoves();
 
