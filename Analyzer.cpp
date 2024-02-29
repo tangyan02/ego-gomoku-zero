@@ -134,38 +134,6 @@ vector<Point> getThreeDefenceMoves(int player, Game &game, std::vector<Point> &b
     return removeDuplicates(defenceMoves);
 }
 
-std::vector<Point> getVCFDefenceMoves(Game &game) {
-    //暂时废弃，这个算法并不严谨，因为vcf的所有点并不一定在这些路径上
-    //如果有2个VCF点，则堵任意一个
-    //如果只有一个VCF点，则类似防3处理，阻止活4点和眠4点,加上自己的所有眠4点,在加上阻止活3点
-    std::vector<Point> defenceMoves;
-    auto allMoves = game.getEmptyPoints();
-    auto oppVCFMoves = game.getOppVCFMoves();
-    if (!oppVCFMoves.empty()) {
-        if (oppVCFMoves.size() >= 2) {
-            return oppVCFMoves;
-        }
-
-        auto otherActiveFourMoves = getActiveFourMoves(game.getOtherPlayer(), game, allMoves);
-        if (otherActiveFourMoves.size() >= 2) {
-            return otherActiveFourMoves;
-        }
-
-        auto otherSleepyFourMoves = getSleepyFourMoves(game.getOtherPlayer(), game, allMoves);
-        auto sleepyFourMoves = getSleepyFourMoves(game.currentPlayer, game, allMoves);
-        defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
-        defenceMoves.insert(defenceMoves.end(), otherSleepyFourMoves.begin(), otherSleepyFourMoves.end());
-        defenceMoves.insert(defenceMoves.end(), sleepyFourMoves.begin(), sleepyFourMoves.end());
-
-        if (otherActiveFourMoves.empty()) {
-            auto otherActiveThreeMoves = getActiveThreeMoves(game.getOtherPlayer(), game, allMoves);
-            defenceMoves.insert(defenceMoves.end(), otherActiveThreeMoves.begin(), otherActiveThreeMoves.end());
-        }
-    }
-    return removeDuplicates(defenceMoves);
-}
-
-
 // 创建一个函数来查找特定的点
 bool existPoints(const std::vector<Point> &moves, const Point &target) {
     for (const auto &item: moves) {

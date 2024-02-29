@@ -30,8 +30,6 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
 vector<Point> getThreeDefenceMoves(int player, Game &game, vector<Point> &basedMoves);
 
-vector<Point> getVCFDefenceMoves(Game &game);
-
 vector<Point> getNearByEmptyPoints(Point action, Game &game);
 
 vector<Point> getLineEmptyPoints(Point action, Game &game, int direct);
