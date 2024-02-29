@@ -112,14 +112,17 @@ getSleepyTwoMoves(int player, Game &game, std::vector<Point> &basedMoves) {
 }
 
 vector<Point> getThreeDefenceMoves(int player, Game &game, std::vector<Point> &basedMoves) {
-    //两个活4点，必须堵一个
+    //两个活4点，必须堵一个，或者自己冲4
+    std::vector<Point> defenceMoves;
     auto otherActiveFourMoves = getActiveFourMoves(3 - player, game, basedMoves);
+    //两个活4点，阻止活4，或者自己眠4
     if (otherActiveFourMoves.size() >= 2) {
-        return otherActiveFourMoves;
+        auto sleepyFourMoves = getSleepyFourMoves(player, game, basedMoves);
+        defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
+        defenceMoves.insert(defenceMoves.end(), sleepyFourMoves.begin(), sleepyFourMoves.end());
     }
 
     //一个活4点,阻止活4或阻止眠4,或自己眠4
-    std::vector<Point> defenceMoves;
     if (otherActiveFourMoves.size() == 1) {
         auto nearMoves = getNearByEmptyPoints(otherActiveFourMoves[0], game);
         auto otherSleepyFourMoves = getSleepyFourMoves(3 - player, game, nearMoves);
@@ -132,6 +135,7 @@ vector<Point> getThreeDefenceMoves(int player, Game &game, std::vector<Point> &b
 }
 
 std::vector<Point> getVCFDefenceMoves(Game &game) {
+    //暂时废弃，这个算法并不严谨，因为vcf的所有点并不一定在这些路径上
     //如果有2个VCF点，则堵任意一个
     //如果只有一个VCF点，则类似防3处理，阻止活4点和眠4点,加上自己的所有眠4点,在加上阻止活3点
     std::vector<Point> defenceMoves;
@@ -287,12 +291,6 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     auto threeDefenceMoves = getThreeDefenceMoves(game.currentPlayer, game, emptyPoints);
     if (!threeDefenceMoves.empty()) {
         return make_tuple(false, threeDefenceMoves, "  defence 3 ");
-    }
-
-    //防对方VCF点
-    auto VCFDefenceMoves = getVCFDefenceMoves(game);
-    if (!VCFDefenceMoves.empty()) {
-        return make_tuple(false, VCFDefenceMoves, " defence VCF ");
     }
 
     return make_tuple(false, emptyPoints, "");

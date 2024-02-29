@@ -398,7 +398,7 @@ bool testGetSleepyTwoMoves() {
     }
     game.printBoard();
     cout << result.size() << endl;
-    if (result.size() == 16) {
+    if (result.size() == 18) {
         return true;
     } else {
         return false;
@@ -740,7 +740,7 @@ bool testGetThreeDefenceMoves2() {
     }
     game.printBoard();
     cout << result.size() << endl;
-    if (result.size() == 2) {
+    if (result.size() == 4) {
         return true;
     } else {
         return false;
