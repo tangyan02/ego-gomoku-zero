@@ -552,9 +552,10 @@ bool testGetThreeDefenceMoves() {
     game.makeMove(Point(1, 1));
     game.makeMove(Point(0, 7));
     game.makeMove(Point(1, 2));
+    game.makeMove(Point(2, 0));
 
     auto moves = game.getEmptyPoints();
-    auto result = getThreeDefenceMoves(2, game, moves);
+    auto result = getThreeDefenceMoves(game, moves);
     for (Point &move: result) {
         game.board[move.x][move.y] = 3;
     }
@@ -577,9 +578,10 @@ bool testGetThreeDefenceMoves2() {
     game.makeMove(Point(1, 1));
     game.makeMove(Point(0, 6));
     game.makeMove(Point(1, 2));
+    game.makeMove(Point(2, 0));
 
     auto moves = game.getEmptyPoints();
-    auto result = getThreeDefenceMoves(2, game, moves);
+    auto result = getThreeDefenceMoves(game, moves);
     for (Point &move: result) {
         game.board[move.x][move.y] = 3;
     }

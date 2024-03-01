@@ -111,24 +111,27 @@ getSleepyTwoMoves(int player, Game &game, std::vector<Point> &basedMoves) {
     return getShapeMoves(player, game, basedMoves, SLEEPY_TWO);
 }
 
-vector<Point> getThreeDefenceMoves(int player, Game &game, std::vector<Point> &basedMoves) {
-    //两个活4点，必须堵一个，或者自己冲4
+vector<Point> getThreeDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
+    //自己的冲4点，和对手的活4。再从对手眠4里面选.如果下了之后活4活眠4没有了，则视为防御点
     std::vector<Point> defenceMoves;
-    auto otherActiveFourMoves = getActiveFourMoves(3 - player, game, basedMoves);
-    //两个活4点，阻止活4，或者自己眠4
-    if (otherActiveFourMoves.size() >= 2) {
-        auto sleepyFourMoves = getSleepyFourMoves(player, game, basedMoves);
-        defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
-        defenceMoves.insert(defenceMoves.end(), sleepyFourMoves.begin(), sleepyFourMoves.end());
-    }
+    auto otherActiveFourMoves = getActiveFourMoves(game.getOtherPlayer(), game, basedMoves);
+    if (otherActiveFourMoves.size() >= 1) {
+        //对手的冲4点
+        auto otherSleepyFourMoves = getSleepyFourMoves(game.getOtherPlayer(), game, basedMoves);
+        for (const auto &item: otherSleepyFourMoves) {
+            game.board[item.x][item.y] = game.currentPlayer;
+            auto nextOtherActiveFourMoves = getActiveFourMoves(game.getOtherPlayer(), game, otherActiveFourMoves);
+            if (nextOtherActiveFourMoves.empty()) {
+                defenceMoves.emplace_back(item);
+            }
+            game.board[item.x][item.y] = 0;
+        }
 
-    //一个活4点,阻止活4或阻止眠4,或自己眠4
-    if (otherActiveFourMoves.size() == 1) {
-        auto nearMoves = getNearByEmptyPoints(otherActiveFourMoves[0], game);
-        auto otherSleepyFourMoves = getSleepyFourMoves(3 - player, game, nearMoves);
-        auto sleepyFourMoves = getSleepyFourMoves(player, game, basedMoves);
+        //对手活4点
         defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
-        defenceMoves.insert(defenceMoves.end(), otherSleepyFourMoves.begin(), otherSleepyFourMoves.end());
+
+        //自己的眠4点
+        auto sleepyFourMoves = getSleepyFourMoves(game.currentPlayer, game, basedMoves);
         defenceMoves.insert(defenceMoves.end(), sleepyFourMoves.begin(), sleepyFourMoves.end());
     }
     return removeDuplicates(defenceMoves);
@@ -256,7 +259,7 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     }
 
     //防御活4点
-    auto threeDefenceMoves = getThreeDefenceMoves(game.currentPlayer, game, emptyPoints);
+    auto threeDefenceMoves = getThreeDefenceMoves(game, emptyPoints);
     if (!threeDefenceMoves.empty()) {
         return make_tuple(false, threeDefenceMoves, "  defence 3 ");
     }
