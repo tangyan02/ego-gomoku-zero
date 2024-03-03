@@ -112,7 +112,7 @@ void tree_down(int x, int y) {
     }
 
     if (select == nullptr && !game->historyMoves.empty()) {
-        pipeOut("MESSAGE =====renew node��====== ");
+        pipeOut("MESSAGE =====renew node====== ");
         node = new Node();
     }
 
