@@ -21,4 +21,6 @@ void recordSelfPlay(
 
 torch::jit::Module getNetwork(torch::Device device, std::string path);
 
+Game randomGame(Game &game, MonteCarloTree &mcts);
+
 #endif //EGO_GOMOKU_ZERO_SELFPLAY_H

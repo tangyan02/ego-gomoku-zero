@@ -5,6 +5,7 @@
 #include "Console.h"
 #include "Shape.h"
 #include "ShapeTest.h"
+#include "SelfPlayTest.h"
 
 using namespace std;
 
@@ -65,7 +66,8 @@ void test() {
             testGetState,
             testGetKeysInGame,
             testGetThreeDefenceMoves,
-            testGetThreeDefenceMoves2
+            testGetThreeDefenceMoves2,
+            testRandomGame
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);

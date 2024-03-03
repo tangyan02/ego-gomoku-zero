@@ -2,6 +2,10 @@
 
 using namespace std;
 
+// 创建一个随机数生成器
+std::random_device rd;
+std::mt19937 gen(rd());
+
 void printGame(Game &game, int action, std::vector<float> &action_probs,
                float temperature, const std::string &part, const string selectInfo, MonteCarloTree *mcts) {
     game.printBoard(part);
@@ -59,6 +63,52 @@ void addAction(Game &game,
     game_data.push_back(record);
 }
 
+Game randomGame(Game &game, MonteCarloTree &mcts) {
+    //开局随机去下完后，价值接近0的点
+    auto moves = game.getEmptyPoints();
+    vector<pair<float, Point>> moveValues;
+    for (const auto &item: moves) {
+        Game gameTemp = game;
+        gameTemp.makeMove(item);
+        auto state = gameTemp.getState();
+        auto eval = mcts.evaluate_state(state);
+        moveValues.emplace_back(eval.first, item);
+    }
+
+    // 定义一个比较函数，用于按照 pair 的第一个元素的绝对值从小到大排序
+    auto compare = [](const pair<float, Point>& a, const pair<float, Point>& b) {
+        return abs(a.first) < abs(b.first);
+    };
+
+    sort(moveValues.begin(), moveValues.end(), compare);
+    // 计算前 10% 的元素个数
+    int numElements = moveValues.size() * 0.1;
+
+    std::vector<Point> result;
+    for (int i = 0; i < numElements; ++i) {
+        result.push_back(moveValues[i].second);
+//        cout<<moveValues[i].second.x<<","<<moveValues[i].second.y<<" "<<moveValues[i].first<<endl;
+    }
+
+//    for (const auto &item: result){
+//        game.board[item.x][item.y] = 3;
+//    }
+//    game.printBoard();
+//    for (const auto &item: result){
+//        game.board[item.x][item.y] = 0;
+//    }
+
+    std::uniform_int_distribution<> dis(0, result.size() - 1);
+    // 生成一个随机索引
+    int random_index = dis(gen);
+
+    // 使用随机索引从数组中获取一个元素
+    auto random_element = result[random_index];
+    game.makeMove(random_element);
+
+    return game;
+}
+
 std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> selfPlay(int boardSize,
                                                                                         int numGames,
                                                                                         int numSimulations,
@@ -75,21 +125,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
         Game game(boardSize);
         std::vector<std::tuple<torch::Tensor, int, std::vector<float>>> game_data;
 
-        //开局先随机下1个点
-        for (int j = 0; j < 1; j++) {
-            auto moves = game.getEmptyPoints();
-            // 创建一个随机数生成器
-            std::random_device rd;
-            std::mt19937 gen(rd());
-            std::uniform_int_distribution<> dis(0, moves.size() - 1);
-
-            // 生成一个随机索引
-            int random_index = dis(gen);
-
-            // 使用随机索引从数组中获取一个元素
-            auto random_element = moves[random_index];
-            game.makeMove(random_element);
-        }
+        game = randomGame(game, mcts);
 
         int step = 0;
         while (!game.isGameOver()) {
@@ -126,8 +162,6 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
             }
 
             // 随机选择
-            std::random_device rd;
-            std::mt19937 gen(rd());
             std::discrete_distribution<int> distribution(action_probs_normalized.begin(),
                                                          action_probs_normalized.end());
             int action = actions[distribution(gen)];
