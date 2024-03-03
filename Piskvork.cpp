@@ -223,6 +223,7 @@ void brain_turn()
 
 
     string info = node->selectInfo;
+    float score = node->value_sum;
     int total = node->visits;
     for (auto item : node->children) {
         int visit = item.second->visits;
@@ -234,7 +235,7 @@ void brain_turn()
 
     auto p = game->getPointFromIndex(action);
 
-    pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %f last simi %d info %s", p.x, p.y, max, total, (float)max / total, total-simiNum, info.c_str());
+    pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %f score %f last simi %d info %s", p.x, p.y, max, total, (float)max / total,score, total-simiNum, info.c_str());
     do_mymove(p.x, p.y);
 
     mcts.search(*game, node, 1);
