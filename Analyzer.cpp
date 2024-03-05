@@ -492,12 +492,12 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     }
 
     //我方VCT点
-    auto myVCTMoves = dfsVCT(game.currentPlayer, game.currentPlayer, game,
-                             game.lastAction, game.lastLastAction, Point(),
-                             false,  0, 0, 1, true);
-    if (myVCTMoves.first) {
-        return make_tuple(true, myVCTMoves.second, " VCT! ");
-    }
+//    auto myVCTMoves = dfsVCT(game.currentPlayer, game.currentPlayer, game,
+//                             game.lastAction, game.lastLastAction, Point(),
+//                             false,  0, 0, 1, true);
+//    if (myVCTMoves.first) {
+//        return make_tuple(true, myVCTMoves.second, " VCT! ");
+//    }
 
     return make_tuple(false, emptyPoints, "");
 }
