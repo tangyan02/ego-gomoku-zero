@@ -76,7 +76,7 @@ Game randomGame(Game &game, MonteCarloTree &mcts) {
     }
 
     // 定义一个比较函数，用于按照 pair 的第一个元素的绝对值从小到大排序
-    auto compare = [](const pair<float, Point>& a, const pair<float, Point>& b) {
+    auto compare = [](const pair<float, Point> &a, const pair<float, Point> &b) {
         return abs(a.first) < abs(b.first);
     };
 
@@ -143,7 +143,10 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
 
             //开始mcts预测
             Node node;
+
+            long startTime = getSystemTime();
             mcts.search(game, &node, numSimulations);
+            cout << part << "search cost " << getSystemTime() - startTime << endl;
 
             std::vector<int> actions;
             std::vector<float> action_probs;

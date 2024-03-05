@@ -53,6 +53,7 @@ void test() {
             testGetActiveThreeMoves2,
             testGetActiveThreeMoves3,
             testGetActiveThreeMoves4,
+            testGetActiveFourMoves5,
             testGetSleepyThreeMoves,
             testGetSleepyThreeMoves2,
             testGetActiveTwoMoves,
@@ -67,7 +68,13 @@ void test() {
             testGetKeysInGame,
             testGetThreeDefenceMoves,
             testGetThreeDefenceMoves2,
-            testRandomGame
+            testDfsVCT,
+            testDfsVCT2,
+            testDfsVCT3,
+            testDfsVCT4,
+            testDfsVCT5,
+            testDfsVCT6,
+            testDfsVCT7
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);
