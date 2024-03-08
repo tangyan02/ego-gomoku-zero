@@ -153,7 +153,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
             mcts.release(&node);
 
             float temperature =
-                    temperatureDefault * (game.boardSize * game.boardSize - step * 2) /
+                    temperatureDefault * (game.boardSize * game.boardSize - step * 4) /
                     (game.boardSize * game.boardSize);
             if (temperature < 0.1) {
                 temperature = 0.1;
