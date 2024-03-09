@@ -152,11 +152,12 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
             std::tie(actions, action_probs) = mcts.get_action_probabilities(game);
             mcts.release(&node);
 
+            //计算温度
             float temperature =
-                    temperatureDefault * (game.boardSize * game.boardSize - step * 4) /
+                    temperatureDefault * (game.boardSize * game.boardSize - step * 8) /
                     (game.boardSize * game.boardSize);
-            if (temperature < 0.1) {
-                temperature = 0.1;
+            if (temperature < 0.2) {
+                temperature = 0.2;
             }
             std::vector<float> action_probs_temperature = mcts.apply_temperature(action_probs, temperature);
 
