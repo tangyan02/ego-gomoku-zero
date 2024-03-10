@@ -28,10 +28,6 @@ vector<Point> getSleepyTwoMoves(int player, Game &game, vector<Point> &basedMove
 pair<bool, vector<Point>>
 dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level = 0);
 
-std::pair<bool, std::vector<Point>>
-dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, Point attackPoint,
-       bool fourMode, int level = 0, int threeCount = 0, int maxThreeCount = 4, bool realPlay = false);
-
 vector<Point> getThreeDefenceMoves(Game &game, vector<Point> &basedMoves);
 
 vector<Point> getNearByEmptyPoints(Point action, Game &game);

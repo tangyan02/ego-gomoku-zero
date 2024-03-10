@@ -82,7 +82,7 @@ std::vector<Point> Game::getEmptyPoints() {
 
 
 torch::Tensor Game::getState() {
-    torch::Tensor tensor = torch::zeros({18, boardSize, boardSize});
+    torch::Tensor tensor = torch::zeros({22, boardSize, boardSize});
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
@@ -104,46 +104,58 @@ torch::Tensor Game::getState() {
             int x = action.x;
             int y = action.y;
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, LONG_FIVE)) {
-                tensor[2][x][y] += 1;
+                tensor[2][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, LONG_FIVE)) {
-                tensor[3][x][y] += 1;
+                tensor[3][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, ACTIVE_FOUR)) {
-                tensor[4][x][y] += 1;
+                tensor[4][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_FOUR)) {
-                tensor[5][x][y] += 1;
+                tensor[5][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, SLEEPY_FOUR)) {
-                tensor[6][x][y] += 1;
+                tensor[6][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, SLEEPY_FOUR)) {
-                tensor[7][x][y] += 1;
+                tensor[7][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, ACTIVE_THREE)) {
-                tensor[8][x][y] += 1;
+                tensor[8][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_THREE)) {
-                tensor[9][x][y] += 1;
+                tensor[9][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, SLEEPY_THREE)) {
-                tensor[10][x][y] += 1;
+                tensor[10][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, SLEEPY_THREE)) {
-                tensor[11][x][y] += 1;
+                tensor[11][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, ACTIVE_TWO)) {
-                tensor[12][x][y] += 1;
+                tensor[12][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_TWO)) {
-                tensor[13][x][y] += 1;
+                tensor[13][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, SLEEPY_TWO)) {
-                tensor[14][x][y] += 1;
+                tensor[14][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, SLEEPY_TWO)) {
-                tensor[15][x][y] += 1;
+                tensor[15][x][y] += 0.25;
+            }
+            if (checkPointDirectShape(game, game.currentPlayer, action, direct, ACTIVE_ONE)) {
+                tensor[16][x][y] += 0.25;
+            }
+            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_ONE)) {
+                tensor[17][x][y] += 0.25;
+            }
+            if (checkPointDirectShape(game, game.currentPlayer, action, direct, SLEEPY_ONE)) {
+                tensor[18][x][y] += 0.25;
+            }
+            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, SLEEPY_ONE)) {
+                tensor[19][x][y] += 0.25;
             }
         }
     }
@@ -152,14 +164,14 @@ torch::Tensor Game::getState() {
     auto myVCFMoves = getMyVCFMoves();
     if (!myVCFMoves.empty()) {
         for (const auto &item: myVCFMoves) {
-            tensor[16][item.x][item.y] += 1;
+            tensor[20][item.x][item.y] += 1;
         }
     }
 
     auto oppVCFMoves = getOppVCFMoves();
     if (!oppVCFMoves.empty()) {
         for (const auto &item: oppVCFMoves) {
-            tensor[17][item.x][item.y] += 1;
+            tensor[21][item.x][item.y] += 1;
         }
     }
 

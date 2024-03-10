@@ -6,7 +6,7 @@ using namespace std;
 static int ddx[4] = {1, 1, 1, 0};
 static int ddy[4] = {1, 0, -1, 1};
 
-static bool shapeMapping[7][300000] = {false};
+static bool shapeMapping[9][300000] = {false};
 
 bool win(const vector<int> &keys) {
     int count = 0;
@@ -147,6 +147,49 @@ bool sleepyTwo(vector<int> &keys) {
     return false;
 }
 
+
+bool activeOne(vector<int> &keys) {
+    if (activeThree(keys) || activeFour(keys) || activeTwo(keys)) {
+        return false;
+    }
+    int count = 0;
+    for (int i = 0; i < keys.size(); i++) {
+        if (keys[i] == 0) {
+            keys[i] = 1;
+            if (activeTwo(keys)) {
+                count++;
+            }
+            keys[i] = 0;
+        }
+    }
+    if (count >= 1) {
+        return true;
+    }
+    return false;
+}
+
+
+bool sleepyOne(vector<int> &keys) {
+    if (sleepyFour(keys) || sleepyThree(keys) || sleepyTwo(keys) ||
+        activeThree(keys) || activeFour(keys) || activeTwo(keys) || activeOne(keys)) {
+        return false;
+    }
+    int count = 0;
+    for (int i = 0; i < keys.size(); i++) {
+        if (keys[i] == 0) {
+            keys[i] = 1;
+            if (sleepyTwo(keys)) {
+                count++;
+            }
+            keys[i] = 0;
+        }
+    }
+    if (count >= 1) {
+        return true;
+    }
+    return false;
+}
+
 void generateCombinations(std::vector<std::vector<int>> &combinations, std::vector<int> &combination, int index) {
     if (index == combination.size()) {
         combinations.push_back(combination);
@@ -264,6 +307,12 @@ void initShape() {
         if (sleepyTwo(keyList)) {
             shapeMapping[SLEEPY_TWO][key] = true;
         }
+        if (activeOne(keyList)) {
+            shapeMapping[ACTIVE_ONE][key] = true;
+        }
+        if (sleepyOne(keyList)) {
+            shapeMapping[SLEEPY_ONE][key] = true;
+        }
     }
 }
 
@@ -318,6 +367,21 @@ void printShape() {
     for (const auto &item: combinations) {
         vector<int> keys = item;
         if (sleepyTwo(keys)) {
+            printKeys(item);
+        }
+    }
+    cout << "活1" << endl;
+    for (const auto &item: combinations) {
+        vector<int> keys = item;
+        if (activeOne(keys)) {
+            printKeys(item);
+        }
+    }
+
+    cout << "眠1" << endl;
+    for (const auto &item: combinations) {
+        vector<int> keys = item;
+        if (sleepyOne(keys)) {
             printKeys(item);
         }
     }

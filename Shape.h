@@ -9,6 +9,9 @@
 #define SLEEPY_THREE 4
 #define ACTIVE_TWO 5
 #define SLEEPY_TWO 6
+#define ACTIVE_ONE 7
+#define SLEEPY_ONE 8
+
 using Shape = int;
 
 #include <vector>
