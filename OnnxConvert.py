@@ -13,6 +13,6 @@ torch.onnx.export(network,
                   (example),
                   'model/model_latest.onnx',
                   input_names=['input'],
-                  output_names=['output'],
+                  output_names=['value', "act"],
                   opset_version=17,
                   verbose=True)

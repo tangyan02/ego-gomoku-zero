@@ -1,40 +1,10 @@
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 project(ego-gomoku-zero)
 
-#=========================== torch ======================
+#=========================== onnx ======================
 
-execute_process(
-        COMMAND python -c "import torch; print(torch.utils.cmake_prefix_path)"
-        OUTPUT_VARIABLE TORCH_CMAKE_PREFIX_PATH
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-set(CMAKE_PREFIX_PATH ${TORCH_CMAKE_PREFIX_PATH})
 set(CMAKE_SYSTEM_PROCESSOR x86_64)
 set(CMAKE_OSX_ARCHITECTURES x86_64)
-
-find_package(Torch REQUIRED)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS} -O3 -funroll-loops -ftree-vectorize -finline-functions -std=c++17")
-
-add_executable(ego-gomoku-zero SelfPlay.cpp Game.h Game.cpp MCTS.h MCTS.cpp SelfPlay.h Main.cpp Analyzer.cpp Analyzer.h AnalyzerTest.cpp AnalyzerTest.h Piskvork.cpp Pisqpipe.h Pisqpipe.cpp GameTest.cpp GameTest.h Console.cpp Console.cpp Console.cpp Console.h Utils.cpp Utils.h Shape.cpp Shape.h ShapeTest.cpp ShapeTest.h)
-target_link_libraries(ego-gomoku-zero "${TORCH_LIBRARIES}")
-set_property(TARGET ego-gomoku-zero PROPERTY CXX_STANDARD 17)
-
-# The following code block is suggested to be used on Windows.
-# According to https://github.com/pytorch/pytorch/issues/25457,
-# the DLLs need to be copied to avoid memory errors.
-if (MSVC)
-  file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
-  add_custom_command(TARGET ego-gomoku-zero
-                     POST_BUILD
-                     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                     ${TORCH_DLLS}
-                     $<TARGET_FILE_DIR:ego-gomoku-zero>)
-endif (MSVC)
-
-
-
-
-#=========================== onnx ======================
 
 if (WIN32)
   string(APPEND CMAKE_CXX_FLAGS " /W4")
@@ -56,7 +26,8 @@ if(NOT ONNXRUNTIME_ROOTDIR)
   if(WIN32)
     set(ONNXRUNTIME_ROOTDIR "C:/Program Files/onnxruntime")
   else()
-    set(ONNXRUNTIME_ROOTDIR "/Users/tangyan/onnxruntime-osx-arm64-1.17.1")
+#    set(ONNXRUNTIME_ROOTDIR "/Users/tangyan/onnxruntime-osx-arm64-1.17.1")
+    set(ONNXRUNTIME_ROOTDIR "/Users/tangyan/onnxruntime-osx-x86_64-1.17.1")
   endif()
 endif()
 
@@ -82,20 +53,6 @@ if(WIN32)
   set(WIL_LIB wil)
 endif()
 
-# On Linux the samples use libjpeg and libpng for decoding images.
-# On Windows they use Windows Image Component(WIC)
-if(NOT WIN32)
-  find_package(JPEG)
-  if(LIBPNG_ROOTDIR)
-    set(PNG_FOUND true)
-    set(PNG_LIBRARIES png16)
-    set(PNG_INCLUDE_DIRS "${LIBPNG_ROOTDIR}/include")
-    set(PNG_LIBDIR "${LIBPNG_ROOTDIR}/lib")
-  else()
-    find_package(PNG)
-  endif()
-endif()
-
 if(onnxruntime_USE_CUDA)
   add_definitions(-DUSE_CUDA)
 endif()
@@ -119,4 +76,17 @@ function(copy_ort_dlls target_name)
   endif()
 endfunction()
 
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -funroll-loops -ftree-vectorize -finline-functions -std=c++17")
+
+add_executable(ego-gomoku-zero Main.cpp)
+set_property(TARGET ego-gomoku-zero PROPERTY CXX_STANDARD 17)
+
+# 查找第三方静态库
+find_library(MY_LIBRARY
+        NAMES onnxruntime.1.17.1 onnxruntime
+        PATHS ${ONNXRUNTIME_ROOTDIR}/lib)
+
+# 链接第三方静态库到你的目标
+target_link_libraries(ego-gomoku-zero ${MY_LIBRARY})
 
