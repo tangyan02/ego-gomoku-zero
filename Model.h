@@ -14,12 +14,14 @@ public:
 
     Model();
 
-    torch::jit::Module network;
-    torch::Device device;
-
     void init(string model_path);
 
     std::pair<float, std::vector<float>> evaluate_state(vector<vector<vector<float>>> &state);
+
+private:
+
+    torch::jit::Module network;
+    torch::Device device;
 
 };
 
