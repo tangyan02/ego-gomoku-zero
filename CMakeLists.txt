@@ -61,8 +61,8 @@ endif ()
 # Windows might have an onnxruntime.dll in the system directory so it's more robust to manually copy the dlls to
 # the output dir. Define a function to do so. This is called from the cmake file in the subdirectories.
 function(copy_ort_dlls target_name)
-    if (MSVC)
-        file(GLOB ORT_DLLS ${ONNXRUNTIME_ROOTDIR}/bin/*.dll)
+if (MSVC)
+        file(GLOB ORT_DLLS ${ONNXRUNTIME_ROOTDIR}/lib/*.dll)
         foreach (ORT_DLL ${ORT_DLLS})
             add_custom_command(TARGET ${target_name} POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E copy ${ORT_DLL} $<TARGET_FILE_DIR:${target_name}>)

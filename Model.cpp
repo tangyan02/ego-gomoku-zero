@@ -1,6 +1,14 @@
 
 #include "Model.h"
 
+
+#ifdef _WIN32
+std::wstring ConvertStringToWString(const std::string& str) {
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    return converter.from_bytes(str);
+}
+#endif //_WIN32
+
 Model::Model() : memoryInfo(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)) {
 }
 
@@ -14,8 +22,8 @@ void Model::init(string modelPath) {
 
     // 判断是否有GPU
     auto providers = Ort::GetAvailableProviders();
-    for (auto provider: providers)
-        std::cout << provider << std::endl;
+    // for (auto provider: providers)
+    //     std::cout << provider << std::endl;
     //看看有没有CUDA支持列表
     auto cudaAvailable = std::find(providers.begin(), providers.end(), "CUDAExecutionProvider");
     OrtCUDAProviderOptions cudaOption;
@@ -28,8 +36,14 @@ void Model::init(string modelPath) {
         sessionOptions->AppendExecutionProvider_CUDA(cudaOption);
     }
 
+    #ifdef _WIN32
     // 创建会话
+    session = new Ort::Session(*env, ConvertStringToWString(modelPath).c_str(), *sessionOptions);
+    #endif //_WIN32
+
+    #if (defined(__APPLE__) && defined(__MACH__))
     session = new Ort::Session(*env, modelPath.c_str(), *sessionOptions);
+    #endif // __unix__
 }
 
 std::pair<float, std::vector<float>> Model::evaluate_state(vector<vector<vector<float>>> &data) {

@@ -7,6 +7,7 @@
 #include <onnxruntime_cxx_api.h>
 #include <iostream>
 #include <numeric>
+#include <codecvt>
 
 using namespace std;
 

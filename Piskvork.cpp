@@ -21,12 +21,11 @@ static unsigned seed;
 static int boardSize;
 static bool piskvorkMessageEnable;
 static Game* game;
-static torch::jit::Module network;
 
 static int firstCost = -1;
 
-static auto device = torch::kCPU;
 static Node *node;
+static Model* model;
 
 using namespace std;
 
@@ -55,7 +54,7 @@ void brain_init()
 {
     const int MAXPATH = 250;
     auto prefix = getPrefix();
-    auto subfix = string("/model/model_latest.pt");
+    auto subfix = string("/model/model_latest.onnx");
     auto fullPath = prefix + subfix;
 
     setbuf(stdout, NULL);
@@ -64,7 +63,9 @@ void brain_init()
         return;
     }
     boardSize = width;
-    network = getNetwork(device, fullPath);
+    model = new Model();
+    model->init(fullPath);
+
     pipeOut("MESSAGE : LOADED");
 
     game = new Game(boardSize);
@@ -77,7 +78,7 @@ void brain_restart()
 {
     delete game;
     game = new Game(boardSize);
-    MonteCarloTree mcts = MonteCarloTree(&network, device, 1);
+    MonteCarloTree mcts = MonteCarloTree(model, 1);
     mcts.release(node);
     node = new Node();
     pipeOut("MESSAGE : RESTARTED");
@@ -100,7 +101,7 @@ void tree_down(int x, int y) {
         }
     }
 
-    MonteCarloTree mcts = MonteCarloTree(&network, device, 1);
+    MonteCarloTree mcts = MonteCarloTree(model, 1);
     for (auto item : node->children) {
         if (item.second != select) {
             mcts.release(item.second);
@@ -178,7 +179,7 @@ int min(int a,int b) {
 
 void brain_turn()
 {
-    MonteCarloTree mcts = MonteCarloTree(&network, device, 1);
+    MonteCarloTree mcts = MonteCarloTree(model, 1);
 
     piskvorkMessageEnable = true;
 
@@ -223,19 +224,20 @@ void brain_turn()
 
 
     string info = node->selectInfo;
-    float score = node->value_sum;
     int total = node->visits;
+    float score = 0;
     for (auto item : node->children) {
         int visit = item.second->visits;
         if (visit > max) {
             action = item.first;
             max = visit;
+            score = item.second->value_sum / visit;
         }
     }
 
     auto p = game->getPointFromIndex(action);
 
-    pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %f score %f last simi %d info %s", p.x, p.y, max, total, (float)max / total,score, total-simiNum, info.c_str());
+    pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %.2f score %.2f last simi %d info %s", p.x, p.y, max, total, (float)max / total,score, total-simiNum, info.c_str());
     do_mymove(p.x, p.y);
 
     mcts.search(*game, node, 1);
