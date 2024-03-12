@@ -36,14 +36,14 @@ void Model::init(string modelPath) {
         sessionOptions->AppendExecutionProvider_CUDA(cudaOption);
     }
 
-    #ifdef _WIN32
+#ifdef _WIN32
     // 创建会话
     session = new Ort::Session(*env, ConvertStringToWString(modelPath).c_str(), *sessionOptions);
-    #endif //_WIN32
+#endif //_WIN32
 
-    #if (defined(__APPLE__) && defined(__MACH__))
+#if (defined(__APPLE__) && defined(__MACH__))
     session = new Ort::Session(*env, modelPath.c_str(), *sessionOptions);
-    #endif // __unix__
+#endif // __unix__
 }
 
 std::pair<float, std::vector<float>> Model::evaluate_state(vector<vector<vector<float>>> &data) {
