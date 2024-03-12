@@ -41,7 +41,7 @@ void Model::init(string modelPath) {
     session = new Ort::Session(*env, ConvertStringToWString(modelPath).c_str(), *sessionOptions);
 #endif //_WIN32
 
-#if (defined(__APPLE__) && defined(__MACH__))
+#if !defined(_WIN32) && (defined(__unix__) || defined(__unix) || (defined(__APPLE__) && defined(__MACH__)))
     session = new Ort::Session(*env, modelPath.c_str(), *sessionOptions);
 #endif // __unix__
 }

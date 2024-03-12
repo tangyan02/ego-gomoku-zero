@@ -109,7 +109,7 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
 
             //计算温度
             float temperature =
-                    temperatureDefault * (game.boardSize * game.boardSize - step * 8) /
+                    temperatureDefault * (game.boardSize * game.boardSize - step * 4) /
                     (game.boardSize * game.boardSize);
             if (temperature < 0.2) {
                 temperature = 0.2;
