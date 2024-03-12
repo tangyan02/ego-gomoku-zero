@@ -5,7 +5,6 @@
 #include "Console.h"
 #include "Shape.h"
 #include "ShapeTest.h"
-#include "SelfPlayTest.h"
 
 using namespace std;
 

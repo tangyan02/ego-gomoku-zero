@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <vector>
-#include <torch/torch.h>
 #include <unordered_set>
 
 using namespace std;
@@ -66,7 +65,7 @@ public:
 
     vector<Point> getNearEmptyPoints();
 
-    torch::Tensor getState();
+    vector<vector<vector<float>>> getState();
 
     bool isGameOver();
 

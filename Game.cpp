@@ -81,16 +81,17 @@ std::vector<Point> Game::getEmptyPoints() {
 }
 
 
-torch::Tensor Game::getState() {
-    torch::Tensor tensor = torch::zeros({22, boardSize, boardSize});
+vector<vector<vector<float>>> Game::getState() {
+
+    vector<vector<vector<float>>> data(22, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
         for (int col = 0; col < boardSize; col++) {
             if (board[row][col] == currentPlayer) {
-                tensor[0][row][col] = 1;
+                data[0][row][col] = 1;
             } else if (board[row][col] == getOtherPlayer()) {
-                tensor[1][row][col] = 1;
+                data[1][row][col] = 1;
             }
         }
     }
@@ -104,58 +105,58 @@ torch::Tensor Game::getState() {
             int x = action.x;
             int y = action.y;
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, LONG_FIVE)) {
-                tensor[2][x][y] += 0.25;
+                data[2][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, LONG_FIVE)) {
-                tensor[3][x][y] += 0.25;
+                data[3][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, ACTIVE_FOUR)) {
-                tensor[4][x][y] += 0.25;
+                data[4][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_FOUR)) {
-                tensor[5][x][y] += 0.25;
+                data[5][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, SLEEPY_FOUR)) {
-                tensor[6][x][y] += 0.25;
+                data[6][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, SLEEPY_FOUR)) {
-                tensor[7][x][y] += 0.25;
+                data[7][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, ACTIVE_THREE)) {
-                tensor[8][x][y] += 0.25;
+                data[8][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_THREE)) {
-                tensor[9][x][y] += 0.25;
+                data[9][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, SLEEPY_THREE)) {
-                tensor[10][x][y] += 0.25;
+                data[10][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, SLEEPY_THREE)) {
-                tensor[11][x][y] += 0.25;
+                data[11][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, ACTIVE_TWO)) {
-                tensor[12][x][y] += 0.25;
+                data[12][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_TWO)) {
-                tensor[13][x][y] += 0.25;
+                data[13][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, SLEEPY_TWO)) {
-                tensor[14][x][y] += 0.25;
+                data[14][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, SLEEPY_TWO)) {
-                tensor[15][x][y] += 0.25;
+                data[15][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, ACTIVE_ONE)) {
-                tensor[16][x][y] += 0.25;
+                data[16][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_ONE)) {
-                tensor[17][x][y] += 0.25;
+                data[17][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, game.currentPlayer, action, direct, SLEEPY_ONE)) {
-                tensor[18][x][y] += 0.25;
+                data[18][x][y] += 0.25;
             }
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, SLEEPY_ONE)) {
-                tensor[19][x][y] += 0.25;
+                data[19][x][y] += 0.25;
             }
         }
     }
@@ -164,18 +165,18 @@ torch::Tensor Game::getState() {
     auto myVCFMoves = getMyVCFMoves();
     if (!myVCFMoves.empty()) {
         for (const auto &item: myVCFMoves) {
-            tensor[20][item.x][item.y] += 1;
+            data[20][item.x][item.y] += 1;
         }
     }
 
     auto oppVCFMoves = getOppVCFMoves();
     if (!oppVCFMoves.empty()) {
         for (const auto &item: oppVCFMoves) {
-            tensor[21][item.x][item.y] += 1;
+            data[21][item.x][item.y] += 1;
         }
     }
 
-    return tensor;
+    return data;
 }
 
 bool Game::isGameOver() {

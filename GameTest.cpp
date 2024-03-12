@@ -18,12 +18,6 @@ bool testGetState() {
     game.makeMove(Point(0, 4));
 
     game.printBoard();
-    auto tensor = game.getState();
-//    for (int i = 0; i < tensor.size(0); i++) {
-//        cout << "tensor " << i << endl;
-//        cout << tensor[i] << endl;
-//    }
-    game.printBoard();
 
     return true;
 }

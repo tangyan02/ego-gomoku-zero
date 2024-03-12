@@ -5,6 +5,7 @@
 #include <torch/script.h>
 #include <iostream>
 #include "MCTS.h"
+#include "Model.h"
 #include <random>
 #include <iostream>
 #include <fstream>
@@ -21,6 +22,6 @@ void recordSelfPlay(
 
 torch::jit::Module getNetwork(torch::Device device, std::string path);
 
-Game randomGame(Game &game, MonteCarloTree &mcts);
+Game randomGame(Game &game);
 
 #endif //EGO_GOMOKU_ZERO_SELFPLAY_H

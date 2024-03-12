@@ -46,9 +46,8 @@ void Node::update(double value) {
     value_sum += value;
 }
 
-MonteCarloTree::MonteCarloTree(torch::jit::Module *network, torch::Device device,
-                               float exploration_factor)
-        : network(network), root(nullptr), device(device), exploration_factor(exploration_factor) {
+MonteCarloTree::MonteCarloTree(Model *model, float exploration_factor)
+        :model(model),  root(nullptr), exploration_factor(exploration_factor) {
 }
 
 void MonteCarloTree::simulate(Game game) {
@@ -79,7 +78,7 @@ void MonteCarloTree::simulate(Game game) {
         } else {
             auto state = game.getState();
             std::pair<float, std::vector<float>>
-                    result = evaluate_state(state);
+                    result = model->evaluate_state(state);
             value = result.first;
             std::vector<float> priorProb = result.second;
             node->expand(game, get<1>(actions), priorProb);
@@ -96,26 +95,6 @@ void MonteCarloTree::search(Game &game, Node *node, int num_simulations) {
         // cout << "开始模拟，次数 " << i << endl;
         simulate(game);
     }
-}
-
-std::pair<float, std::vector<float>> MonteCarloTree::evaluate_state(torch::Tensor &state) {
-    torch::Tensor state_tensor = state.to(device).clone();
-    std::vector<torch::jit::IValue> inputs;
-    inputs.emplace_back(state_tensor);
-
-    auto outputs = network->forward(inputs).toTuple();
-    torch::Tensor value = outputs->elements()[0].toTensor();
-    torch::Tensor policy = outputs->elements()[1].toTensor();
-
-    auto valueFloat = value[0][0].cpu().item<float>();
-
-    // 将张量转换为 CPU 上的张量
-    torch::Tensor cpu_policy = torch::exp(policy).cpu();
-
-    // 打平并转换为 std::vector<float>
-    std::vector<float> prior_prob(cpu_policy.data<float>(), cpu_policy.data<float>() + cpu_policy.numel());
-
-    return std::make_pair(valueFloat, prior_prob);
 }
 
 void MonteCarloTree::backpropagate(Node *node, float value) {

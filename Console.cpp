@@ -13,7 +13,6 @@ static std::vector <std::vector<char>> board(BOARD_SIZE, std::vector<char>(BOARD
 static int cursorX = BOARD_SIZE / 2, cursorY = BOARD_SIZE / 2;
 
 static Game game(20);
-static auto network = getNetwork(torch::kCPU, "model/model_latest.pt");
 
 // Function to set terminal to raw mode
 void setRawMode() {
@@ -37,8 +36,9 @@ void printBoard() {
 }
 
 Point aiMove() {
-
-    MonteCarloTree mcts = MonteCarloTree(&network, torch::kCPU, 1);
+    Model model;
+    model.init("model/model_latest.pt");
+    MonteCarloTree mcts = MonteCarloTree(&model, 1);
     Node node;
     mcts.search(game, &node, 200);
 

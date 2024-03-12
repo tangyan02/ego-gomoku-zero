@@ -7,7 +7,7 @@ std::random_device rd;
 std::mt19937 gen(rd());
 
 void printGame(Game &game, int action, std::vector<float> &action_probs,
-               float temperature, const std::string &part, const string selectInfo, MonteCarloTree *mcts) {
+               float temperature, const std::string &part, const string selectInfo, Model *model) {
     game.printBoard(part);
     std::string line;
     for (int i = 0; i < game.boardSize * game.boardSize; i++) {
@@ -21,9 +21,9 @@ void printGame(Game &game, int action, std::vector<float> &action_probs,
     }
 
     float value = 1;
-    if (mcts != nullptr) {
+    if (model != nullptr) {
         auto state = game.getState();
-        auto eval = mcts->evaluate_state(state);
+        auto eval = model->evaluate_state(state);
         value = -eval.first;
     }
 
@@ -36,66 +36,20 @@ void printGame(Game &game, int action, std::vector<float> &action_probs,
          << selectInfo << endl;
 }
 
-torch::jit::Module getNetwork(torch::Device device, std::string path = "model/model_latest.pt") {
-    auto model = torch::jit::load(path, device);
-    model.eval();
-    torch::NoGradGuard no_grad;
-    return model;
-}
-
-torch::Device getDevice() {
-    if (torch::cuda::is_available()) {
-        return torch::kCUDA;
-    } else {
-        return torch::kCPU;
-    }
-//    return torch::kCPU;
-}
-
 void addAction(Game &game,
                int action,
-               std::vector<std::tuple<torch::Tensor, int, std::vector<float>>> &game_data,
+               std::vector<std::tuple<vector<vector<vector<float>>>, int, std::vector<float>>> &game_data,
                std::vector<float> &action_probs
 ) {
     auto state = game.getState();
-    std::tuple<torch::Tensor, int, std::vector<float>> record(state, game.currentPlayer, action_probs);
+    std::tuple<vector<vector<vector<float>>>, int, std::vector<float>> record(state, game.currentPlayer, action_probs);
     game.makeMove(game.getPointFromIndex(action));
     game_data.push_back(record);
 }
 
-Game randomGame(Game &game, MonteCarloTree &mcts) {
+Game randomGame(Game &game) {
     //开局随机去下完后，价值接近0的点
     auto moves = game.getEmptyPoints();
-//    vector<pair<float, Point>> moveValues;
-//    for (const auto &item: moves) {
-//        Game gameTemp = game;
-//        gameTemp.makeMove(item);
-//        auto state = gameTemp.getState();
-//        auto eval = mcts.evaluate_state(state);
-//        moveValues.emplace_back(eval.first, item);
-//    }
-//
-//    // 定义一个比较函数，用于按照 pair 的第一个元素的绝对值从小到大排序
-//    auto compare = [](const pair<float, Point> &a, const pair<float, Point> &b) {
-//        return abs(a.first) < abs(b.first);
-//    };
-//
-//    sort(moveValues.begin(), moveValues.end(), compare);
-//    // 计算前 10% 的元素个数
-//    int numElements = moveValues.size() * 0.1;
-//
-//    std::vector<Point> result;
-//    for (int i = 0; i < numElements; ++i) {
-//        result.push_back(moveValues[i].second);
-//    }
-//
-//    for (const auto &item: result){
-//        game.board[item.x][item.y] = 3;
-//    }
-//    game.printBoard();
-//    for (const auto &item: result){
-//        game.board[item.x][item.y] = 0;
-//    }
 
     std::uniform_int_distribution<> dis(0, moves.size() - 1);
     // 生成一个随机索引
@@ -108,23 +62,24 @@ Game randomGame(Game &game, MonteCarloTree &mcts) {
     return game;
 }
 
-std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> selfPlay(int boardSize,
+std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::vector<float>>> selfPlay(int boardSize,
                                                                                         int numGames,
                                                                                         int numSimulations,
                                                                                         float temperatureDefault,
                                                                                         float explorationFactor,
                                                                                         const std::string &part
 ) {
-    torch::Device device = getDevice();
-    auto network = getNetwork(device, "model/agent_model.pt");
-    MonteCarloTree mcts = MonteCarloTree(&network, device, explorationFactor);
-    std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> training_data;
+    Model model;
+    model.init("model/agent_model.pt");
+
+    MonteCarloTree mcts = MonteCarloTree(&model, explorationFactor);
+    std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::vector<float>>> training_data;
 
     for (int i = 0; i < numGames; i++) {
         Game game(boardSize);
-        std::vector<std::tuple<torch::Tensor, int, std::vector<float>>> game_data;
+        std::vector<std::tuple<vector<vector<vector<float>>>, int, std::vector<float>>> game_data;
 
-        game = randomGame(game, mcts);
+        game = randomGame(game);
 
         int step = 0;
         while (!game.isGameOver()) {
@@ -174,7 +129,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
             int action = actions[distribution(gen)];
 
             addAction(game, action, game_data, action_probs);
-            printGame(game, action, action_probs_normalized, temperature, part, node.selectInfo, &mcts);
+            printGame(game, action, action_probs_normalized, temperature, part, node.selectInfo, &model);
             step++;
         }
 
@@ -213,16 +168,16 @@ void recordSelfPlay(
             auto state = get<0>(item);
 
             // 获取张量的维度
-            int64_t dim0 = state.size(0);
-            int64_t dim1 = state.size(1);
-            int64_t dim2 = state.size(2);
+            int64_t dim0 = state.size();
+            int64_t dim1 = state[0].size();
+            int64_t dim2 = state[0][0].size();
 
             file << dim0 << " " << dim1 << " " << dim2 << endl;
             // 遍历张量并打印数值
             for (int64_t i = 0; i < dim0; ++i) {
                 for (int64_t j = 0; j < dim1; ++j) {
                     for (int64_t k = 0; k < dim2; ++k) {
-                        file << state[i][j][k].item<float>() << " ";
+                        file << state[i][j][k] << " ";
                     }
                     file << endl;
                 }

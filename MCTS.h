@@ -8,8 +8,8 @@
 #include <cmath>
 #include <limits>
 #include "Game.h"
-#include <torch/script.h>
 #include "Analyzer.h"
+#include "Model.h"
 
 class Node {
 public:
@@ -34,14 +34,11 @@ public:
 
 class MonteCarloTree {
 public:
-    MonteCarloTree(torch::jit::Module *network, torch::Device device,
-                   float exploration_factor = 5);
+    MonteCarloTree(Model *model, float exploration_factor = 5);
 
     void simulate(Game game);
 
     void search(Game &game, Node *node, int num_simulations);
-
-    std::pair<float, std::vector<float>> evaluate_state(torch::Tensor &state);
 
     void backpropagate(Node *node, float value);
 
@@ -52,9 +49,8 @@ public:
     void release(Node *node);
 
 private:
-    torch::jit::Module *network;
     Node *root;
-    torch::Device device;
+    Model *model;
     float exploration_factor;
 };
 
