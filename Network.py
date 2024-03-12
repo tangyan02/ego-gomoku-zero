@@ -103,7 +103,7 @@ def get_network(device, lr):
     optimizer = optim.Adam(network.parameters(), lr)
 
     if os.path.exists(f"model/checkpoint.pth"):
-        checkpoint = torch.load("model/checkpoint.pth")
+        checkpoint = torch.load("model/checkpoint.pth", device)
         network.load_state_dict(checkpoint['model_state_dict'])
 
         # 重新定义优化器，确保优化器的状态在正确的设备上

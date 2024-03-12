@@ -1,30 +1,90 @@
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 project(ego-gomoku-zero)
 
-execute_process(
-        COMMAND python3 -c "import torch; print(torch.utils.cmake_prefix_path)"
-        OUTPUT_VARIABLE TORCH_CMAKE_PREFIX_PATH
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-set(CMAKE_PREFIX_PATH ${TORCH_CMAKE_PREFIX_PATH})
-set(CMAKE_SYSTEM_PROCESSOR x86_64)
-set(CMAKE_OSX_ARCHITECTURES x86_64)
+#set(CMAKE_SYSTEM_PROCESSOR x86_64)
+#set(CMAKE_OSX_ARCHITECTURES x86_64)
 
-find_package(Torch REQUIRED)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS} -O3 -funroll-loops -ftree-vectorize -finline-functions -std=c++17")
+if (WIN32)
+  string(APPEND CMAKE_CXX_FLAGS " /W4")
+else()
+  string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra")
+  string(APPEND CMAKE_C_FLAGS " -Wall -Wextra")
+endif()
+
+#onnxruntime providers
+option(onnxruntime_USE_CUDA "Build with CUDA support" OFF)
+option(onnxruntime_USE_TENSORRT "Build with TensorRT support" OFF)
+option(LIBPNG_ROOTDIR "libpng root dir")
+option(ONNXRUNTIME_ROOTDIR "onnxruntime root dir")
+include(FetchContent)
+
+set(CMAKE_CXX_STANDARD 17)
+
+if(NOT ONNXRUNTIME_ROOTDIR)
+  if(WIN32)
+    set(ONNXRUNTIME_ROOTDIR "C:/Program Files/onnxruntime")
+  else()
+        set(ONNXRUNTIME_ROOTDIR "/Users/tangyan/onnxruntime-osx-arm64-1.17.1")
+#    set(ONNXRUNTIME_ROOTDIR "/Users/tangyan/onnxruntime-osx-x86_64-1.17.1")
+  endif()
+endif()
+
+# The ORT package has a different include directory structure to a local install via cmake.
+# We added the path for the pre-built package above. Add the path for a local install to support either usage.
+# TODO: If we want to support additional EPs being loadable from a local install we also need to add EP specific
+# directories under /include/onnxruntime/core/providers
+include_directories("${ONNXRUNTIME_ROOTDIR}/include"                           # Pre-built package
+        "${ONNXRUNTIME_ROOTDIR}/include/onnxruntime"               # Linux local install to /usr/local
+        "${ONNXRUNTIME_ROOTDIR}/include/onnxruntime/core/session") # Windows local install
+
+link_directories("${ONNXRUNTIME_ROOTDIR}/lib")
+
+if(WIN32)
+  add_library(wil INTERFACE)
+
+  FetchContent_Declare(
+          microsoft_wil
+          URL https://github.com/microsoft/wil/archive/refs/tags/v1.0.220914.1.zip
+  )
+  FetchContent_Populate(microsoft_wil)
+  target_include_directories(wil INTERFACE ${microsoft_wil_SOURCE_DIR}/include)
+  set(WIL_LIB wil)
+endif()
+
+if(onnxruntime_USE_CUDA)
+  add_definitions(-DUSE_CUDA)
+endif()
+if(onnxruntime_USE_TENSORRT)
+  add_definitions(-DUSE_TENSORRT)
+endif()
+if(onnxruntime_USE_DML)
+  message("Enabling DML")
+  add_definitions(-DUSE_DML)
+endif()
+
+# Windows might have an onnxruntime.dll in the system directory so it's more robust to manually copy the dlls to
+# the output dir. Define a function to do so. This is called from the cmake file in the subdirectories.
+function(copy_ort_dlls target_name)
+  if (MSVC)
+    file(GLOB ORT_DLLS ${ONNXRUNTIME_ROOTDIR}/bin/*.dll)
+    foreach(ORT_DLL ${ORT_DLLS})
+      add_custom_command(TARGET ${target_name} POST_BUILD
+              COMMAND ${CMAKE_COMMAND} -E copy ${ORT_DLL}  $<TARGET_FILE_DIR:${target_name}>)
+    endforeach()
+  endif()
+endfunction()
+
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -funroll-loops -ftree-vectorize -finline-functions -std=c++17")
 
 add_executable(ego-gomoku-zero SelfPlay.cpp Game.h Game.cpp MCTS.h MCTS.cpp SelfPlay.h Main.cpp Analyzer.cpp Analyzer.h AnalyzerTest.cpp AnalyzerTest.h Piskvork.cpp Pisqpipe.h Pisqpipe.cpp GameTest.cpp GameTest.h Console.cpp Console.cpp Console.cpp Console.h Utils.cpp Utils.h Shape.cpp Shape.h ShapeTest.cpp ShapeTest.h Model.cpp Model.h)
-target_link_libraries(ego-gomoku-zero "${TORCH_LIBRARIES}")
 set_property(TARGET ego-gomoku-zero PROPERTY CXX_STANDARD 17)
 
-# The following code block is suggested to be used on Windows.
-# According to https://github.com/pytorch/pytorch/issues/25457,
-# the DLLs need to be copied to avoid memory errors.
-if (MSVC)
-  file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
-  add_custom_command(TARGET ego-gomoku-zero
-                     POST_BUILD
-                     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                     ${TORCH_DLLS}
-                     $<TARGET_FILE_DIR:ego-gomoku-zero>)
-endif (MSVC)
+# 查找第三方静态库
+find_library(MY_LIBRARY
+        NAMES onnxruntime.1.17.1 onnxruntime
+        PATHS ${ONNXRUNTIME_ROOTDIR}/lib)
+
+# 链接第三方静态库到你的目标
+target_link_libraries(ego-gomoku-zero ${MY_LIBRARY})
+

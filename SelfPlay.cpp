@@ -70,7 +70,7 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
                                                                                         const std::string &part
 ) {
     Model model;
-    model.init("model/agent_model.pt");
+    model.init("model/model_latest.onnx");
 
     MonteCarloTree mcts = MonteCarloTree(&model, explorationFactor);
     std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::vector<float>>> training_data;

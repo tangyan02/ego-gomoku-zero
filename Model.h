@@ -4,8 +4,9 @@
 #define EGO_GOMOKU_ZERO_MODEL_H
 
 #include <vector>
-#include <torch/script.h>
-#include <torch/torch.h>
+#include <onnxruntime_cxx_api.h>
+#include <iostream>
+#include <numeric>
 
 using namespace std;
 
@@ -19,9 +20,10 @@ public:
     std::pair<float, std::vector<float>> evaluate_state(vector<vector<vector<float>>> &state);
 
 private:
-
-    torch::jit::Module network;
-    torch::Device device;
+    Ort::Env *env;
+    Ort::SessionOptions *sessionOptions;
+    Ort::Session *session;
+    Ort::MemoryInfo memoryInfo;
 
 };
 
