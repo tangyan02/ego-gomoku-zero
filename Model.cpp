@@ -32,18 +32,19 @@ std::pair<float, std::vector<float>> Model::evaluate_state(vector<vector<vector<
     int dim2 = data[0].size();
     int dim3 = data[0][0].size();
 
-// 创建一个与数据维度相匹配的张量
-    torch::TensorOptions options(torch::kFloat32);
-    torch::Tensor tensor = torch::zeros({dim1, dim2, dim3}, options);
-
-// 将数据复制到张量中
+    // 将数据转换为一维数组
+    std::vector<float> flattened_data(dim1 * dim2 * dim3);
+    int index = 0;
     for (int i = 0; i < dim1; i++) {
         for (int j = 0; j < dim2; j++) {
             for (int k = 0; k < dim3; k++) {
-                tensor[i][j][k] = data[i][j][k];
+                flattened_data[index++] = data[i][j][k];
             }
         }
     }
+
+    // 创建张量并从一维数组中加载数据
+    torch::Tensor tensor = torch::from_blob(flattened_data.data(), {dim1, dim2, dim3}).clone();
 
     torch::Tensor state_tensor = tensor.to(device).clone();
     std::vector<torch::jit::IValue> inputs;
