@@ -84,7 +84,7 @@ def play():
 def upload_file():
     if 'file' in request.files:
         file = request.files['file']
-        file.save('model/agent_model.pt')
+        file.save('model/agent_model.onnx')
         return 'File uploaded successfully'
     return 'No file part in the request'
 

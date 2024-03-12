@@ -48,7 +48,7 @@ def update_count(k, filepath="model/count.txt"):
 def callSelfPlayInCppSingle(shard_num, part_num, worker_num, node_id):
     host = f"ego-node{node_id}"
     # 上传jit模型文件
-    with open('model/model_latest.pt', 'rb') as f:
+    with open('model/model_latest.onnx', 'rb') as f:
         files = {'file': f}
         response = requests.post(f'http://{host}:8888/upload', files=files)
         print(getTimeStr() + response.text)  # 打印响应

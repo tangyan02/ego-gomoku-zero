@@ -121,3 +121,15 @@ def save_network(network, optimizer, subfix=""):
     }, path)
 
     torch.jit.save(torch.jit.script(network), "model/model_latest.pt")
+
+    # 导出onnx
+    network.eval()
+    example = torch.randn(22, 20, 20, requires_grad=True, device=next(network.parameters()).device)
+    torch.onnx.export(network,
+                      (example),
+                      'model/model_latest.onnx',
+                      input_names=['input'],
+                      output_names=['value', "act"],
+                      opset_version=17,
+                      verbose=False)
+    network.train()

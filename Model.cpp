@@ -12,6 +12,22 @@ void Model::init(string modelPath) {
     sessionOptions = new Ort::SessionOptions();
     sessionOptions->SetIntraOpNumThreads(1);
 
+    // 判断是否有GPU
+    auto providers = Ort::GetAvailableProviders();
+    for (auto provider: providers)
+        std::cout << provider << std::endl;
+    //看看有没有CUDA支持列表
+    auto cudaAvailable = std::find(providers.begin(), providers.end(), "CUDAExecutionProvider");
+    OrtCUDAProviderOptions cudaOption;
+
+    bool isGPU = true;//这个手动设定，如果onnxruntime支持cuda则就会用gpu推理，如果没有即使你设置这个参数也会用cpu
+
+    if (isGPU && (cudaAvailable != providers.end()))//找到cuda列表
+    {
+        std::cout << "Inference device: GPU" << std::endl;
+        sessionOptions->AppendExecutionProvider_CUDA(cudaOption);
+    }
+
     // 创建会话
     session = new Ort::Session(*env, modelPath.c_str(), *sessionOptions);
 }
