@@ -61,7 +61,7 @@ def callSelfPlayInCppSingle(shard_num, part_num, worker_num, node_id):
     return training_data
 
 
-def callSelfPlayInCpp(shard_num, part_num, worker_num, node_num):
+def callSelfPlayInCpp(shard_nums, part_nums, worker_nums, node_num):
     training_data = []
     # 创建一个线程池
     with ThreadPoolExecutor(max_workers=node_num) as executor:
@@ -70,7 +70,10 @@ def callSelfPlayInCpp(shard_num, part_num, worker_num, node_num):
 
         # 对于每个node_id，创建一个任务
         for node_id in range(node_num):
-            futures.append(executor.submit(callSelfPlayInCppSingle, shard_num, part_num, worker_num, node_id))
+            futures.append(
+                executor.submit(callSelfPlayInCppSingle,
+                                shard_nums[node_id], part_nums[node_id], worker_nums[node_id],
+                                node_id))
 
         # 等待所有任务完成，并获取结果
         results = [future.result() for future in futures]
@@ -85,9 +88,9 @@ dirPreBuild()
 lr = 3e-4
 batch_size = 128
 episode = 100000
-shard_num = 6
-worker_num = 6
-part_num = 2
+shard_nums = [6, 7, 7, 7]
+worker_nums = [6, 7, 7, 7]
+part_nums = [2, 2, 2, 2]
 node_num = 4
 
 # 模型初始化
@@ -102,7 +105,7 @@ for i_episode in range(1, episode + 1):
 
     start_time = time.time()
 
-    training_data = callSelfPlayInCpp(shard_num, part_num, worker_num, node_num)
+    training_data = callSelfPlayInCpp(shard_nums, part_nums, worker_nums, node_num)
 
     end_time = time.time()
     print(getTimeStr() + f"自我对弈完毕，用时 {end_time - start_time} s")
@@ -129,4 +132,5 @@ for i_episode in range(1, episode + 1):
     print(getTimeStr() + f"GPU内存已清理")
 
     # 更新计数
-    update_count(shard_num * part_num * node_num)
+    count = sum(shard_nums[i] * part_nums[i] for i in range(node_num))
+    update_count(count)
