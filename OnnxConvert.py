@@ -1,6 +1,7 @@
 import onnx
 import torch
 from onnxsim import simplify
+import onnxoptimizer
 
 import Network
 
@@ -24,5 +25,9 @@ torch.onnx.export(network,
 onnx_model = onnx.load(path)  # load onnx model
 model_simp, check = simplify(onnx_model)
 assert check, "Simplified ONNX model could not be validated"
-onnx.save(model_simp, path + "_simple")
+onnx.save(model_simp, path + "_simple.onnx")
 print('finished exporting onnx')
+
+model = onnx.load(path)
+new_model = onnxoptimizer.optimize(model)
+onnx.save(new_model, path + "_optimize.onnx")

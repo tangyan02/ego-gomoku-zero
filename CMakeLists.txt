@@ -75,11 +75,19 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3 -funroll-loops -ftree-vecto
 add_executable(ego-gomoku-zero SelfPlay.cpp Game.h Game.cpp MCTS.h MCTS.cpp SelfPlay.h Main.cpp Analyzer.cpp Analyzer.h AnalyzerTest.cpp AnalyzerTest.h Piskvork.cpp Pisqpipe.h Pisqpipe.cpp GameTest.cpp GameTest.h Console.cpp Console.cpp Console.cpp Console.h Utils.cpp Utils.h Shape.cpp Shape.h ShapeTest.cpp ShapeTest.h Model.cpp Model.h)
 set_property(TARGET ego-gomoku-zero PROPERTY CXX_STANDARD 17)
 
-# 查找第三方静态库
+# ONNX
 find_library(MY_LIBRARY
-        NAMES onnxruntime.1.17.1 onnxruntime
+        NAMES onnxruntime onnxruntime_providers_tensorrt onnxruntime_providers_shared onnxruntime_providers_cuda
         PATHS ${ONNXRUNTIME_ROOTDIR}/lib)
 
 # 链接第三方静态库到你的目标
 target_link_libraries(ego-gomoku-zero ${MY_LIBRARY})
 
+# TENSORRT
+#if(DEFINED ENV{TENSORRT_ROOTDIR})
+#    message(STATUS "TENSORRT_ROOTDIR environment variable set $ENV{TENSORRT_ROOTDIR}")
+#    find_library(TENSORRT_LIBRARY
+#            NAMES nvinfer nvcaffe_parser nvinfer_dispatch nvinfer_lean nvinfer_plugin nvinfer_vc_plugin nvparsers onnx_proto
+#            PATHS $ENV{TENSORRT_ROOTDIR}/lib)
+#    target_link_libraries(ego-gomoku-zero ${TENSORRT_LIBRARY})
+#endif()
