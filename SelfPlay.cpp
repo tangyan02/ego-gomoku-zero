@@ -63,11 +63,11 @@ Game randomGame(Game &game) {
 }
 
 std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::vector<float>>> selfPlay(int boardSize,
-                                                                                        int numGames,
-                                                                                        int numSimulations,
-                                                                                        float temperatureDefault,
-                                                                                        float explorationFactor,
-                                                                                        const std::string &part
+                                                                                                        int numGames,
+                                                                                                        int numSimulations,
+                                                                                                        float temperatureDefault,
+                                                                                                        float explorationFactor,
+                                                                                                        const std::string &part
 ) {
     Model model;
     model.init("model/agent_model.onnx");
@@ -109,11 +109,9 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
 
             //计算温度
             float temperature =
-                    temperatureDefault * (game.boardSize * game.boardSize - step * 4) /
+                    temperatureDefault * (game.boardSize * game.boardSize - step) /
                     (game.boardSize * game.boardSize);
-            if (temperature < 0.2) {
-                temperature = 0.2;
-            }
+
             std::vector<float> action_probs_temperature = mcts.apply_temperature(action_probs, temperature);
 
             // 归一化概率分布
