@@ -38,7 +38,7 @@ class ResidualBlock(nn.Module):
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
         self.board_size = 20
-        self.input_channels = 22
+        self.input_channels = 12
         self.residual_channels = 128
         super(PolicyValueNetwork, self).__init__()
 
@@ -124,7 +124,7 @@ def save_network(network, optimizer, subfix=""):
 
     # 导出onnx
     network.eval()
-    example = torch.randn(22, 20, 20, requires_grad=True, device=next(network.parameters()).device)
+    example = torch.randn(network.input_channels, 20, 20, requires_grad=True, device=next(network.parameters()).device)
     torch.onnx.export(network,
                       (example),
                       'model/model_latest.onnx',

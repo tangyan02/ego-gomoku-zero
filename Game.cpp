@@ -83,7 +83,7 @@ std::vector<Point> Game::getEmptyPoints() {
 
 vector<vector<vector<float>>> Game::getState() {
 
-    vector<vector<vector<float>>> data(22, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
+    vector<vector<vector<float>>> data(12, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
@@ -128,36 +128,6 @@ vector<vector<vector<float>>> Game::getState() {
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_THREE)) {
                 data[9][x][y] += 0.25;
             }
-            if (checkPointDirectShape(game, game.currentPlayer, action, direct, SLEEPY_THREE)) {
-                data[10][x][y] += 0.25;
-            }
-            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, SLEEPY_THREE)) {
-                data[11][x][y] += 0.25;
-            }
-            if (checkPointDirectShape(game, game.currentPlayer, action, direct, ACTIVE_TWO)) {
-                data[12][x][y] += 0.25;
-            }
-            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_TWO)) {
-                data[13][x][y] += 0.25;
-            }
-            if (checkPointDirectShape(game, game.currentPlayer, action, direct, SLEEPY_TWO)) {
-                data[14][x][y] += 0.25;
-            }
-            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, SLEEPY_TWO)) {
-                data[15][x][y] += 0.25;
-            }
-            if (checkPointDirectShape(game, game.currentPlayer, action, direct, ACTIVE_ONE)) {
-                data[16][x][y] += 0.25;
-            }
-            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_ONE)) {
-                data[17][x][y] += 0.25;
-            }
-            if (checkPointDirectShape(game, game.currentPlayer, action, direct, SLEEPY_ONE)) {
-                data[18][x][y] += 0.25;
-            }
-            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, SLEEPY_ONE)) {
-                data[19][x][y] += 0.25;
-            }
         }
     }
 
@@ -165,14 +135,14 @@ vector<vector<vector<float>>> Game::getState() {
     auto myVCFMoves = getMyVCFMoves();
     if (!myVCFMoves.empty()) {
         for (const auto &item: myVCFMoves) {
-            data[20][item.x][item.y] += 1;
+            data[10][item.x][item.y] += 1;
         }
     }
 
     auto oppVCFMoves = getOppVCFMoves();
     if (!oppVCFMoves.empty()) {
         for (const auto &item: oppVCFMoves) {
-            data[21][item.x][item.y] += 1;
+            data[11][item.x][item.y] += 1;
         }
     }
 
