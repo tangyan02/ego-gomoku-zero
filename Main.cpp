@@ -60,6 +60,7 @@ void test() {
             testDfsVCF,
             testDfsVCF2,
             testDfsVCF3,
+            testDfsVCF4,
             testGetNearByEmptyPoints,
             testGetNearEmptyPoints,
             testGetLineEmptyPoints,

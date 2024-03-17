@@ -25,6 +25,7 @@ bool testGetSleepyTwoMoves();
 bool testDfsVCF();
 bool testDfsVCF2();
 bool testDfsVCF3();
+bool testDfsVCF4();
 bool testGetNearByEmptyPoints();
 bool testGetLineEmptyPoints();
 bool testGetThreeDefenceMoves();

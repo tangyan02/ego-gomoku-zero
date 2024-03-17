@@ -545,6 +545,33 @@ bool testDfsVCF3() {
 
 }
 
+
+bool testDfsVCF4() {
+    cout << "testDfsVCF4" << endl;
+    Game game(boardSize);
+    game.currentPlayer = 1;
+    game.makeMove(Point(0, 1));
+    game.makeMove(Point(1, 0));
+    game.makeMove(Point(0, 3));
+    game.makeMove(Point(1, 1));
+    game.makeMove(Point(0, 4));
+    game.makeMove(Point(1, 2));
+    game.makeMove(Point(0, 5));
+    game.makeMove(Point(1, 3));
+    auto result = dfsVCF(1, 1, game, Point(), Point());
+    for (Point &move: result.second) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+
+    cout << result.second.size() << endl;
+    if (result.first) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 bool testGetNearByEmptyPoints() {
     cout << "testGetNearByEmptyPoints" << endl;
     Game game(boardSize);
