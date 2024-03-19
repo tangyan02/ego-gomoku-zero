@@ -9,25 +9,13 @@ lr = 0.001
 network, optimizer = Network.get_network("cpu", lr)
 network.eval()
 
-path = 'model/model_latest.onnx'
+# 获取模型的权重参数
+state_dict = network.state_dict()
 
-example = torch.randn(22, 20, 20, requires_grad=True)
-print(example)
-
-torch.onnx.export(network,
-                  (example),
-                  path,
-                  input_names=['input'],
-                  output_names=['value', "act"],
-                  opset_version=17,
-                  verbose=True)
-
-onnx_model = onnx.load(path)  # load onnx model
-model_simp, check = simplify(onnx_model)
-assert check, "Simplified ONNX model could not be validated"
-onnx.save(model_simp, path + "_simple.onnx")
-print('finished exporting onnx')
-
-model = onnx.load(path)
-new_model = onnxoptimizer.optimize(model)
-onnx.save(new_model, path + "_optimize.onnx")
+# 遍历权重参数并查看精度
+for name, param in state_dict.items():
+    print("Parameter:", name)
+    print("Data Type:", param.dtype)
+    print("Data Shape:", param.shape)
+    print("Data:", param)
+    print()

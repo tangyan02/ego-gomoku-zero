@@ -109,8 +109,12 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
 
             //计算温度
             float temperature =
-                    temperatureDefault * (game.boardSize * game.boardSize - step) /
+                    temperatureDefault * (game.boardSize * game.boardSize - step * 2) /
                     (game.boardSize * game.boardSize);
+
+            if (temperature < 0.1) {
+                temperature = 0.1;
+            }
 
             std::vector<float> action_probs_temperature = mcts.apply_temperature(action_probs, temperature);
 

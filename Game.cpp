@@ -40,7 +40,7 @@ Point Game::getPointFromIndex(int actionIndex) {
 
 std::vector<Point> Game::getNearEmptyPoints() {
     std::unordered_set<Point, PointHash, PointEqual> nearbyPointsSet;
-    int range = 4;
+    int range = 3;
     for (int row = 0; row < boardSize; row++) {
         for (int col = 0; col < boardSize; col++) {
             if (board[row][col] != 0) { // 非空点
@@ -83,7 +83,7 @@ std::vector<Point> Game::getEmptyPoints() {
 
 vector<vector<vector<float>>> Game::getState() {
 
-    vector<vector<vector<float>>> data(10, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
+    vector<vector<vector<float>>> data(12, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
@@ -122,6 +122,12 @@ vector<vector<vector<float>>> Game::getState() {
             if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_THREE)) {
                 data[7][x][y] += 0.25;
             }
+            if (checkPointDirectShape(game, game.currentPlayer, action, direct, ACTIVE_TWO)) {
+                data[8][x][y] += 0.25;
+            }
+            if (checkPointDirectShape(game, 3 - game.currentPlayer, action, direct, ACTIVE_TWO)) {
+                data[9][x][y] += 0.25;
+            }
         }
     }
 
@@ -129,14 +135,14 @@ vector<vector<vector<float>>> Game::getState() {
     auto myVCFMoves = getMyVCFMoves();
     if (!myVCFMoves.empty()) {
         for (const auto &item: myVCFMoves) {
-            data[8][item.x][item.y] += 1;
+            data[10][item.x][item.y] += 1;
         }
     }
 
     auto oppVCFMoves = getOppVCFMoves();
     if (!oppVCFMoves.empty()) {
         for (const auto &item: oppVCFMoves) {
-            data[9][item.x][item.y] += 1;
+            data[11][item.x][item.y] += 1;
         }
     }
 
