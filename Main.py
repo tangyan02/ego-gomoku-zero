@@ -85,7 +85,7 @@ def callSelfPlayInCpp(shard_nums, part_nums, worker_nums, node_num):
 
 dirPreBuild()
 
-lr = 3e-4
+lr = 1e-3
 batch_size = 128
 episode = 100000
 shard_nums = [12, 14, 14, 14]

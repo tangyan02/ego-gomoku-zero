@@ -41,6 +41,9 @@ Point Game::getPointFromIndex(int actionIndex) {
 std::vector<Point> Game::getNearEmptyPoints() {
     std::unordered_set<Point, PointHash, PointEqual> nearbyPointsSet;
     int range = 3;
+    if (historyMoves.size() >= 6) {
+        range = 2;
+    }
     for (int row = 0; row < boardSize; row++) {
         for (int col = 0; col < boardSize; col++) {
             if (board[row][col] != 0) { // 非空点
