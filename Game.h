@@ -63,7 +63,7 @@ public:
 
     vector<Point> getEmptyPoints();
 
-    vector<Point> getNearEmptyPoints();
+    vector<Point> getNearEmptyPoints(int range = 2);
 
     vector<vector<vector<float>>> getState();
 
