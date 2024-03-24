@@ -133,6 +133,24 @@ vector<Point> getThreeDefenceOnlyMoves(int player, Game &game, std::vector<Point
     return removeDuplicates(defenceMoves);
 }
 
+vector<Point> getVCFDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
+    //如果对手有VCF点，则只考虑我方长4和对手冲4，活4，对手活3点
+    auto otherVCFMoves = game.getOppVCFMoves();
+    std::vector<Point> defenceMoves;
+    if (!otherVCFMoves.empty()) {
+        auto otherSleepyFourMoves = getSleepyFourMoves(game.getOtherPlayer(), game, basedMoves);
+        auto otherActiveFourMoves = getActiveFourMoves(game.getOtherPlayer(), game, basedMoves);
+        auto otherActiveThreeMoves = getActiveThreeMoves(game.getOtherPlayer(), game, basedMoves);
+        auto mySleepFourMoves = getSleepyFourMoves(game.getOtherPlayer(), game, basedMoves);
+
+        defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
+        defenceMoves.insert(defenceMoves.end(), otherSleepyFourMoves.begin(), otherSleepyFourMoves.end());
+        defenceMoves.insert(defenceMoves.end(), otherActiveThreeMoves.begin(), otherActiveThreeMoves.end());
+        defenceMoves.insert(defenceMoves.end(), mySleepFourMoves.begin(), mySleepFourMoves.end());
+    }
+    return removeDuplicates(defenceMoves);
+}
+
 vector<Point> getThreeDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
     //自己的冲4点，和对手的活4。再从对手眠4里面选.如果下了之后活4活眠4没有了，则视为防御点
     std::vector<Point> defenceMoves;
@@ -284,6 +302,12 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     auto threeDefenceMoves = getThreeDefenceMoves(game, emptyPoints);
     if (!threeDefenceMoves.empty()) {
         return make_tuple(false, threeDefenceMoves, "  defence 3 ");
+    }
+
+    //防御对方VCF点
+    auto vcfDefenceMoves = getVCFDefenceMoves(game, emptyPoints);
+    if (!vcfDefenceMoves.empty()) {
+        return make_tuple(false, vcfDefenceMoves, "  defence VCF ");
     }
 
     return make_tuple(false, emptyPoints, "");
