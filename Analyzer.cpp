@@ -141,7 +141,7 @@ vector<Point> getVCFDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
         auto otherSleepyFourMoves = getSleepyFourMoves(game.getOtherPlayer(), game, basedMoves);
         auto otherActiveFourMoves = getActiveFourMoves(game.getOtherPlayer(), game, basedMoves);
         auto otherActiveThreeMoves = getActiveThreeMoves(game.getOtherPlayer(), game, basedMoves);
-        auto mySleepFourMoves = getSleepyFourMoves(game.getOtherPlayer(), game, basedMoves);
+        auto mySleepFourMoves = getSleepyFourMoves(game.currentPlayer, game, basedMoves);
 
         defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
         defenceMoves.insert(defenceMoves.end(), otherSleepyFourMoves.begin(), otherSleepyFourMoves.end());
