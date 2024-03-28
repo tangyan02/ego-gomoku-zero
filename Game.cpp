@@ -82,7 +82,7 @@ std::vector<Point> Game::getEmptyPoints() {
 
 vector<vector<vector<float>>> Game::getState() {
 
-    vector<vector<vector<float>>> data(3, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
+    vector<vector<vector<float>>> data(4, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
@@ -100,6 +100,13 @@ vector<vector<vector<float>>> Game::getState() {
     if (!myVCFMoves.empty()) {
         for (const auto &item: myVCFMoves) {
             data[2][item.x][item.y] += 1;
+        }
+    }
+
+    auto oppVCFMoves = getOppVCFMoves();
+    if (!oppVCFMoves.empty()) {
+        for (const auto &item: oppVCFMoves) {
+            data[3][item.x][item.y] += 1;
         }
     }
 
