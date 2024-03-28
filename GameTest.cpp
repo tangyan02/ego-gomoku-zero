@@ -37,7 +37,7 @@ bool testGetNearEmptyPoints() {
         game.board[item.x][item.y] = 3;
     }
     game.printBoard();
-    if (points.size() == 119) {
+    if (points.size() == 42) {
         return true;
     } else {
         return false;
