@@ -30,6 +30,7 @@ bool testGetNearByEmptyPoints();
 bool testGetLineEmptyPoints();
 bool testGetThreeDefenceMoves();
 bool testGetThreeDefenceMoves2();
+bool testSelectActions();
 
 
 #endif //EGO_GOMOKU_ZERO_ANALYZERTEST_H

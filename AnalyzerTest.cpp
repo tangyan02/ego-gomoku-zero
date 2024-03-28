@@ -659,3 +659,44 @@ bool testGetThreeDefenceMoves2() {
         return false;
     }
 }
+
+
+bool testSelectActions() {
+    cout << "testSelectActions" << endl;
+    Game game(20);
+    game.currentPlayer = 1;
+    game.makeMove(Point(9, 13));
+    game.makeMove(Point(9, 15));
+    game.makeMove(Point(13, 15));
+    game.makeMove(Point(14, 14));
+    game.makeMove(Point(16, 11));
+    game.makeMove(Point(11, 14));
+    game.makeMove(Point(11, 15));
+    game.makeMove(Point(10, 14));
+    game.makeMove(Point(12, 14));
+    game.makeMove(Point(11, 13));
+    game.makeMove(Point(12, 12));
+    game.makeMove(Point(12, 15));
+    game.makeMove(Point(13, 13));
+    game.makeMove(Point(14, 12));
+    game.makeMove(Point(14, 11));
+    game.makeMove(Point(10, 13));
+    game.makeMove(Point(9, 12));
+    game.makeMove(Point(10, 16));
+    game.makeMove(Point(10, 12));
+    game.makeMove(Point(13, 12));
+//    game.makeMove(Point(12, 10));
+
+
+    long long startTime = getSystemTime();
+    auto moves = game.getEmptyPoints();
+    auto result = selectActions(game);
+    for (Point &move: get<1>(result)) {
+        game.board[move.x][move.y] = 3;
+    }
+    cout << "cost " << getSystemTime() - startTime << " ms" << endl;
+    game.printBoard();
+    cout << get<2>(result) << endl;
+    cout << get<1>(result).size() << endl;
+    return true;
+}
