@@ -206,7 +206,7 @@ vector<Point> Game::getOppVCFMoves() {
     auto oppVCF = dfsVCF(getOtherPlayer(), getOtherPlayer(),
                          game, Point(), Point(), 0,
                          &oppVcfDefenceMoves);
-    cout<<"oppVcfDefenceMoves "<<oppVcfDefenceMoves.size()<<endl;
+//    cout<<"oppVcfDefenceMoves "<<oppVcfDefenceMoves.size()<<endl;
     oppVcfDefenceMoves = removeDuplicates(oppVcfDefenceMoves);
     oppVcfMoves = oppVCF.second;
     oppVcfDone = true;

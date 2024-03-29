@@ -105,6 +105,15 @@ getSleepyTwoMoves(int player, Game &game, std::vector<Point> &basedMoves) {
     return getShapeMoves(player, game, basedMoves, SLEEPY_TWO);
 }
 
+bool isWithinRange(const Point &point, const std::vector<Point> &range) {
+    for (const auto &p: range) {
+        if (point.x >= p.x && point.x <= p.x && point.y >= p.y && point.y <= p.y) {
+            return true;
+        }
+    }
+    return false;
+}
+
 vector<Point> getVCFDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
     //如果对手有VCF点，则只考虑我方长4和对手冲4，活4，对手活3点
     auto otherVCFMoves = game.getOppVCFMoves();
@@ -125,15 +134,24 @@ vector<Point> getVCFDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
             game.board[item.x][item.y] = game.currentPlayer;
         }
 
-        game.printBoard();
+        //计算新的可选点，但要在原来的范围内
+        auto nearsNew = game.getEmptyPoints();
+        vector<Point> nearsInRange;
+        for (const auto &item: nearsNew) {
+            if (isWithinRange(item, basedMoves)) {
+                nearsInRange.emplace_back(item);
+            }
+        }
 
-        auto mySleepFourMoves_more = getSleepyFourMoves(game.currentPlayer, game, basedMoves);
-        auto myActiveFourMoves_more = getActiveFourMoves(game.currentPlayer, game, basedMoves);
-        auto myFiveMoves_more = getSleepyFourMoves(game.currentPlayer, game, basedMoves);
+        auto mySleepFourMoves_more = getSleepyFourMoves(game.currentPlayer, game, nearsInRange);
+        auto myActiveFourMoves_more = getActiveFourMoves(game.currentPlayer, game, nearsInRange);
+        auto myFiveMoves_more = getSleepyFourMoves(game.currentPlayer, game, nearsInRange);
+
 
         defenceMoves.insert(defenceMoves.end(), myActiveFourMoves_more.begin(), myActiveFourMoves_more.end());
         defenceMoves.insert(defenceMoves.end(), mySleepFourMoves_more.begin(), mySleepFourMoves_more.end());
         defenceMoves.insert(defenceMoves.end(), myFiveMoves_more.begin(), myFiveMoves_more.end());
+
 
         for (const auto &item: game.oppVcfDefenceMoves) {
             game.board[item.x][item.y] = 0;
