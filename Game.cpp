@@ -202,7 +202,7 @@ vector<Point> Game::getOppVCFMoves() {
         return oppVcfMoves;
     }
     Game game = *this;
-    oppVcfMoves.clear();
+    oppVcfDefenceMoves.clear();
     auto oppVCF = dfsVCF(getOtherPlayer(), getOtherPlayer(),
                          game, Point(), Point(), 0,
                          &oppVcfDefenceMoves);
