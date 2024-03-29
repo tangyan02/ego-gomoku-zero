@@ -51,6 +51,7 @@ public:
     bool oppVcfDone = false;
     vector<Point> myVcfMoves;
     vector<Point> oppVcfMoves;
+    vector<Point> oppVcfDefenceMoves;
 
 
     Game(int boardSize);
@@ -80,5 +81,6 @@ public:
     vector<Point> getOppVCFMoves();
 };
 
+std::vector<Point> removeDuplicates(const std::vector<Point> &points);
 
 #endif //EGO_GOMOKU_ZERO_GAME_H

@@ -3,6 +3,11 @@
 
 using namespace std;
 
+std::vector<Point> removeDuplicates(const std::vector<Point> &points) {
+    std::unordered_set<Point, PointHash, PointEqual> uniquePoints(points.begin(), points.end());
+    return {uniquePoints.begin(), uniquePoints.end()};
+}
+
 Point::Point() {
     this->x = -1;
     this->y = -1;
@@ -197,7 +202,12 @@ vector<Point> Game::getOppVCFMoves() {
         return oppVcfMoves;
     }
     Game game = *this;
-    auto oppVCF = dfsVCF(getOtherPlayer(), getOtherPlayer(), game, Point(), Point());
+    oppVcfMoves.clear();
+    auto oppVCF = dfsVCF(getOtherPlayer(), getOtherPlayer(),
+                         game, Point(), Point(), 0,
+                         &oppVcfDefenceMoves);
+    cout<<"oppVcfDefenceMoves "<<oppVcfDefenceMoves.size()<<endl;
+    oppVcfDefenceMoves = removeDuplicates(oppVcfDefenceMoves);
     oppVcfMoves = oppVCF.second;
     oppVcfDone = true;
     return oppVcfMoves;

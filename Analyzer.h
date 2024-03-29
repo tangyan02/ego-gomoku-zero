@@ -26,7 +26,8 @@ vector<Point> getActiveTwoMoves(int player, Game &game, vector<Point> &basedMove
 vector<Point> getSleepyTwoMoves(int player, Game &game, vector<Point> &basedMoves);
 
 pair<bool, vector<Point>>
-dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level = 0);
+dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level = 0,
+       vector<Point> *defencePoints = nullptr);
 
 vector<Point> getThreeDefenceMoves(Game &game, vector<Point> &basedMoves);
 
