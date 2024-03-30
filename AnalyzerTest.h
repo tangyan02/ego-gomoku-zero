@@ -31,6 +31,6 @@ bool testGetLineEmptyPoints();
 bool testGetThreeDefenceMoves();
 bool testGetThreeDefenceMoves2();
 bool testSelectActions();
-
+bool testSelectActions2();
 
 #endif //EGO_GOMOKU_ZERO_ANALYZERTEST_H

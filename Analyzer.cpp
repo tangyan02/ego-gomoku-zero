@@ -117,19 +117,26 @@ getSleepyTwoMoves(int player, Game &game, std::vector<Point> &basedMoves) {
 }
 
 vector<Point> getVCFDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
-    //如果对手有VCF点，则只考虑我方长4和对手冲4，活4，对手活3点
+    //如果对手有VCF点，考虑对手的进攻点，和我防防守点形成进攻点
     auto otherVCFMoves = game.getOppVCFMoves();
     std::vector<Point> defenceMoves;
     if (!otherVCFMoves.empty()) {
-        auto otherSleepyFourMoves = getSleepyFourMoves(game.getOtherPlayer(), game, basedMoves);
-        auto otherActiveFourMoves = getActiveFourMoves(game.getOtherPlayer(), game, basedMoves);
-        auto otherActiveThreeMoves = getActiveThreeMoves(game.getOtherPlayer(), game, basedMoves);
-        auto mySleepFourMoves = getSleepyFourMoves(game.currentPlayer, game, basedMoves);
 
-        defenceMoves.insert(defenceMoves.end(), otherActiveFourMoves.begin(), otherActiveFourMoves.end());
-        defenceMoves.insert(defenceMoves.end(), otherSleepyFourMoves.begin(), otherSleepyFourMoves.end());
-        defenceMoves.insert(defenceMoves.end(), otherActiveThreeMoves.begin(), otherActiveThreeMoves.end());
-        defenceMoves.insert(defenceMoves.end(), mySleepFourMoves.begin(), mySleepFourMoves.end());
+        //记录所有VCF进攻点和防守点
+        vector<Point> vcfPoints;
+        for (const auto &item: game.oppVcfAttackMoves) {
+            if (existPoints(basedMoves, item)) {
+                vcfPoints.emplace_back(item);
+            }
+        }
+        for (const auto &item: game.oppVcfDefenceMoves) {
+            if (existPoints(basedMoves, item)) {
+                vcfPoints.emplace_back(item);
+            }
+        }
+        defenceMoves.insert(defenceMoves.end(),
+                            vcfPoints.begin(),
+                            vcfPoints.end());
 
         //假设防御点都下了，再找冲4和长5点
         for (const auto &item: game.oppVcfDefenceMoves) {
@@ -190,7 +197,7 @@ vector<Point> getThreeDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
 
 std::pair<bool, std::vector<Point>>
 dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level,
-       vector<Point> *defencePoint) {
+       vector<Point> *attackPoints, vector<Point> *defencePoint) {
 //    std::cout << "===" << std::endl;
 //    game.printBoard();
 //    std::cout << "===" << std::endl;
@@ -249,9 +256,6 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         if (oppWinMoves.size() == 1) {
             moves.emplace_back(oppWinMoves[0]);
         }
-        if (defencePoint != nullptr) {
-            defencePoint->insert(defencePoint->end(), oppWinMoves.begin(), oppWinMoves.end());
-        }
         if (oppWinMoves.size() > 1) {
             return std::make_pair(true, oppWinMoves);
         }
@@ -261,8 +265,21 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     std::vector<Point> winMoves;
     for (const auto &item: moves) {
         game.board[item.x][item.y] = currentPlayer;
-        auto dfsResult = dfsVCF(checkPlayer, 3 - currentPlayer, game, item, lastMove, level + 1, defencePoint);
+        auto dfsResult = dfsVCF(checkPlayer, 3 - currentPlayer,
+                                game, item, lastMove,
+                                level + 1, attackPoints, defencePoint);
         if (dfsResult.first) {
+            if (attack) {
+                //记录进攻点
+                if (attackPoints != nullptr) {
+                    attackPoints->emplace_back(item);
+                }
+            } else {
+                //记录防守
+                if (defencePoint != nullptr) {
+                    defencePoint->emplace_back(item);
+                }
+            }
             finalResult = true;
             winMoves.emplace_back(item);
             if (level > 0) {

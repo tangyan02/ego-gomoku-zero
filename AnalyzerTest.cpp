@@ -700,3 +700,49 @@ bool testSelectActions() {
     cout << get<1>(result).size() << endl;
     return true;
 }
+
+
+bool testSelectActions2() {
+    cout << "testSelectActions2" << endl;
+    Game game(20);
+    game.makeMove(Point(16, 16));
+    game.makeMove(Point(14, 16));
+    game.makeMove(Point(16, 14));
+    game.makeMove(Point(14, 14));
+    game.makeMove(Point(16, 12));
+    game.makeMove(Point(14, 12));
+    game.makeMove(Point(14, 15));
+    game.makeMove(Point(16, 15));
+    game.makeMove(Point(15, 14));
+    game.makeMove(Point(16, 13));
+    game.makeMove(Point(15, 11));
+    game.makeMove(Point(17, 13));
+    game.makeMove(Point(15, 13));
+    game.makeMove(Point(15, 12));
+    game.makeMove(Point(17, 14));
+    game.makeMove(Point(13, 10));
+    game.makeMove(Point(14, 11));
+    game.makeMove(Point(16, 11));
+    game.makeMove(Point(15, 17));
+    game.makeMove(Point(18, 14));
+    game.makeMove(Point(12, 17));
+    game.makeMove(Point(13, 16));
+    game.makeMove(Point(12, 15));
+    game.makeMove(Point(11, 15));
+    game.makeMove(Point(11, 16));
+    game.makeMove(Point(13, 14));
+    game.makeMove(Point(10, 15));
+    game.makeMove(Point(13, 18));
+
+    long long startTime = getSystemTime();
+    auto moves = game.getEmptyPoints();
+    auto result = selectActions(game);
+    for (Point &move: get<1>(result)) {
+        game.board[move.x][move.y] = 3;
+    }
+    cout << "cost " << getSystemTime() - startTime << " ms" << endl;
+    game.printBoard();
+    cout << get<2>(result) << endl;
+    cout << get<1>(result).size() << endl;
+    return true;
+}

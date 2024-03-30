@@ -51,6 +51,7 @@ public:
     bool oppVcfDone = false;
     vector<Point> myVcfMoves;
     vector<Point> oppVcfMoves;
+    vector<Point> oppVcfAttackMoves;
     vector<Point> oppVcfDefenceMoves;
 
 
