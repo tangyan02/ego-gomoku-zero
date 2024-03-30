@@ -14,6 +14,17 @@ void printVector(vector<Point> &a) {
     cout << endl;
 }
 
+
+// 创建一个函数来查找特定的点
+bool existPoints(const std::vector<Point> &moves, const Point &target) {
+    for (const auto &item: moves) {
+        if (item.x == target.x && item.y == target.y) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::vector<Point> getLineEmptyPoints(Point action, Game &game, int direct) {
     std::vector<Point> empty_points;
     if (!action.isNull()) {
@@ -105,15 +116,6 @@ getSleepyTwoMoves(int player, Game &game, std::vector<Point> &basedMoves) {
     return getShapeMoves(player, game, basedMoves, SLEEPY_TWO);
 }
 
-bool isWithinRange(const Point &point, const std::vector<Point> &range) {
-    for (const auto &p: range) {
-        if (point.x >= p.x && point.x <= p.x && point.y >= p.y && point.y <= p.y) {
-            return true;
-        }
-    }
-    return false;
-}
-
 vector<Point> getVCFDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
     //如果对手有VCF点，则只考虑我方长4和对手冲4，活4，对手活3点
     auto otherVCFMoves = game.getOppVCFMoves();
@@ -138,7 +140,7 @@ vector<Point> getVCFDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
         auto nearsNew = game.getEmptyPoints();
         vector<Point> nearsInRange;
         for (const auto &item: nearsNew) {
-            if (isWithinRange(item, basedMoves)) {
+            if (existPoints(basedMoves, item)) {
                 nearsInRange.emplace_back(item);
             }
         }
@@ -184,16 +186,6 @@ vector<Point> getThreeDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
         defenceMoves.insert(defenceMoves.end(), sleepyFourMoves.begin(), sleepyFourMoves.end());
     }
     return removeDuplicates(defenceMoves);
-}
-
-// 创建一个函数来查找特定的点
-bool existPoints(const std::vector<Point> &moves, const Point &target) {
-    for (const auto &item: moves) {
-        if (item.x == target.x && item.y == target.y) {
-            return true;
-        }
-    }
-    return false;
 }
 
 std::pair<bool, std::vector<Point>>
