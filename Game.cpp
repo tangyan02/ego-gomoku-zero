@@ -141,6 +141,12 @@ void Game::printBoard(const std::string &part) {
                 case WHITE:
                     std::cout << "O";
                     break;
+                case FLAG1:
+                    std::cout << "#";
+                    break;
+                case FLAG2:
+                    std::cout << "*";
+                    break;
                 default:
                     std::cout << "#";
             }

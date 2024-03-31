@@ -32,5 +32,6 @@ bool testGetThreeDefenceMoves();
 bool testGetThreeDefenceMoves2();
 bool testSelectActions();
 bool testSelectActions2();
+bool testSelectActions3();
 
 #endif //EGO_GOMOKU_ZERO_ANALYZERTEST_H

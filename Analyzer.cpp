@@ -238,11 +238,15 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
         //对方没有胜利点，正常连击
         if (oppWinMoves.empty()) {
-            if (!activeMoves.empty()) {
-                return std::make_pair(true, activeMoves);
+
+            if (activeMoves.empty()) {
+                //没有活4就冲4
+                moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
+            } else {
+                //活4
+                moves.insert(moves.end(), activeMoves.begin(), activeMoves.end());
             }
 
-            moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
             if (moves.empty()) {
                 return std::make_pair(false, std::vector<Point>());
             }
@@ -257,6 +261,10 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             moves.emplace_back(oppWinMoves[0]);
         }
         if (oppWinMoves.size() > 1) {
+            //记录防守
+            if (defencePoint != nullptr) {
+                defencePoint->insert(defencePoint->end(), oppWinMoves.begin(), oppWinMoves.end());
+            }
             return std::make_pair(true, oppWinMoves);
         }
     }

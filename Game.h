@@ -37,6 +37,8 @@ const int CONNECT = 5;
 #define NONE_P 0
 #define BLACK 1
 #define WHITE 2
+#define FLAG1 3
+#define FLAG2 4
 
 class Game {
 public:
