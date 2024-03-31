@@ -376,7 +376,16 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
  * 返回两个值，第一个值代表返回值是否是必胜点
  */
 tuple<bool, vector<Point>, string> selectActions(Game &game) {
-    auto emptyPoints = game.getEmptyPoints();
+    //根据步数确定范围，影响开局多样性
+    int range = 2;
+    if (game.historyMoves.size() <= 3) {
+        range = 4;
+    }
+    if (game.historyMoves.size() <= 7) {
+        range = 3;
+    }
+
+    auto emptyPoints = game.getNearEmptyPoints(range);
     //我方长5
     auto currentWinnerMoves = getWinningMoves(game.currentPlayer, game, emptyPoints);
     if (!currentWinnerMoves.empty()) {
@@ -412,10 +421,10 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     }
 
     //防御对方双3点
-    auto doubleThreeDefenceMoves = getDoubleThreeDefenceMoves(game, emptyPoints);
-    if (!doubleThreeDefenceMoves.empty()) {
-        return make_tuple(false, doubleThreeDefenceMoves, "  defence double 3 ");
-    }
+//    auto doubleThreeDefenceMoves = getDoubleThreeDefenceMoves(game, emptyPoints);
+//    if (!doubleThreeDefenceMoves.empty()) {
+//        return make_tuple(false, doubleThreeDefenceMoves, "  defence double 3 ");
+//    }
 
     return make_tuple(false, emptyPoints, "");
 }
