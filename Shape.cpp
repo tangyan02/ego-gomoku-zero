@@ -276,7 +276,7 @@ int countPointShape(Game &game, int player, Point &action, Shape shape) {
             count++;
         }
     }
-    return count
+    return count;
 }
 
 bool checkPointDirectShape(Game &game, int player, Point &action, int direct, Shape shape) {

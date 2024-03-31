@@ -197,7 +197,11 @@ vector<Point> Game::getMyVCFMoves() {
         return myVcfMoves;
     }
     Game game = *this;
-    auto myVCF = dfsVCF(currentPlayer, currentPlayer, game, Point(), Point());
+    myAllAttackMoves.clear();
+    auto myVCF = dfsVCF(currentPlayer, currentPlayer,
+                        game, Point(), Point(), 0,
+                        nullptr, nullptr, &myAllAttackMoves);
+    myAllAttackMoves = removeDuplicates(myAllAttackMoves);
     myVcfMoves = myVCF.second;
     myVcfDone = true;
     return myVcfMoves;
