@@ -269,6 +269,16 @@ int hashKeys(const std::vector<int> &vec) {
     return hashValue;
 }
 
+int countPointShape(Game &game, int player, Point &action, Shape shape) {
+    int count = 0;
+    for (int k = 0; k < 4; k++) {
+        if (checkPointDirectShape(game, player, action, k, shape)) {
+            count++;
+        }
+    }
+    return count
+}
+
 bool checkPointDirectShape(Game &game, int player, Point &action, int direct, Shape shape) {
 //    game.board[action.x][action.y] = 3;
 //    game.printBoard();

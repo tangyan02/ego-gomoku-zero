@@ -24,6 +24,8 @@ vector<int> getKeysInGame(Game &game, int player, Point &action, int direct);
 
 bool checkPointDirectShape(Game &game, int player, Point &action, int direct, Shape shape);
 
+int countPointShape(Game &game, int player, Point &action, Shape shape);
+
 void printKeys(const vector<int> &keys);
 
 void printShape();
