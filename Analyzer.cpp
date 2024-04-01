@@ -153,8 +153,8 @@ vector<Point> getDoubleThreeDefenceMoves(Game &game, std::vector<Point> &basedMo
         //那么和活3，眠4，也作为可选点
         auto mySleepFourMoves = getSleepyFourMoves(game.currentPlayer, game, basedMoves);
         auto myActiveThreeMoves = getActiveThreeMoves(game.currentPlayer, game, basedMoves);
-//        defenceMoves.insert(defenceMoves.end(), mySleepFourMoves.begin(), mySleepFourMoves.end());
-//        defenceMoves.insert(defenceMoves.end(), myActiveThreeMoves.begin(), myActiveThreeMoves.end());
+        defenceMoves.insert(defenceMoves.end(), mySleepFourMoves.begin(), mySleepFourMoves.end());
+        defenceMoves.insert(defenceMoves.end(), myActiveThreeMoves.begin(), myActiveThreeMoves.end());
 
         //假设VCF进攻点都下了，长5，活4,眠4,活3
         for (const auto &item: game.myAllAttackMoves) {
@@ -175,10 +175,10 @@ vector<Point> getDoubleThreeDefenceMoves(Game &game, std::vector<Point> &basedMo
         auto myActiveThreeMoves_more = getActiveThreeMoves(game.currentPlayer, game, nearsInRange);
         auto mySleepFourMoves_more = getSleepyFourMoves(game.currentPlayer, game, nearsInRange);
 
-//        defenceMoves.insert(defenceMoves.end(), myFiveMoves_more.begin(), myFiveMoves_more.end());
-//        defenceMoves.insert(defenceMoves.end(), myActiveFourMoves_more.begin(), myActiveFourMoves_more.end());
-//        defenceMoves.insert(defenceMoves.end(), myActiveThreeMoves_more.begin(), myActiveThreeMoves_more.end());
-//        defenceMoves.insert(defenceMoves.end(), mySleepFourMoves_more.begin(), mySleepFourMoves_more.end());
+        defenceMoves.insert(defenceMoves.end(), myFiveMoves_more.begin(), myFiveMoves_more.end());
+        defenceMoves.insert(defenceMoves.end(), myActiveFourMoves_more.begin(), myActiveFourMoves_more.end());
+        defenceMoves.insert(defenceMoves.end(), myActiveThreeMoves_more.begin(), myActiveThreeMoves_more.end());
+        defenceMoves.insert(defenceMoves.end(), mySleepFourMoves_more.begin(), mySleepFourMoves_more.end());
 
         for (const auto &item: game.myAllAttackMoves) {
             game.board[item.x][item.y] = 0;
