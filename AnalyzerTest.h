@@ -35,5 +35,6 @@ bool testSelectActions2();
 bool testSelectActions3();
 bool testSelectActions4();
 bool testSelectActions5();
+bool testSelectActions6();
 
 #endif //EGO_GOMOKU_ZERO_ANALYZERTEST_H

@@ -150,11 +150,13 @@ vector<Point> getDoubleThreeDefenceMoves(Game &game, std::vector<Point> &basedMo
 
     //如果存在双3
     if (existDoubleThree) {
-        //那么和活3，眠4，也作为可选点
+        //那么和活3，眠4，眠3也作为可选点
         auto mySleepFourMoves = getSleepyFourMoves(game.currentPlayer, game, basedMoves);
         auto myActiveThreeMoves = getActiveThreeMoves(game.currentPlayer, game, basedMoves);
+        auto mySleepThreeMoves = getSleepyThreeMoves(game.currentPlayer, game, basedMoves);
         defenceMoves.insert(defenceMoves.end(), mySleepFourMoves.begin(), mySleepFourMoves.end());
         defenceMoves.insert(defenceMoves.end(), myActiveThreeMoves.begin(), myActiveThreeMoves.end());
+        defenceMoves.insert(defenceMoves.end(), mySleepThreeMoves.begin(), mySleepThreeMoves.end());
 
         //假设VCF进攻点都下了，长5，活4,眠4,活3
         for (const auto &item: game.myAllAttackMoves) {
@@ -174,11 +176,13 @@ vector<Point> getDoubleThreeDefenceMoves(Game &game, std::vector<Point> &basedMo
         auto myActiveFourMoves_more = getActiveFourMoves(game.currentPlayer, game, nearsInRange);
         auto myActiveThreeMoves_more = getActiveThreeMoves(game.currentPlayer, game, nearsInRange);
         auto mySleepFourMoves_more = getSleepyFourMoves(game.currentPlayer, game, nearsInRange);
+        auto mySleepThreeMoves_more = getSleepyThreeMoves(game.currentPlayer, game, nearsInRange);
 
         defenceMoves.insert(defenceMoves.end(), myFiveMoves_more.begin(), myFiveMoves_more.end());
         defenceMoves.insert(defenceMoves.end(), myActiveFourMoves_more.begin(), myActiveFourMoves_more.end());
         defenceMoves.insert(defenceMoves.end(), myActiveThreeMoves_more.begin(), myActiveThreeMoves_more.end());
         defenceMoves.insert(defenceMoves.end(), mySleepFourMoves_more.begin(), mySleepFourMoves_more.end());
+        defenceMoves.insert(defenceMoves.end(), mySleepThreeMoves_more.begin(), mySleepThreeMoves_more.end());
 
         for (const auto &item: game.myAllAttackMoves) {
             game.board[item.x][item.y] = 0;
@@ -427,10 +431,10 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     }
 
     //防御对方双3点
-//    auto doubleThreeDefenceMoves = getDoubleThreeDefenceMoves(game, emptyPoints);
-//    if (!doubleThreeDefenceMoves.empty()) {
-//        return make_tuple(false, doubleThreeDefenceMoves, "  defence double 3 ");
-//    }
+    auto doubleThreeDefenceMoves = getDoubleThreeDefenceMoves(game, emptyPoints);
+    if (!doubleThreeDefenceMoves.empty()) {
+        return make_tuple(false, doubleThreeDefenceMoves, "  defence double 3 ");
+    }
 
     return make_tuple(false, emptyPoints, "");
 }
