@@ -889,3 +889,43 @@ bool testSelectActions4() {
 
     return true;
 }
+
+
+bool testSelectActions5() {
+    cout << "testSelectActions5" << endl;
+    Game game(20);
+    game.makeMove(Point(9,13));
+    game.makeMove(Point(9,15));
+    game.makeMove(Point(13,15));
+    game.makeMove(Point(14,14));
+    game.makeMove(Point(16,11));
+    game.makeMove(Point(14,13));
+    game.makeMove(Point(12,13));
+    game.makeMove(Point(15,15));
+    game.makeMove(Point(13,13));
+    game.makeMove(Point(14,15));
+    game.makeMove(Point(14,16));
+    game.makeMove(Point(12,14));
+    game.makeMove(Point(11,14));
+//    game.makeMove(Point(13,12));
+
+    long long startTime = getSystemTime();
+    auto moves = game.getEmptyPoints();
+    auto result = selectActions(game);
+
+    for (Point &move: get<1>(result)) {
+        game.board[move.x][move.y] = 3;
+    }
+    cout << "cost " << getSystemTime() - startTime << " ms" << endl;
+    game.printBoard();
+    cout << get<2>(result) << endl;
+    cout << get<1>(result).size() << endl;
+
+    bool asset = false;
+    for (Point &move: get<1>(result)) {
+        if (move.x == 13 && move.y == 12) {
+            asset = true;
+        }
+    }
+    return asset;
+}
