@@ -427,10 +427,10 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     }
 
     //防御对方双3点
-    auto doubleThreeDefenceMoves = getDoubleThreeDefenceMoves(game, emptyPoints);
-    if (!doubleThreeDefenceMoves.empty()) {
-        return make_tuple(false, doubleThreeDefenceMoves, "  defence double 3 ");
-    }
+//    auto doubleThreeDefenceMoves = getDoubleThreeDefenceMoves(game, emptyPoints);
+//    if (!doubleThreeDefenceMoves.empty()) {
+//        return make_tuple(false, doubleThreeDefenceMoves, "  defence double 3 ");
+//    }
 
     return make_tuple(false, emptyPoints, "");
 }
