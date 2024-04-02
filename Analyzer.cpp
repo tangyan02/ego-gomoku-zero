@@ -226,6 +226,8 @@ vector<Point> getVCFDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
             game.board[item.x][item.y] = game.currentPlayer;
         }
 
+        game.printBoard();
+
         //计算新的可选点，但要在原来的范围内
         auto nearsNew = game.getEmptyPoints();
         vector<Point> nearsInRange;
@@ -237,7 +239,7 @@ vector<Point> getVCFDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
 
         auto mySleepFourMoves_more = getSleepyFourMoves(game.currentPlayer, game, nearsInRange);
         auto myActiveFourMoves_more = getActiveFourMoves(game.currentPlayer, game, nearsInRange);
-        auto myFiveMoves_more = getSleepyFourMoves(game.currentPlayer, game, nearsInRange);
+        auto myFiveMoves_more = getWinningMoves(game.currentPlayer, game, nearsInRange);
 
 
         defenceMoves.insert(defenceMoves.end(), myActiveFourMoves_more.begin(), myActiveFourMoves_more.end());

@@ -1041,3 +1041,67 @@ bool testSelectActions7() {
     }
     return asset;
 }
+
+
+bool testSelectActions8() {
+    cout << "testSelectActions8" << endl;
+    Game game(20);
+    game.makeMove(Point(12, 19));
+    game.makeMove(Point(8, 18));
+    game.makeMove(Point(7, 15));
+    game.makeMove(Point(7, 18));
+    game.makeMove(Point(8, 14));
+    game.makeMove(Point(6, 18));
+    game.makeMove(Point(5, 18));
+    game.makeMove(Point(6, 16));
+    game.makeMove(Point(6, 14));
+    game.makeMove(Point(5, 15));
+    game.makeMove(Point(7, 17));
+    game.makeMove(Point(5, 13));
+    game.makeMove(Point(7, 14));
+    game.makeMove(Point(5, 14));
+    game.makeMove(Point(5, 16));
+    game.makeMove(Point(6, 15));
+    game.makeMove(Point(8, 15));
+    game.makeMove(Point(7, 16));
+    game.makeMove(Point(8, 17));
+    game.makeMove(Point(6, 17));
+    game.makeMove(Point(6, 19));
+    game.makeMove(Point(8, 13));
+    game.makeMove(Point(9, 15));
+    game.makeMove(Point(5, 12));
+    game.makeMove(Point(5, 11));
+    game.makeMove(Point(4, 13));
+    game.makeMove(Point(3, 12));
+    game.makeMove(Point(7, 13));
+    game.makeMove(Point(6, 13));
+    game.makeMove(Point(10, 17));
+    game.makeMove(Point(10, 14));
+    game.makeMove(Point(9, 14));
+    game.makeMove(Point(10, 15));
+    game.makeMove(Point(11, 15));
+    game.makeMove(Point(10, 12));
+    game.makeMove(Point(10, 16));
+    game.makeMove(Point(9, 17));
+//    game.makeMove(Point(9,18));
+
+    long long startTime = getSystemTime();
+    auto moves = game.getEmptyPoints();
+    auto result = selectActions(game);
+
+    for (Point &move: get<1>(result)) {
+        game.board[move.x][move.y] = 3;
+    }
+    cout << "cost " << getSystemTime() - startTime << " ms" << endl;
+    game.printBoard();
+    cout << get<2>(result) << endl;
+    cout << get<1>(result).size() << endl;
+
+    bool asset = false;
+    for (Point &move: get<1>(result)) {
+        if (move.x == 9 && move.y == 18) {
+            asset = true;
+        }
+    }
+    return asset;
+}
