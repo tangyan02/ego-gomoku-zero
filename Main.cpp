@@ -73,7 +73,8 @@ void test() {
             testSelectActions3,
             testSelectActions4,
             testSelectActions5,
-            testSelectActions6
+            testSelectActions6,
+            testSelectActions7
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);

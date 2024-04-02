@@ -122,7 +122,14 @@ vector<Point> getDoubleThreeDefenceMoves(Game &game, std::vector<Point> &basedMo
     bool existDoubleThree = false;
     for (const auto &item: basedMoves) {
         auto action = item;
+        //考虑到连续冲4可能打断双3，这种情况不需要特别防守
+        for (const auto &atkPoint: game.myAllAttackMoves) {
+            game.board[atkPoint.x][atkPoint.y] = game.currentPlayer;
+        }
         int count = countPointShape(game, game.getOtherPlayer(), action, ACTIVE_THREE);
+        for (const auto &atkPoint: game.myAllAttackMoves) {
+            game.board[atkPoint.x][atkPoint.y] = 0;
+        }
         if (count >= 2) {
             existDoubleThree = true;
 
@@ -431,10 +438,10 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     }
 
     //防御对方双3点
-    auto doubleThreeDefenceMoves = getDoubleThreeDefenceMoves(game, emptyPoints);
-    if (!doubleThreeDefenceMoves.empty()) {
-        return make_tuple(false, doubleThreeDefenceMoves, "  defence double 3 ");
-    }
+//    auto doubleThreeDefenceMoves = getDoubleThreeDefenceMoves(game, emptyPoints);
+//    if (!doubleThreeDefenceMoves.empty()) {
+//        return make_tuple(false, doubleThreeDefenceMoves, "  defence double 3 ");
+//    }
 
     return make_tuple(false, emptyPoints, "");
 }
