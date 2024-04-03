@@ -226,7 +226,7 @@ vector<Point> getVCFDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
             game.board[item.x][item.y] = game.currentPlayer;
         }
 
-        game.printBoard();
+//        game.printBoard();
 
         //计算新的可选点，但要在原来的范围内
         auto nearsNew = game.getEmptyPoints();
