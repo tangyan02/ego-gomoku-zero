@@ -179,7 +179,7 @@ vector<Point> getDoubleThreeDefenceMoves(Game &game, std::vector<Point> &basedMo
             }
         }
 
-        auto myFiveMoves_more = getSleepyFourMoves(game.currentPlayer, game, nearsInRange);
+        auto myFiveMoves_more = getWinningMoves(game.currentPlayer, game, nearsInRange);
         auto myActiveFourMoves_more = getActiveFourMoves(game.currentPlayer, game, nearsInRange);
         auto myActiveThreeMoves_more = getActiveThreeMoves(game.currentPlayer, game, nearsInRange);
         auto mySleepFourMoves_more = getSleepyFourMoves(game.currentPlayer, game, nearsInRange);
