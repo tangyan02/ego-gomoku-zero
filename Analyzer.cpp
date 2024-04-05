@@ -395,16 +395,7 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
  * 返回两个值，第一个值代表返回值是否是必胜点
  */
 tuple<bool, vector<Point>, string> selectActions(Game &game) {
-    //根据步数确定范围，影响开局多样性
-    int range = 2;
-    if (game.historyMoves.size() <= 3) {
-        range = 4;
-    }
-    if (game.historyMoves.size() <= 7) {
-        range = 3;
-    }
-
-    auto emptyPoints = game.getNearEmptyPoints(range);
+    auto emptyPoints = game.getNearEmptyPoints();
     //我方长5
     auto currentWinnerMoves = getWinningMoves(game.currentPlayer, game, emptyPoints);
     if (!currentWinnerMoves.empty()) {
