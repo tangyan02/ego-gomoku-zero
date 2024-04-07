@@ -177,6 +177,41 @@ int min(int a,int b) {
     return b;
 }
 
+bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum) {
+    int total = node->visits;
+	if (simiNum > 10 && total > 30) {
+        //安全比例，减少误差
+        double beta = 1.05;
+
+        //最大值
+        int max = -1;
+        for (auto item : node->children) {
+            int visit = item.second->visits;
+            if (visit > max) {
+                max = visit;
+            }
+        }
+
+        //第二大值
+        int secondMax = -1;
+        for (auto item : node->children) {
+            int visit = item.second->visits;
+            if (visit > secondMax && visit != max) {
+                secondMax = visit;
+            }
+        }
+
+        //估计值
+        int estimateVisit = total - simiNum + ((int)((double)simiNum / (double)passTime * (double)thisTimeOut));
+
+        if ((secondMax + (estimateVisit - total)) * beta < max) {
+            pipeOut("MESSAGE prebreak at max %d, secondMax %d, total %d, simiNum %d, estimateVisit %d", max, secondMax, total, simiNum, estimateVisit);
+            return true;
+        }
+    }
+    return false;
+}
+
 void brain_turn()
 {
     MonteCarloTree mcts = MonteCarloTree(model, 1);
@@ -204,7 +239,12 @@ void brain_turn()
         if (passTime > thisTimeOut) {
             break;
         }
+
         if (node->children.size() <= 1) {
+            break;
+        }
+
+        if (checkNeedBreak(passTime, thisTimeOut, simiNum)) {
             break;
         }
     }
