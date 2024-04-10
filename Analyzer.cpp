@@ -395,7 +395,7 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
  * 返回两个值，第一个值代表返回值是否是必胜点
  */
 tuple<bool, vector<Point>, string> selectActions(Game &game) {
-    int range = 2;
+    int range = 3;
     if (game.historyMoves.size() <= 3) {
         range = 4;
     }
