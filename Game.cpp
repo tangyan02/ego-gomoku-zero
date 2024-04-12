@@ -122,7 +122,7 @@ vector<vector<vector<float>>> Game::getState() {
     Game game = *this;
     int p = 4;
     for (const auto &shape: list) {
-        for (const auto &player: players){
+        for (const auto &player: players) {
             for (const auto &move: moves) {
                 Point action = move;
                 int count = 0;
@@ -134,7 +134,8 @@ vector<vector<vector<float>>> Game::getState() {
                 if (count > 0) {
                     int x = action.x;
                     int y = action.y;
-                    data[p + count - 1][x][y] = 1;
+                    for (int k = 0; k < count; k++)
+                        data[p + k][x][y] = 1;
                 }
             }
             p += 4;
