@@ -361,10 +361,10 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 //        cout << "判定转换长4" << endl;
         fourMode = true;
     }
-//    std::cout << "===" << std::endl;
-//    std::cout << "in four " << fourMode << std::endl;
-//    game.printBoard();
-//    std::cout << "===" << std::endl;
+    std::cout << "===" << std::endl;
+    std::cout << "in four " << fourMode << std::endl;
+    game.printBoard();
+    std::cout << "===" << std::endl;
     std::vector<Point> moves;
     bool attack = checkPlayer == currentPlayer;
     bool attackMove = true;
@@ -443,7 +443,8 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             //长4的情形
             auto fourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR, SLEEPY_THREE);
             auto fourMoreMoves = getShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR_MORE);
-
+            cout<<"fourMoreMoves ";
+            printVector(fourMoreMoves);
             moves.insert(moves.end(), fourMoves.begin(), fourMoves.end());
             moves.insert(moves.end(), fourMoreMoves.begin(), fourMoreMoves.end());
         }
