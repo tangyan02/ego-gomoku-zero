@@ -38,5 +38,12 @@ bool testSelectActions5();
 bool testSelectActions6();
 bool testSelectActions7();
 bool testSelectActions8();
+bool testDfsVCT();
+bool testDfsVCT2();
+bool testDfsVCT3();
+bool testDfsVCT4();
+bool testDfsVCT5();
+bool testDfsVCT6();
+bool testDfsVCT7();
 
 #endif //EGO_GOMOKU_ZERO_ANALYZERTEST_H
