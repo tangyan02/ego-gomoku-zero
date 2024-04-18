@@ -6,7 +6,7 @@ using namespace std;
 static int ddx[4] = {1, 1, 1, 0};
 static int ddy[4] = {1, 0, -1, 1};
 
-static bool shapeMapping[9][300000] = {false};
+static bool shapeMapping[10][300000] = {false};
 
 bool win(const vector<int> &keys) {
     int count = 0;
@@ -62,6 +62,27 @@ bool sleepyFour(vector<int> &keys) {
         return true;
     }
     return false;
+}
+
+
+bool sleepyFourMore(vector<int> &keys) {
+    if (win(keys)) {
+        return false;
+    }
+    //判断keys数组是否存在连续的3个1
+    int count = 0;
+    for (int key: keys) {
+        if (key == 1) {
+            count++;
+        } else {
+            count = 0;
+        }
+    }
+    if (count < 3) {
+        return false;
+    }
+
+    return sleepyFour(keys);
 }
 
 bool activeThree(vector<int> &keys) {
@@ -323,6 +344,9 @@ void initShape() {
         if (sleepyOne(keyList)) {
             shapeMapping[SLEEPY_ONE][key] = true;
         }
+        if (sleepyFourMore(keyList)) {
+            shapeMapping[SLEEPY_FOUR_MORE][key] = true;
+        }
     }
 }
 
@@ -345,6 +369,14 @@ void printShape() {
     for (const auto &item: combinations) {
         vector<int> keys = item;
         if (sleepyFour(keys)) {
+            printKeys(item);
+        }
+    }
+
+    cout << "眠4-扩展" << endl;
+    for (const auto &item: combinations) {
+        vector<int> keys = item;
+        if (sleepyFourMore(keys)) {
             printKeys(item);
         }
     }

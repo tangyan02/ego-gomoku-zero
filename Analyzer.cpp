@@ -337,6 +337,19 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
 
 std::pair<bool, std::vector<Point>>
+dfsVCTIter(int checkPlayer, int currentPlayer, Game &game, int maxLevel) {
+    for (int level = 5; level <= maxLevel; level++) {
+        auto result = dfsVCT(checkPlayer, currentPlayer, game,
+                             Point(), Point(), Point(),
+                             false, 0, 0, 99, level, true);
+        if (result.first) {
+            return result;
+        }
+    }
+    return std::make_pair(false, std::vector<Point>());
+}
+
+std::pair<bool, std::vector<Point>>
 dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, Point attackPoint,
        bool fourMode, int level, int threeCount, int maxThreeCount, int maxLevel, bool realPlay) {
 
@@ -429,8 +442,10 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
             //长4的情形
             auto fourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR, SLEEPY_THREE);
+            auto fourMoreMoves = getShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR_MORE);
+
             moves.insert(moves.end(), fourMoves.begin(), fourMoves.end());
-//            moves.insert(moves.end(), sleepMoves.begin(), sleepMoves.end());
+            moves.insert(moves.end(), fourMoreMoves.begin(), fourMoreMoves.end());
         }
     } else {
 
