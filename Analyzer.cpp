@@ -338,7 +338,7 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 std::pair<bool, std::vector<Point>>
 dfsVCTIter(int checkPlayer, int currentPlayer, Game &game, int timeLimit) {
     long long timeOut = getSystemTime() + timeLimit;
-    for (int level = 1; level <= 99; level += 1) {
+    for (int level = 1; level <= 15; level += 1) {
         auto result = dfsVCT(checkPlayer, currentPlayer, game,
                              Point(), Point(), Point(),
                              false, 0, 0, level, 99, timeOut);
