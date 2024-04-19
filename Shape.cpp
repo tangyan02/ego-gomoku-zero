@@ -71,14 +71,18 @@ bool sleepyFourMore(vector<int> &keys) {
     }
     //判断keys数组是否存在连续的3个1
     int count = 0;
+    bool pass = false;
     for (int key: keys) {
         if (key == 1) {
             count++;
         } else {
             count = 0;
         }
+        if (count >= 3) {
+            pass = true;
+        }
     }
-    if (count < 3) {
+    if (!pass) {
         return false;
     }
 

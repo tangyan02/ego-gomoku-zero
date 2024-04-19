@@ -76,13 +76,13 @@ void test() {
             testSelectActions6,
             testSelectActions7,
             testSelectActions8,
-//            testDfsVCT,
-//            testDfsVCT2,
-//            testDfsVCT3,
+            testDfsVCT,
+            testDfsVCT2,
+            testDfsVCT3,
             testDfsVCT4,
-//            testDfsVCT5,
-//            testDfsVCT6,
-//            testDfsVCT7
+            testDfsVCT5,
+            testDfsVCT6,
+            testDfsVCT7
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);

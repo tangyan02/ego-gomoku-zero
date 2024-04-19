@@ -338,7 +338,7 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
 std::pair<bool, std::vector<Point>>
 dfsVCTIter(int checkPlayer, int currentPlayer, Game &game, int maxLevel) {
-    for (int level = 5; level <= maxLevel; level++) {
+    for (int level = 5; level <= maxLevel; level += 2) {
         auto result = dfsVCT(checkPlayer, currentPlayer, game,
                              Point(), Point(), Point(),
                              false, 0, 0, 99, level, true);
@@ -361,29 +361,38 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 //        cout << "判定转换长4" << endl;
         fourMode = true;
     }
-    std::cout << "===" << std::endl;
-    std::cout << "in four " << fourMode << std::endl;
-    game.printBoard();
-    std::cout << "===" << std::endl;
+//    std::cout << "===" << std::endl;
+//    std::cout << "in four " << fourMode << std::endl;
+//    game.printBoard();
+//    std::cout << "===" << std::endl;
     std::vector<Point> moves;
     bool attack = checkPlayer == currentPlayer;
     bool attackMove = true;
 
     std::vector<Point> nearMoves;
+    std::vector<Point> nearMoves3;
     if (lastLastMove.isNull()) {
         nearMoves = game.getEmptyPoints();
+        nearMoves3 = game.getEmptyPoints();
     } else {
         if (attack) {
             nearMoves = getNearByEmptyPoints(lastLastMove, game, 4);
+            nearMoves3 = getNearByEmptyPoints(lastLastMove, game, 3);
+            std::vector<Point> moves3;
         } else {
             nearMoves = getNearByEmptyPoints(lastMove, game, 4);
+            nearMoves3 = getNearByEmptyPoints(lastLastMove, game, 3);
         }
     }
 
     // 其实还是要考虑的，防守端计算会让局面更完整
     auto attackNearMoves = getNearByEmptyPoints(attackPoint, game, 4);
+    auto attackNearMoves3 = getNearByEmptyPoints(attackPoint, game, 3);
     nearMoves.insert(nearMoves.end(), attackNearMoves.begin(), attackNearMoves.end());
+    nearMoves3.insert(nearMoves3.end(), attackNearMoves.begin(), attackNearMoves.end());
+
     nearMoves = removeDuplicates(nearMoves);
+    nearMoves3 = removeDuplicates(nearMoves3);
 
     if (attack) {
         auto oppNearMoves = getNearByEmptyPoints(lastMove, game, 4);
@@ -430,10 +439,18 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
                 return std::make_pair(true, threeFourMoves);
             }
 
+            //如果有双3，对手没有冲4，直接胜利
+            auto oppActiveFourMoves = getActiveFourMoves(3 - currentPlayer, game, oppNearMoves);
+            auto oppSleepyFourMoves = getSleepyFourMoves(3 - currentPlayer, game, oppNearMoves);
+            auto doubleThreeMoves = getTwoShapeMoves(currentPlayer, game, nearMoves3, ACTIVE_THREE, ACTIVE_THREE);
+            if (oppActiveFourMoves.empty() && oppSleepyFourMoves.empty() && !doubleThreeMoves.empty()) {
+                return std::make_pair(true, doubleThreeMoves);
+            }
+
             //活3模式的情形
             if (!fourMode) {
-                auto threeActiveMoves = getTwoShapeMoves(currentPlayer, game, nearMoves, ACTIVE_THREE, ACTIVE_TWO);
-                auto threeActiveMoves2 = getTwoShapeMoves(currentPlayer, game, nearMoves, ACTIVE_THREE, SLEEPY_THREE);
+                auto threeActiveMoves = getTwoShapeMoves(currentPlayer, game, nearMoves3, ACTIVE_THREE, ACTIVE_TWO);
+                auto threeActiveMoves2 = getTwoShapeMoves(currentPlayer, game, nearMoves3, ACTIVE_THREE, SLEEPY_THREE);
                 auto fourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR, ACTIVE_TWO);
                 moves.insert(moves.end(), threeActiveMoves.begin(), threeActiveMoves.end());
                 moves.insert(moves.end(), threeActiveMoves2.begin(), threeActiveMoves2.end());
@@ -443,8 +460,8 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             //长4的情形
             auto fourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR, SLEEPY_THREE);
             auto fourMoreMoves = getShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR_MORE);
-            cout<<"fourMoreMoves ";
-            printVector(fourMoreMoves);
+//            cout<<"fourMoreMoves ";
+//            printVector(fourMoreMoves);
             moves.insert(moves.end(), fourMoves.begin(), fourMoves.end());
             moves.insert(moves.end(), fourMoreMoves.begin(), fourMoreMoves.end());
         }

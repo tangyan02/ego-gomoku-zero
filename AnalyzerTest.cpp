@@ -1459,11 +1459,8 @@ bool testDfsVCT7() {
 //    game.makeMove(Point(12, 4));
 //    game.makeMove(Point(11, 4));
 
-
-    int nodeRecord = 0;
     auto startTime = getSystemTime();
-    auto result = dfsVCT(game.currentPlayer, game.currentPlayer, game, Point(),
-                         Point(), Point(), false, 0, 0, 4);
+    auto result = dfsVCTIter(game.currentPlayer, game.currentPlayer, game, 13);
     cout << "cost " << getSystemTime() - startTime << endl;
     for (Point &move: result.second) {
         game.board[move.x][move.y] = 3;
