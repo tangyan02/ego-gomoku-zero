@@ -1126,7 +1126,7 @@ bool testDfsVCT() {
     game.makeMove(Point(7, 7));
 
     auto startTime = getSystemTime();
-    auto result = dfsVCTIter(1, 1, game, 9);
+    auto result = dfsVCTIter(1, 1, game, 50);
     auto costTime = getSystemTime() - startTime;
     cout << "cost time " << costTime << endl;
     for (Point &move: result.second) {
@@ -1460,7 +1460,7 @@ bool testDfsVCT7() {
 //    game.makeMove(Point(11, 4));
 
     auto startTime = getSystemTime();
-    auto result = dfsVCTIter(game.currentPlayer, game.currentPlayer, game, 13);
+    auto result = dfsVCTIter(game.currentPlayer, game.currentPlayer, game, 1000);
     cout << "cost " << getSystemTime() - startTime << endl;
     for (Point &move: result.second) {
         game.board[move.x][move.y] = 3;

@@ -335,13 +335,13 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     return std::make_pair(finalResult, winMoves);
 }
 
-
 std::pair<bool, std::vector<Point>>
-dfsVCTIter(int checkPlayer, int currentPlayer, Game &game, int maxLevel) {
-    for (int level = 5; level <= maxLevel; level += 2) {
+dfsVCTIter(int checkPlayer, int currentPlayer, Game &game, int timeLimit) {
+    long long timeOut = getSystemTime() + timeLimit;
+    for (int level = 1; level <= 99; level += 1) {
         auto result = dfsVCT(checkPlayer, currentPlayer, game,
                              Point(), Point(), Point(),
-                             false, 0, 0, 99, level, true);
+                             false, 0, 0, level, 99, timeOut);
         if (result.first) {
             return result;
         }
@@ -351,7 +351,12 @@ dfsVCTIter(int checkPlayer, int currentPlayer, Game &game, int maxLevel) {
 
 std::pair<bool, std::vector<Point>>
 dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, Point attackPoint,
-       bool fourMode, int level, int threeCount, int maxThreeCount, int maxLevel, bool realPlay) {
+       bool fourMode, int level, int threeCount, int maxThreeCount, int maxLevel, long long timeOutTime) {
+    if (timeOutTime > 0) {
+        if (getSystemTime() > timeOutTime) {
+            return std::make_pair(false, std::vector<Point>());
+        }
+    }
 
     if (level > maxLevel) {
         return std::make_pair(false, std::vector<Point>());
@@ -380,8 +385,11 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             nearMoves3 = getNearByEmptyPoints(lastLastMove, game, 3);
             std::vector<Point> moves3;
         } else {
-            nearMoves = getNearByEmptyPoints(lastMove, game, 4);
-            nearMoves3 = getNearByEmptyPoints(lastLastMove, game, 3);
+//            nearMoves = getNearByEmptyPoints(lastMove, game, 4);
+//            nearMoves3 = getNearByEmptyPoints(lastMove, game, 3)
+
+            nearMoves = game.getNearEmptyPoints();
+            nearMoves3 = game.getNearEmptyPoints();
         }
     }
 
@@ -455,6 +463,9 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
                 moves.insert(moves.end(), threeActiveMoves.begin(), threeActiveMoves.end());
                 moves.insert(moves.end(), threeActiveMoves2.begin(), threeActiveMoves2.end());
                 moves.insert(moves.end(), fourMoves.begin(), fourMoves.end());
+                if (!threeActiveMoves.empty() || !threeActiveMoves2.empty()) {
+                    threeCount++;
+                }
             }
 
             //长4的情形
@@ -492,10 +503,6 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         return std::make_pair(false, std::vector<Point>());
     }
 
-    if (!attack && moves.size() > 1) {
-        threeCount++;
-    }
-
     //去重
     moves = removeDuplicates(moves);
 
@@ -508,16 +515,15 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         game.board[item.x][item.y] = currentPlayer;
         auto nextAttackMove = attack && attackMove ? item : attackPoint;
         auto dfsResult = dfsVCT(checkPlayer, 3 - currentPlayer, game, item, lastMove, nextAttackMove,
-                                fourMode, level + 1, threeCount, maxThreeCount, maxLevel, realPlay);
+                                fourMode, level + 1, threeCount, maxThreeCount, maxLevel, timeOutTime);
 
         if (attack) {
             if (dfsResult.first) {
                 finalResult = true;
                 winMoves.emplace_back(item);
-                if (level > 0 || realPlay) {
-                    game.board[item.x][item.y] = 0;
-                    return std::make_pair(true, winMoves);
-                }
+
+                game.board[item.x][item.y] = 0;
+                return std::make_pair(true, winMoves);
             }
         } else {
             //防守时，默认为true，发现一个失败则为false
@@ -576,6 +582,11 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
         return make_tuple(false, vcfDefenceMoves, "  defence VCF ");
     }
 
+    //VCT点
+    auto vctMoves = game.getMyVCTMoves();
+    if (!vctMoves.empty()) {
+        return make_tuple(true, vctMoves, " VCT! ");
+    }
 
     return make_tuple(false, emptyPoints, "");
 }

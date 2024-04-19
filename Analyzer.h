@@ -35,10 +35,10 @@ std::pair<bool, std::vector<Point>>
 dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove = Point(), Point lastLastMove = Point(),
        Point attackPoint = Point(),
        bool fourMode = false, int level = 0, int threeCount = 0, int maxThreeCount = 9, int maxLevel = 9,
-       bool realPlay = false);
+       long long timeOutTime = 0);
 
 std::pair<bool, std::vector<Point>>
-dfsVCTIter(int checkPlayer, int currentPlayer, Game &game, int maxLevel);
+dfsVCTIter(int checkPlayer, int currentPlayer, Game &game, int timeLimit);
 
 vector<Point> getThreeDefenceMoves(int player, Game &game, vector<Point> &basedMoves);
 

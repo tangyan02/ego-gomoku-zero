@@ -87,7 +87,7 @@ std::vector<Point> Game::getEmptyPoints() {
 
 vector<vector<vector<float>>> Game::getState() {
 
-    vector<vector<vector<float>>> data(52, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
+    vector<vector<vector<float>>> data(5, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
@@ -115,30 +115,11 @@ vector<vector<vector<float>>> Game::getState() {
         }
     }
 
-    //棋型点
-    auto list = {ACTIVE_FOUR, ACTIVE_THREE, ACTIVE_TWO, SLEEPY_FOUR, SLEEPY_THREE, SLEEPY_TWO};
-    auto players = {1, 2};
-    auto moves = getNearEmptyPoints(4);
-    Game game = *this;
-    int p = 4;
-    for (const auto &shape: list) {
-        for (const auto &player: players) {
-            for (const auto &move: moves) {
-                Point action = move;
-                int count = 0;
-                for (int direct = 0; direct < 4; direct++) {
-                    if (checkPointDirectShape(game, player, action, direct, shape)) {
-                        count++;
-                    }
-                }
-                if (count > 0) {
-                    int x = action.x;
-                    int y = action.y;
-                    for (int k = 0; k < count; k++)
-                        data[p + k][x][y] = 1;
-                }
-            }
-            p += 4;
+    //VCF点
+    auto myVCTMoves = getMyVCFMoves();
+    if (!myVCFMoves.empty()) {
+        for (const auto &item: myVCFMoves) {
+            data[4][item.x][item.y] += 1;
         }
     }
 
@@ -202,8 +183,13 @@ bool Game::makeMove(Point p) {
 
     myVcfDone = false;
     oppVcfDone = false;
+    myVctDone = false;
+    myVctMoves.clear();
     myVcfMoves.clear();
+    myAllAttackMoves.clear();
     oppVcfMoves.clear();
+    oppVcfAttackMoves.clear();
+    oppVcfDefenceMoves.clear();
 
     return true;
 }
@@ -250,4 +236,15 @@ vector<Point> Game::getOppVCFMoves() {
     oppVcfMoves = oppVCF.second;
     oppVcfDone = true;
     return oppVcfMoves;
+}
+
+vector<Point> Game::getMyVCTMoves() {
+    if (myVctDone) {
+        return myVctMoves;
+    }
+    Game game = *this;
+    auto myVct = dfsVCTIter(currentPlayer, currentPlayer, game, 50);
+    myVctMoves = myVct.second;
+    myVctDone = true;
+    return myVcfMoves;
 }
