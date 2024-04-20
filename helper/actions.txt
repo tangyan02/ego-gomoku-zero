@@ -1,16 +1,15 @@
-[_1_0]  o action is 13,9 on rate 0.35 temperature 1 value 0.256786
-[_1_0]  x action is 15,12 on rate 0.64 temperature 1 value 0.457164
-[_1_0]  o action is 14,12 on rate 0.143 temperature 1 value -0.462399
-[_1_0]  x action is 14,13 on rate 0.09 temperature 0.99 value 0.716677
-[_1_0]  o action is 14,10 on rate 0.025 temperature 0.99 value 0.247111
-[_1_0]  x action is 13,14 on rate 0.062 temperature 0.99 value 0.861621
-[_1_0]  o action is 16,11 on rate 0.536 temperature 0.99 value -0.111866
-[_1_0]  x action is 12,15 on rate 0.695 temperature 0.98 value 0.940646
-[_1_0]  o action is 11,16 on rate 1 temperature 0 value 1 defence 5
-[_1_0]  x action is 16,14 on rate 0.015 temperature 0.98 value 0.923992
-[_1_0]  o action is 12,8 on rate 0.89 temperature 0.98 value 0.287967
+[_10_0]  o action is 3,6 on rate 0.124 temperature 1 value -0.420408
+[_10_0]  x action is 4,5 on rate 0.036 temperature 1 value 0.707809
+[_10_0]  o action is 0,0 on rate 0.001 temperature 0.99 value -0.757944
+[_10_0]  x action is 4,3 on rate 0.08 temperature 0.99 value 0.913793
+[_10_0]  o action is 4,6 on rate 0.945 temperature 0.98 value -0.887999  defence 3
+[_10_0]  x action is 3,5 on rate 0.167 temperature 0.98 value 0.92048
+[_10_0]  o action is 2,6 on rate 0.054 temperature 0.97 value -0.875969
+[_10_0]  x action is 5,6 on rate 0.715 temperature 0.97 value 0.882141  defence 3
+[_10_0]  o action is 1,6 on rate 0.106 temperature 0.96 value -0.8979
+[_10_0]  x action is 0,6 on rate 1 temperature 0 value 1 defence 5
+[_10_0]  o action is 2,7 on rate 0.093 temperature 0.95 value -0.779616
+[_10_0]  x action is 5,5 on rate 0.455 temperature 0.95 value 0.954109
+[_10_0]  o action is 6,5 on rate 0.611 temperature 0.94 value -0.899326  defence 3
 
-[_1_0]  x action is 13,18 on rate 0.001 temperature 0.97 value 0.600525
-[_1_0]  o action is 11,7 on rate 1 temperature 0 value 1  active 4
-[_1_0]  x action is 10,6 on rate 0.677 temperature 0.97 value -0.0544039 defence 5
-[_1_0]  o action is 15,11 on rate 1 temperature 0 value 1 win move
+[_10_0]  x action is 1,5 on rate 1 temperature 0 value 1 VCT!

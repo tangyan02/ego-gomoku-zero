@@ -47,7 +47,7 @@ void addAction(Game &game,
     game_data.push_back(record);
 }
 
-Game randomGame(Game &game) {
+Game randomGame(Game &game, const std::string &part) {
     //开局随机去下完后，价值接近0的点
     auto moves = game.getEmptyPoints();
 
@@ -58,6 +58,8 @@ Game randomGame(Game &game) {
     // 使用随机索引从数组中获取一个元素
     auto random_element = moves[random_index];
     game.makeMove(random_element);
+
+    cout << part << "random action is " << random_element.x << "," << random_element.y << endl;
 
     return game;
 }
@@ -79,7 +81,7 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
         Game game(boardSize);
         std::vector<std::tuple<vector<vector<vector<float>>>, int, std::vector<float>>> game_data;
 
-        game = randomGame(game);
+        game = randomGame(game, part);
 
         int step = 0;
         while (!game.isGameOver()) {

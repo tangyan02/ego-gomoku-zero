@@ -48,19 +48,23 @@ public:
     Point lastLastAction;
     int boardSize;
     int currentPlayer;
+    int vctTimeLimit;
 
     bool myVcfDone = false;
     bool oppVcfDone = false;
     bool myVctDone = false;
+    int myVctLevel = 0;
+    bool oppVctDone = false;
     vector<Point> myVctMoves;
     vector<Point> myVcfMoves;
     vector<Point> myAllAttackMoves;
     vector<Point> oppVcfMoves;
+    vector<Point> oppVctMoves;
     vector<Point> oppVcfAttackMoves;
     vector<Point> oppVcfDefenceMoves;
 
 
-    Game(int boardSize);
+    Game(int boardSize, int oppTimeLimit = 25);
 
     int getOtherPlayer();
 
@@ -87,6 +91,8 @@ public:
     vector<Point> getOppVCFMoves();
 
     vector<Point> getMyVCTMoves();
+
+    vector<Point> getOppVCTMoves();
 };
 
 std::vector<Point> removeDuplicates(const std::vector<Point> &points);

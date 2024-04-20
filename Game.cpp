@@ -23,12 +23,13 @@ bool Point::isNull() {
 }
 
 
-Game::Game(int boardSize) {
+Game::Game(int boardSize, int vctTimeLimit) {
     currentPlayer = 1;
     this->boardSize = boardSize;
     for (int i = 0; i < boardSize; i++)
         for (int j = 0; j < boardSize; j++)
             board[i][j] = 0;
+    this->vctTimeLimit = vctTimeLimit;
 }
 
 int Game::getOtherPlayer() {
@@ -87,7 +88,7 @@ std::vector<Point> Game::getEmptyPoints() {
 
 vector<vector<vector<float>>> Game::getState() {
 
-    vector<vector<vector<float>>> data(5, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
+    vector<vector<vector<float>>> data(6, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
@@ -115,11 +116,18 @@ vector<vector<vector<float>>> Game::getState() {
         }
     }
 
-    //VCF点
-    auto myVCTMoves = getMyVCFMoves();
-    if (!myVCFMoves.empty()) {
-        for (const auto &item: myVCFMoves) {
+    //VCT点
+    auto myVCTMoves = getMyVCTMoves();
+    if (!myVCTMoves.empty()) {
+        for (const auto &item: myVCTMoves) {
             data[4][item.x][item.y] += 1;
+        }
+    }
+
+    auto oppVCTMoves = getOppVCTMoves();
+    if (!oppVCTMoves.empty()) {
+        for (const auto &item: oppVCTMoves) {
+            data[5][item.x][item.y] += 1;
         }
     }
 
@@ -184,10 +192,13 @@ bool Game::makeMove(Point p) {
     myVcfDone = false;
     oppVcfDone = false;
     myVctDone = false;
+    oppVctDone = false;
+    myVctLevel = 0;
     myVctMoves.clear();
     myVcfMoves.clear();
     myAllAttackMoves.clear();
     oppVcfMoves.clear();
+    oppVctMoves.clear();
     oppVcfAttackMoves.clear();
     oppVcfDefenceMoves.clear();
 
@@ -243,8 +254,22 @@ vector<Point> Game::getMyVCTMoves() {
         return myVctMoves;
     }
     Game game = *this;
-    auto myVct = dfsVCTIter(currentPlayer, currentPlayer, game, 50);
+    auto myVct = dfsVCTIter(currentPlayer, currentPlayer, game, vctTimeLimit);
     myVctMoves = myVct.second;
+    myVctLevel = myVct.first;
     myVctDone = true;
     return myVcfMoves;
+}
+
+
+vector<Point> Game::getOppVCTMoves() {
+    if (oppVctDone) {
+        return oppVctMoves;
+    }
+    Game game = *this;
+    auto oppVCT = dfsVCTIter(getOtherPlayer(), getOtherPlayer(),
+                             game, vctTimeLimit);
+    oppVctMoves = oppVCT.second;
+    oppVctDone = true;
+    return oppVctMoves;
 }
