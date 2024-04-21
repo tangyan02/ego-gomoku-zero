@@ -435,9 +435,10 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     nearMoves3 = removeDuplicates(nearMoves3);
 
     if (attack) {
-        auto oppNearMoves = getNearByEmptyPoints(lastMove, game, 4);
+        auto oppNearMoves1 = game.getNearEmptyPoints(1);
+        auto oppNearMoves2 = game.getNearEmptyPoints(2);
 
-        auto oppWinMoves = getWinningMoves(3 - currentPlayer, game, oppNearMoves);
+        auto oppWinMoves = getWinningMoves(3 - currentPlayer, game, oppNearMoves1);
         auto activeMoves = getActiveFourMoves(currentPlayer, game, nearMoves);
         auto sleepMoves = getSleepyFourMoves(currentPlayer, game, nearMoves);
 
@@ -474,7 +475,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             }
 
             //如果有冲4活3也直接下
-            auto threeFourMoves = getThreeFourWinMoves(currentPlayer, game, nearMoves, oppNearMoves);
+            auto threeFourMoves = getThreeFourWinMoves(currentPlayer, game, nearMoves, oppNearMoves2);
             if (!threeFourMoves.empty()) {
                 return std::make_pair(true, threeFourMoves);
             }
@@ -486,7 +487,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             }
 
             //如果有双3，对手没有冲4，直接胜利
-            auto doubleThreeMoves = getDoubleThreeWinMoves(currentPlayer, game, nearMoves, oppNearMoves);
+            auto doubleThreeMoves = getDoubleThreeWinMoves(currentPlayer, game, nearMoves, oppNearMoves2);
             if (!doubleThreeMoves.empty()) {
                 return std::make_pair(true, doubleThreeMoves);
             }
