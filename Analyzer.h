@@ -6,6 +6,7 @@
 #include "Utils.h"
 #include <algorithm>
 #include "Shape.h"
+#include <string>
 
 using namespace std;
 
