@@ -194,6 +194,7 @@ bool Game::makeMove(Point p) {
     myVctDone = false;
     oppVctDone = false;
     myVctLevel = 0;
+    oppVctLevel = 0;
     myVctMoves.clear();
     myVcfMoves.clear();
     myAllAttackMoves.clear();
@@ -270,6 +271,7 @@ vector<Point> Game::getOppVCTMoves() {
     auto oppVCT = dfsVCTIter(getOtherPlayer(), getOtherPlayer(),
                              game, vctTimeLimit);
     oppVctMoves = oppVCT.second;
+    oppVctLevel = oppVCT.first;
     oppVctDone = true;
     return oppVctMoves;
 }

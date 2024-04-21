@@ -54,6 +54,7 @@ public:
     bool oppVcfDone = false;
     bool myVctDone = false;
     int myVctLevel = 0;
+    int oppVctLevel = 0;
     bool oppVctDone = false;
     vector<Point> myVctMoves;
     vector<Point> myVcfMoves;

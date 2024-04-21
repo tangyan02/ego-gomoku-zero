@@ -634,5 +634,10 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
         return make_tuple(true, vctMoves, " VCT! " + to_string(game.myVctLevel));
     }
 
-    return make_tuple(false, emptyPoints, "");
+    string msg;
+    if (!game.getOppVCTMoves().empty()) {
+        msg = " Opp VCT!" + to_string(game.oppVctLevel);
+    }
+
+    return make_tuple(false, emptyPoints, msg);
 }
