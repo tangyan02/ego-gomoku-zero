@@ -39,7 +39,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove = Point(),
        long long timeOutTime = 0);
 
 std::pair<int, std::vector<Point>>
-dfsVCTIter(int checkPlayer, int currentPlayer, Game &game, int timeLimit);
+dfsVCTIter(int checkPlayer, int currentPlayer, Game &game);
 
 vector<Point> getThreeDefenceMoves(int player, Game &game, vector<Point> &basedMoves, bool onlyDefence = false);
 

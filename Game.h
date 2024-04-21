@@ -48,7 +48,6 @@ public:
     Point lastLastAction;
     int boardSize;
     int currentPlayer;
-    int vctTimeLimit;
 
     bool myVcfDone = false;
     bool oppVcfDone = false;
@@ -65,7 +64,7 @@ public:
     vector<Point> oppVcfDefenceMoves;
 
 
-    Game(int boardSize, int oppTimeLimit = 25);
+    Game(int boardSize);
 
     int getOtherPlayer();
 

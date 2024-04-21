@@ -369,21 +369,13 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 }
 
 std::pair<int, std::vector<Point>>
-dfsVCTIter(int checkPlayer, int currentPlayer, Game &game, int timeLimit) {
-    long long timeOut = getSystemTime() + timeLimit;
-    for (int level = 1; level <= 15; level += 1) {
-        long long beginTime = getSystemTime();
+dfsVCTIter(int checkPlayer, int currentPlayer, Game &game) {
+    for (int level = 1; level <= 2; level += 1) {
         auto result = dfsVCT(checkPlayer, currentPlayer, game,
                              Point(), Point(), Point(),
-                             false, 0, 0, level, level * 4, timeOut);
+                             false, 0, 0, level, level * 4, 0);
         if (result.first) {
             return make_pair(level, result.second);
-        }
-        long long cost = getSystemTime() - beginTime;
-        long long left = timeOut - getSystemTime();
-//        cout<<"cost "<<cost<<" left "<<left<<endl;
-        if (cost > left) {
-            break;
         }
     }
     return std::make_pair(0, std::vector<Point>());
@@ -653,7 +645,7 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
 
     string msg;
     if (!game.getOppVCTMoves().empty()) {
-        msg = " Opp VCT!" + to_string(game.oppVctLevel);
+        msg = " Opp VCT! " + to_string(game.oppVctLevel);
     }
 
     return make_tuple(false, emptyPoints, msg);

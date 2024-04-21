@@ -23,13 +23,12 @@ bool Point::isNull() {
 }
 
 
-Game::Game(int boardSize, int vctTimeLimit) {
+Game::Game(int boardSize) {
     currentPlayer = 1;
     this->boardSize = boardSize;
     for (int i = 0; i < boardSize; i++)
         for (int j = 0; j < boardSize; j++)
             board[i][j] = 0;
-    this->vctTimeLimit = vctTimeLimit;
 }
 
 int Game::getOtherPlayer() {
@@ -255,7 +254,7 @@ vector<Point> Game::getMyVCTMoves() {
         return myVctMoves;
     }
     Game game = *this;
-    auto myVct = dfsVCTIter(currentPlayer, currentPlayer, game, vctTimeLimit);
+    auto myVct = dfsVCTIter(currentPlayer, currentPlayer, game);
     myVctMoves = myVct.second;
     myVctLevel = myVct.first;
     myVctDone = true;
@@ -269,7 +268,7 @@ vector<Point> Game::getOppVCTMoves() {
     }
     Game game = *this;
     auto oppVCT = dfsVCTIter(getOtherPlayer(), getOtherPlayer(),
-                             game, vctTimeLimit);
+                             game);
     oppVctMoves = oppVCT.second;
     oppVctLevel = oppVCT.first;
     oppVctDone = true;
