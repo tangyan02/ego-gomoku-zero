@@ -87,16 +87,19 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
         Node *node = new Node();
         while (!game.isGameOver()) {
             //如果只有唯一选择，则直接选择
-            auto nextActions = selectActions(game);
-            if (get<1>(nextActions).size() == 1) {
-                int actionIndex = game.getActionIndex(get<1>(nextActions)[0]);
-                vector<float> probs(game.boardSize * game.boardSize);
-                probs[actionIndex] = 1;
-                addAction(game, actionIndex, game_data, probs);
-                printGame(game, actionIndex, probs, 0, part, get<2>(nextActions), nullptr);
-                step++;
-                continue;
-            }
+//            auto nextActions = selectActions(game);
+//            if (get<1>(nextActions).size() == 1) {
+//                int actionIndex = game.getActionIndex(get<1>(nextActions)[0]);
+//                vector<float> probs(game.boardSize * game.boardSize);
+//                probs[actionIndex] = 1;
+//                addAction(game, actionIndex, game_data, probs);
+//                printGame(game, actionIndex, probs, 0, part, get<2>(nextActions), nullptr);
+//                step++;
+//
+//                mcts.release(node);
+//                node = new Node();
+//                continue;
+//            }
 
             //开始mcts预测
 
@@ -137,13 +140,13 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
             step++;
 
             //更新node
-            for (const auto &item: node->children){
-                if(item.first != action){
+            for (const auto &item: node->children) {
+                if (item.first != action) {
                     mcts.release(item.second);
                 }
             }
-            for (const auto item: node->children){
-                if(item.first == action){
+            for (const auto item: node->children) {
+                if (item.first == action) {
                     node = item.second;
                 }
             }
