@@ -14,15 +14,6 @@ void printVector(vector<Point> &a) {
     cout << endl;
 }
 
-vector<Point> cross(vector<Point> &a, vector<Point> &b) {
-    vector<Point> result;
-    for (const auto &itema: a)
-        for (const auto &itemb: b)
-            if (itema.x == itemb.x && itema.y == itemb.y)
-                result.emplace_back(itema.x, itema.y);
-    return result;
-}
-
 // 创建一个函数来查找特定的点
 bool existPoints(const std::vector<Point> &moves, const Point &target) {
     for (const auto &item: moves) {
