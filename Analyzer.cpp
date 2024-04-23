@@ -14,6 +14,14 @@ void printVector(vector<Point> &a) {
     cout << endl;
 }
 
+vector<Point> cross(vector<Point> &a, vector<Point> &b) {
+    vector<Point> result;
+    for (const auto &itema: a)
+        for (const auto &itemb: b)
+            if (itema.x == itemb.x && itema.y == itemb.y)
+                result.emplace_back(itema.x, itema.y);
+    return result;
+}
 
 // 创建一个函数来查找特定的点
 bool existPoints(const std::vector<Point> &moves, const Point &target) {
@@ -140,6 +148,17 @@ getActiveTwoMoves(int player, Game &game, std::vector<Point> &basedMoves) {
 std::vector<Point>
 getSleepyTwoMoves(int player, Game &game, std::vector<Point> &basedMoves) {
     return getShapeMoves(player, game, basedMoves, SLEEPY_TWO);
+}
+
+std::vector<Point>
+getDoubleThreeMoves(int player, Game &game, std::vector<Point> &basedMoves) {
+    auto oppActiveFourMoves = getActiveFourMoves(3 - player, game, basedMoves);
+    auto oppSleepyFourMoves = getSleepyFourMoves(3 - player, game, basedMoves);
+    auto doubleThreeMoves = getTwoShapeMoves(player, game, basedMoves, ACTIVE_THREE, ACTIVE_THREE);
+    if (oppActiveFourMoves.empty() && oppSleepyFourMoves.empty() && !doubleThreeMoves.empty()) {
+        return doubleThreeMoves;
+    }
+    return {};
 }
 
 std::vector<Point>
@@ -350,10 +369,11 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             }
             finalResult = true;
             winMoves.emplace_back(item);
-            if (level > 0) {
-                game.board[item.x][item.y] = 0;
-                return std::make_pair(true, winMoves);
-            }
+            //如果不做提前返回，那么会遍历所有点，也就记录所有进攻点和防守点。
+//            if (level > 0) {
+//                game.board[item.x][item.y] = 0;
+//                return std::make_pair(true, winMoves);
+//            }
         }
         game.board[item.x][item.y] = 0;
     }
@@ -615,7 +635,13 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     //我方活4
     auto activeFourMoves = getActiveFourMoves(game.currentPlayer, game, emptyPoints);
     if (!activeFourMoves.empty()) {
-        return make_tuple(true, activeFourMoves, "  active 4 ");
+        return make_tuple(true, activeFourMoves, "  active 4");
+    }
+
+    //双活3点
+    auto doubleThreeMoves = getDoubleThreeMoves(game.currentPlayer, game, emptyPoints);
+    if (!activeFourMoves.empty()) {
+        return make_tuple(true, activeFourMoves, "  double 3");
     }
 
     //我方VCF点
@@ -627,19 +653,13 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     //防御活4点
     auto threeDefenceMoves = getThreeDefenceMoves(game.currentPlayer, game, emptyPoints);
     if (!threeDefenceMoves.empty()) {
-        return make_tuple(false, threeDefenceMoves, "  defence 3 ");
+        return make_tuple(false, threeDefenceMoves, "  defence 3");
     }
 
     //防御对方VCF点
     auto vcfDefenceMoves = getVCFDefenceMoves(game, emptyPoints);
     if (!vcfDefenceMoves.empty()) {
-        return make_tuple(false, vcfDefenceMoves, "  defence VCF ");
-    }
-
-    //VCT点
-    auto vctMoves = dfsVCTIter(game.currentPlayer, game.currentPlayer, game);
-    if (!vctMoves.second.empty()) {
-        return make_tuple(true, vctMoves.second, " VCT! ");
+        return make_tuple(false, vcfDefenceMoves, "  defence VCF");
     }
 
     return make_tuple(false, emptyPoints, "");
