@@ -51,15 +51,9 @@ public:
 
     bool myVcfDone = false;
     bool oppVcfDone = false;
-    bool myVctDone = false;
-    int myVctLevel = 0;
-    int oppVctLevel = 0;
-    bool oppVctDone = false;
-    vector<Point> myVctMoves;
     vector<Point> myVcfMoves;
     vector<Point> myAllAttackMoves;
     vector<Point> oppVcfMoves;
-    vector<Point> oppVctMoves;
     vector<Point> oppVcfAttackMoves;
     vector<Point> oppVcfDefenceMoves;
 
@@ -90,9 +84,6 @@ public:
 
     vector<Point> getOppVCFMoves();
 
-    vector<Point> getMyVCTMoves();
-
-    vector<Point> getOppVCTMoves();
 };
 
 std::vector<Point> removeDuplicates(const std::vector<Point> &points);

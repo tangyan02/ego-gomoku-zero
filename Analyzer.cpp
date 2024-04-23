@@ -363,7 +363,8 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
 std::pair<int, std::vector<Point>>
 dfsVCTIter(int checkPlayer, int currentPlayer, Game &game) {
-    for (int level = 1; level <= 2; level += 1) {
+    int maxLevel = 1;
+    for (int level = 1; level <= maxLevel; level += 1) {
         auto result = dfsVCT(checkPlayer, currentPlayer, game,
                              Point(), Point(), Point(),
                              false, 0, 0, level, level * 4, 0);
@@ -636,15 +637,10 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     }
 
     //VCT点
-    auto vctMoves = game.getMyVCTMoves();
-    if (!vctMoves.empty()) {
-        return make_tuple(true, vctMoves, " VCT! " + to_string(game.myVctLevel));
+    auto vctMoves = dfsVCTIter(game.currentPlayer, game.currentPlayer, game);
+    if (!vctMoves.second.empty()) {
+        return make_tuple(true, vctMoves.second, " VCT! ");
     }
 
-    string msg;
-    if (!game.getOppVCTMoves().empty()) {
-        msg = " Opp VCT! " + to_string(game.oppVctLevel);
-    }
-
-    return make_tuple(false, emptyPoints, msg);
+    return make_tuple(false, emptyPoints, "");
 }

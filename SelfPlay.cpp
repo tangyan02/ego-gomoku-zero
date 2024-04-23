@@ -106,7 +106,8 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
             long startTime = getSystemTime();
             int simiNum = numSimulations - node->visits;
             mcts.search(game, node, simiNum);
-            cout << part << "search cost " << getSystemTime() - startTime << " ms, simi num " << simiNum << endl;
+            cout << part << "search cost " << getSystemTime() - startTime << " ms, simi num " << simiNum << ", "
+                 << "per simi " << (getSystemTime() - startTime) / simiNum << " ms" << endl;
 
             std::vector<int> actions;
             std::vector<float> action_probs;

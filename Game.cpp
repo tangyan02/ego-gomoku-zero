@@ -87,7 +87,7 @@ std::vector<Point> Game::getEmptyPoints() {
 
 vector<vector<vector<float>>> Game::getState() {
 
-    vector<vector<vector<float>>> data(6, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
+    vector<vector<vector<float>>> data(4, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
@@ -112,21 +112,6 @@ vector<vector<vector<float>>> Game::getState() {
     if (!oppVCFMoves.empty()) {
         for (const auto &item: oppVCFMoves) {
             data[3][item.x][item.y] += 1;
-        }
-    }
-
-    //VCT点
-    auto myVCTMoves = getMyVCTMoves();
-    if (!myVCTMoves.empty()) {
-        for (const auto &item: myVCTMoves) {
-            data[4][item.x][item.y] += 1;
-        }
-    }
-
-    auto oppVCTMoves = getOppVCTMoves();
-    if (!oppVCTMoves.empty()) {
-        for (const auto &item: oppVCTMoves) {
-            data[5][item.x][item.y] += 1;
         }
     }
 
@@ -190,15 +175,9 @@ bool Game::makeMove(Point p) {
 
     myVcfDone = false;
     oppVcfDone = false;
-    myVctDone = false;
-    oppVctDone = false;
-    myVctLevel = 0;
-    oppVctLevel = 0;
-    myVctMoves.clear();
     myVcfMoves.clear();
     myAllAttackMoves.clear();
     oppVcfMoves.clear();
-    oppVctMoves.clear();
     oppVcfAttackMoves.clear();
     oppVcfDefenceMoves.clear();
 
@@ -247,30 +226,4 @@ vector<Point> Game::getOppVCFMoves() {
     oppVcfMoves = oppVCF.second;
     oppVcfDone = true;
     return oppVcfMoves;
-}
-
-vector<Point> Game::getMyVCTMoves() {
-    if (myVctDone) {
-        return myVctMoves;
-    }
-    Game game = *this;
-    auto myVct = dfsVCTIter(currentPlayer, currentPlayer, game);
-    myVctMoves = myVct.second;
-    myVctLevel = myVct.first;
-    myVctDone = true;
-    return myVcfMoves;
-}
-
-
-vector<Point> Game::getOppVCTMoves() {
-    if (oppVctDone) {
-        return oppVctMoves;
-    }
-    Game game = *this;
-    auto oppVCT = dfsVCTIter(getOtherPlayer(), getOtherPlayer(),
-                             game);
-    oppVctMoves = oppVCT.second;
-    oppVctLevel = oppVCT.first;
-    oppVctDone = true;
-    return oppVctMoves;
 }
