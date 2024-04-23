@@ -19,7 +19,7 @@ void selfPlay(int argc, char *argv[]) {
     }
 
     int numGames = 1;
-    int sumSimulations = 800;
+    int sumSimulations = 400;
     float temperatureDefault = 1;
     float explorationFactor = 4;
     int boardSize = 20;
