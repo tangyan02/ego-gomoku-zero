@@ -361,10 +361,10 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             finalResult = true;
             winMoves.emplace_back(item);
             //如果不做提前返回，那么会遍历所有点，也就记录所有进攻点和防守点。
-//            if (level > 0) {
-//                game.board[item.x][item.y] = 0;
-//                return std::make_pair(true, winMoves);
-//            }
+            if (level > 0) {
+                game.board[item.x][item.y] = 0;
+                return std::make_pair(true, winMoves);
+            }
         }
         game.board[item.x][item.y] = 0;
     }
