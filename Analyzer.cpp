@@ -646,11 +646,13 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
         return make_tuple(false, threeDefenceMoves, "  defence 3");
     }
 
-    //防御对方VCF点
-    auto vcfDefenceMoves = getVCFDefenceMoves(game, emptyPoints);
-    if (!vcfDefenceMoves.empty()) {
-        return make_tuple(false, vcfDefenceMoves, "  defence VCF");
+    string msg;
+
+    //对方VCF点判断
+    auto otherVCFMoves = game.getOppVCFMoves();
+    if(!otherVCFMoves.empty()){
+        msg += " Opp VCF!";
     }
 
-    return make_tuple(false, emptyPoints, "");
+    return make_tuple(false, emptyPoints, msg);
 }
