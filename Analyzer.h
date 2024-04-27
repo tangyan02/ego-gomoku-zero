@@ -10,7 +10,7 @@
 
 using namespace std;
 
-tuple<bool, vector<Point>, string> selectActions(Game &game);
+tuple<bool, vector<Point>, string> selectActions(Game &game, int level = -1);
 
 vector<Point> getWinningMoves(int player, Game &game, vector<Point> &basedMoves);
 

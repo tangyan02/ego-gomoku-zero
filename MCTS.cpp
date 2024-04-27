@@ -55,6 +55,7 @@ void MonteCarloTree::simulate(Game game) {
         return;
     }
 
+    int level = 0;
     Node *node = root;
     while (!node->isLeaf()) {
         std::pair<int, Node *> result = node->selectChild(exploration_factor);
@@ -64,6 +65,7 @@ void MonteCarloTree::simulate(Game game) {
         Point pointAction = game.getPointFromIndex(action);
         game.makeMove(pointAction);
         // game.printBoard();
+        level++;
     }
 
     float value;
@@ -71,7 +73,7 @@ void MonteCarloTree::simulate(Game game) {
     if (game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer())) {
         value = -1;
     } else {
-        auto actions = selectActions(game);
+        auto actions = selectActions(game, level);
         node->selectInfo = get<2>(actions);
 
         auto state = game.getState();
