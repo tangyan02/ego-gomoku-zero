@@ -108,9 +108,9 @@ void test() {
 int main(int argc, char *argv[]) {
     initShape();
 //    printShape();
-    selfPlay(argc, argv);
+//    selfPlay(argc, argv);
 //    test();
-//    piskvork();
+    piskvork();
 //    startConsole(true);
     return 0;
 }

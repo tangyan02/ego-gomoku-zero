@@ -373,16 +373,18 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
 std::pair<int, std::vector<Point>>
 dfsVCTIter(int checkPlayer, int currentPlayer, Game &game) {
+    long long timeout = game.vctTimeOut + getSystemTime();
     int maxLevel = 20;
-    for (int level = 2; level <= maxLevel; level += 2) {
+    int level = 2;
+    for (; level <= maxLevel; level += 2) {
         auto result = dfsVCT(checkPlayer, currentPlayer, game,
                              Point(), Point(), Point(),
-                             false, 0, 0, 99, level, game.vctTimeOut);
+                             false, 0, 0, 99, level, timeout);
         if (result.first) {
             return make_pair(level, result.second);
         }
     }
-    return std::make_pair(0, std::vector<Point>());
+    return std::make_pair(level, std::vector<Point>());
 }
 
 std::pair<bool, std::vector<Point>>
@@ -646,15 +648,19 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, int level) {
         return make_tuple(false, threeDefenceMoves, " defence 3");
     }
 
+    string msg;
+
     //根部情形做vct
     if (level == 0 || level == 1) {
         auto vctMoves = dfsVCTIter(game.currentPlayer, game.currentPlayer, game);
         if (!vctMoves.second.empty()) {
             return make_tuple(false, vctMoves.second, " VCT! " + to_string(vctMoves.first));
         }
+		if (vctMoves.first > 0) {
+            msg += " VCT search on " + to_string(vctMoves.first);
+        }
     }
 
-    string msg;
 
     //对方VCF点判断
     auto otherVCFMoves = game.getOppVCFMoves();

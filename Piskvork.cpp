@@ -24,7 +24,7 @@ static Game* game;
 
 static int firstCost = -1;
 
-static Node *node;
+//static Node *node;
 static Model* model;
 
 using namespace std;
@@ -69,7 +69,7 @@ void brain_init()
     pipeOut("MESSAGE : LOADED");
 
     game = new Game(boardSize);
-    node = new Node();
+    //node = new Node();
     initShape();
     pipeOut("OK");
 }
@@ -78,9 +78,9 @@ void brain_restart()
 {
     delete game;
     game = new Game(boardSize);
-    MonteCarloTree mcts = MonteCarloTree(model, 1);
-    mcts.release(node);
-    node = new Node();
+    //MonteCarloTree mcts = MonteCarloTree(model, 1);
+    //mcts.release(node);
+    //node = new Node();
     pipeOut("MESSAGE : RESTARTED");
     pipeOut("OK");
 }
@@ -90,43 +90,11 @@ int isFree(int x, int y)
     return x >= 0 && y >= 0 && x < width && y < height && game->board[x][y] == 0;
 }
 
-void tree_down(int x, int y) {
-
-    Node* select = nullptr;
-    for (auto item : node->children) {
-        int visit = item.second->visits;
-        if (game->getActionIndex(Point(x, y)) == item.first) {
-            //pipeOut("MESSAGE selected�� ");
-            select = item.second;
-        }
-    }
-
-    MonteCarloTree mcts = MonteCarloTree(model, 1);
-    for (auto item : node->children) {
-        if (item.second != select) {
-            mcts.release(item.second);
-        }
-    }
-
-    if (select != nullptr) {
-        node = select;
-    }
-
-    if (select == nullptr && !game->historyMoves.empty()) {
-        pipeOut("MESSAGE =====renew node====== ");
-        node = new Node();
-    }
-
-}
-
 void brain_my(int x, int y)
 {
     if (isFree(x, y)) {
         game->currentPlayer = 1;
-        //pipeOut("MESSAGE my move %d %d", x, y);
         game->makeMove(Point(x, y));
-
-        tree_down(x,y);
     }
     else {
         pipeOut("ERROR my move [%d,%d]", x, y);
@@ -137,10 +105,7 @@ void brain_opponents(int x, int y)
 {
     if (isFree(x, y)) {
         game->currentPlayer = 2;
-        //pipeOut("MESSAGE opp move %d %d", x, y);
         game->makeMove(Point(x, y));
-
-        tree_down(x,y);
     } else {
         pipeOut("ERROR opponents's move [%d,%d]", x, y);
     }
@@ -177,15 +142,15 @@ int min(int a,int b) {
     return b;
 }
 
-bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum) {
-    int total = node->visits;
+bool checkNeedBreak(Node& node, long long passTime, long long thisTimeOut, int simiNum) {
+    int total = node.visits;
 	if (simiNum > 10 && total > 30) {
         //安全比例，减少误差
         double beta = 1.05;
 
         //最大值
         int max = -1;
-        for (auto item : node->children) {
+        for (auto item : node.children) {
             int visit = item.second->visits;
             if (visit > max) {
                 max = visit;
@@ -194,7 +159,7 @@ bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum) {
 
         //第二大值
         int secondMax = -1;
-        for (auto item : node->children) {
+        for (auto item : node.children) {
             int visit = item.second->visits;
             if (visit > secondMax && visit != max) {
                 secondMax = visit;
@@ -227,34 +192,40 @@ void brain_turn()
         firstCost = 0;
     }
 
+    int vctTimeOut = thisTimeOut / 3;
+
     pipeOut("MESSAGE time limit %d", thisTimeOut);
+    pipeOut("MESSAGE vct time limit %d", vctTimeOut);
     pipeOut("MESSAGE current player %d", game->currentPlayer);
 
     auto startTime = getSystemTime();
     int simiNum = 0;
-    while (true) {
-        mcts.search(*game, node, 1);
+    Node node;
+	game->vctTimeOut = vctTimeOut / 5;
+	while (true) {
+        mcts.search(*game, &node, 1);
         auto passTime = getSystemTime() - startTime;
         simiNum += 1;
         if (passTime > thisTimeOut) {
             break;
         }
 
-        if (node->children.size() <= 1) {
+        if (node.children.size() <= 1) {
             break;
         }
 
-        if (checkNeedBreak(passTime, thisTimeOut, simiNum)) {
+        if (checkNeedBreak(node, passTime, thisTimeOut, simiNum)) {
             break;
         }
+        
     }
 
-    pipeOut("MESSAGE children size %d", node->children.size());
+    pipeOut("MESSAGE children size %d", node.children.size());
     int max = -1;
     int action = -1;
 
 
-    if (node->children.size() == 0) {
+    if (node.children.size() == 0) {
         auto selectAction = selectActions(*game);
         if (get<0>(selectAction)) {
             action = game->getActionIndex(get<1>(selectAction)[0]);
@@ -263,10 +234,10 @@ void brain_turn()
     }
 
 
-    string info = node->selectInfo;
-    int total = node->visits;
+    string info = node.selectInfo;
+    int total = node.visits;
     float score = 0;
-    for (auto item : node->children) {
+    for (auto item : node.children) {
         int visit = item.second->visits;
         if (visit > max) {
             action = item.first;
@@ -277,10 +248,8 @@ void brain_turn()
 
     auto p = game->getPointFromIndex(action);
 
-    pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %.2f score %.2f last simi %d info %s", p.x, p.y, max, total, (float)max / total,score, total-simiNum, info.c_str());
+    pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %.2f score %.2f info %s", p.x, p.y, max, total, (float)max / total,score, info.c_str());
     do_mymove(p.x, p.y);
-
-    mcts.search(*game, node, 1);
 }
 
 void brain_end()
