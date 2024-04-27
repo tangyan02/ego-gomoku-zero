@@ -1126,6 +1126,7 @@ bool testDfsVCT() {
     game.makeMove(Point(7, 7));
 
     auto startTime = getSystemTime();
+    game.vctTimeOut = 1000;
     auto result = dfsVCTIter(1, 1, game);
     auto costTime = getSystemTime() - startTime;
     cout << "cost time " << costTime << endl;
@@ -1135,7 +1136,7 @@ bool testDfsVCT() {
     game.printBoard();
 
     cout << result.second.size() << endl;
-    if (result.first) {
+    if (!result.second.empty()) {
         return true;
     } else {
         return false;
@@ -1163,7 +1164,7 @@ bool testDfsVCT2() {
     game.printBoard();
 
     cout << result.second.size() << endl;
-    if (!result.first) {
+    if (result.second.empty()) {
         return true;
     } else {
         return false;
@@ -1251,7 +1252,7 @@ bool testDfsVCT3() {
     game.printBoard();
 
     cout << result.second.size() << endl;
-    if (!result.first) {
+    if (result.second.empty()) {
         return true;
     } else {
         return false;
@@ -1294,7 +1295,7 @@ bool testDfsVCT4() {
     game.printBoard();
 
     cout << result.second.size() << endl;
-    if (result.first) {
+    if (!result.second.empty()) {
         return true;
     } else {
         return false;
@@ -1351,7 +1352,7 @@ bool testDfsVCT5() {
     game.printBoard();
 
     cout << result.second.size() << endl;
-    if (result.first) {
+    if (!result.second.empty()) {
         return true;
     } else {
         return false;
@@ -1436,7 +1437,7 @@ bool testDfsVCT6() {
     game.printBoard();
 
     cout << result.second.size() << endl;
-    if (!result.first) {
+    if (result.second.empty()) {
         return true;
     } else {
         return false;
@@ -1478,7 +1479,7 @@ bool testDfsVCT7() {
     game.printBoard();
 
     cout << result.second.size() << endl;
-    if (result.first) {
+    if (!result.second.empty()) {
         return true;
     } else {
         return false;
@@ -1507,6 +1508,7 @@ bool testDfsVCT8() {
     game.makeMove(Point(6, 5));
 
     auto startTime = getSystemTime();
+    game.vctTimeOut = 1000;
     auto result = dfsVCTIter(game.currentPlayer, game.currentPlayer, game);
     cout << "cost " << getSystemTime() - startTime << endl;
     for (Point &move: result.second) {
@@ -1515,7 +1517,7 @@ bool testDfsVCT8() {
     game.printBoard();
 
     cout << result.second.size() << endl;
-    if (result.first) {
+    if (!result.second.empty()) {
         return true;
     } else {
         return false;
