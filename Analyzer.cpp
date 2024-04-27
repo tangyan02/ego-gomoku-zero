@@ -383,6 +383,7 @@ dfsVCTIter(int checkPlayer, int currentPlayer, Game &game) {
         if (result.first) {
             return make_pair(level, result.second);
         }
+        cout << "level=" << to_string(level) << endl;
     }
     return std::make_pair(level, std::vector<Point>());
 }
@@ -656,11 +657,10 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, int level) {
         if (!vctMoves.second.empty()) {
             return make_tuple(false, vctMoves.second, " VCT! " + to_string(vctMoves.first));
         }
-		if (vctMoves.first > 0) {
+        if (vctMoves.first > 0) {
             msg += " VCT search on " + to_string(vctMoves.first);
         }
     }
-
 
     //对方VCF点判断
     auto otherVCFMoves = game.getOppVCFMoves();
