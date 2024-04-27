@@ -383,7 +383,7 @@ dfsVCTIter(int checkPlayer, int currentPlayer, Game &game) {
         if (result.first) {
             return make_pair(level, result.second);
         }
-        cout << "level=" << to_string(level) << endl;
+//        cout << "level=" << to_string(level) << endl;
     }
     return std::make_pair(level, std::vector<Point>());
 }
@@ -655,6 +655,7 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, int level) {
     if (level == 0 || level == 1) {
         auto vctMoves = dfsVCTIter(game.currentPlayer, game.currentPlayer, game);
         if (!vctMoves.second.empty()) {
+            cout << "MESSAGE vct got " << vctMoves.first<<endl;
             return make_tuple(false, vctMoves.second, " VCT! " + to_string(vctMoves.first));
         }
         if (vctMoves.first > 0) {
