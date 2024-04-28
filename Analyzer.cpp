@@ -661,7 +661,7 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, int level) {
     if (level == 0 || level == 1) {
         auto vctMoves = dfsVCTIter(game.currentPlayer, game.currentPlayer, game);
         if (!vctMoves.second.empty()) {
-            return make_tuple(false, vctMoves.second, " VCT! " + to_string(vctMoves.first));
+            return make_tuple(true, vctMoves.second, " VCT! " + to_string(vctMoves.first));
         }
     }
 
