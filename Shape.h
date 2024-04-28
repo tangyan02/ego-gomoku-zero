@@ -18,17 +18,20 @@ using Shape = int;
 
 #include <vector>
 #include <iostream>
+#include <array>
 #include "Game.h"
 
 using namespace std;
 
-vector<int> getKeysInGame(Game &game, int player, Point &action, int direct);
+std::array<int, 9> getKeysInGame(Game &game, int player, Point &action, int direct);
 
 bool checkPointDirectShape(Game &game, int player, Point &action, int direct, Shape shape);
 
 int countPointShape(Game &game, int player, Point &action, Shape shape);
 
 void printKeys(const vector<int> &keys);
+
+void printKeys(const std::array<int, 9> &keys);
 
 void printShape();
 

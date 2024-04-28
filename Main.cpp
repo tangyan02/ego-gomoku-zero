@@ -83,7 +83,8 @@ void test() {
             testDfsVCT5,
             testDfsVCT6,
             testDfsVCT7,
-            testDfsVCT8
+            testDfsVCT8,
+            testDfsVCT9
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);
@@ -108,8 +109,8 @@ void test() {
 int main(int argc, char *argv[]) {
     initShape();
 //    printShape();
-//    selfPlay(argc, argv);
-    test();
+    selfPlay(argc, argv);
+//    test();
 //    piskvork();
 //    startConsole(true);
     return 0;

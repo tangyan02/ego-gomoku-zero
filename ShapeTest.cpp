@@ -21,11 +21,11 @@ bool testGetKeysInGame() {
     game.printBoard();
     game.board[action.x][action.y] = 0;
 
-    for (int k = 0; k < 4; k++) {
-        auto result = getKeysInGame(game, game.currentPlayer, action, k);
-        printKeys(result);
-
-    }
+//    for (int k = 0; k < 4; k++) {
+//        auto result = getKeysInGame(game, game.currentPlayer, action, k);
+//        printKeys(result);
+//
+//    }
 
     return true;
 }

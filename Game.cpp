@@ -4,8 +4,19 @@
 using namespace std;
 
 std::vector<Point> removeDuplicates(const std::vector<Point> &points) {
-    std::unordered_set<Point, PointHash, PointEqual> uniquePoints(points.begin(), points.end());
-    return {uniquePoints.begin(), uniquePoints.end()};
+    std::array<std::array<bool, 20>, 20> pointExists = {}; // 初始化为 false
+    std::vector<Point> uniquePoints;
+    for (const auto& point : points) {
+        int row = point.x;
+        int col = point.y;
+
+        if (!pointExists[row][col]) {
+            pointExists[row][col] = true;
+            uniquePoints.emplace_back(point);
+        }
+    }
+
+    return uniquePoints;
 }
 
 Point::Point() {
@@ -44,7 +55,8 @@ Point Game::getPointFromIndex(int actionIndex) {
 }
 
 std::vector<Point> Game::getNearEmptyPoints(int range) {
-    std::unordered_set<Point, PointHash, PointEqual> nearbyPointsSet;
+    std::array<std::array<bool, 20>, 20> nearbyPointsArray = {}; // 初始化为 false
+
     for (int row = 0; row < boardSize; row++) {
         for (int col = 0; col < boardSize; col++) {
             if (board[row][col] != 0) { // 非空点
@@ -56,7 +68,7 @@ std::vector<Point> Game::getNearEmptyPoints(int range) {
                         // 检查新点是否在棋盘内并且是非空的
                         if (newRow >= 0 && newRow < boardSize && newCol >= 0 && newCol < boardSize) {
                             if (board[newRow][newCol] == 0) {
-                                nearbyPointsSet.insert(Point(newRow, newCol));
+                                nearbyPointsArray[newRow][newCol] = true;
                             }
                         }
                     }
@@ -65,7 +77,16 @@ std::vector<Point> Game::getNearEmptyPoints(int range) {
         }
     }
 
-    return {nearbyPointsSet.begin(), nearbyPointsSet.end()};
+    std::vector<Point> nearbyPoints;
+    for (int row = 0; row < boardSize; row++) {
+        for (int col = 0; col < boardSize; col++) {
+            if (nearbyPointsArray[row][col]) {
+                nearbyPoints.push_back(Point(row, col));
+            }
+        }
+    }
+
+    return nearbyPoints;
 }
 
 std::vector<Point> Game::getEmptyPoints() {

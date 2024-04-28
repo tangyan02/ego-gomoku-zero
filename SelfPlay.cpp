@@ -59,7 +59,7 @@ Game randomGame(Game &game, const std::string &part) {
     auto random_element = moves[random_index];
     game.makeMove(random_element);
 
-    cout << part << "random action is " << random_element.x << "," << random_element.y << endl;
+    cout << part << "random action is " << random_element.x << "," << random_element.y << " on game" << endl;
 
     return game;
 }

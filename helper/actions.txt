@@ -1,15 +1,10 @@
-[_10_0]  o action is 3,6 on rate 0.124 temperature 1 value -0.420408
-[_10_0]  x action is 4,5 on rate 0.036 temperature 1 value 0.707809
-[_10_0]  o action is 0,0 on rate 0.001 temperature 0.99 value -0.757944
-[_10_0]  x action is 4,3 on rate 0.08 temperature 0.99 value 0.913793
-[_10_0]  o action is 4,6 on rate 0.945 temperature 0.98 value -0.887999  defence 3
-[_10_0]  x action is 3,5 on rate 0.167 temperature 0.98 value 0.92048
-[_10_0]  o action is 2,6 on rate 0.054 temperature 0.97 value -0.875969
-[_10_0]  x action is 5,6 on rate 0.715 temperature 0.97 value 0.882141  defence 3
-[_10_0]  o action is 1,6 on rate 0.106 temperature 0.96 value -0.8979
-[_10_0]  x action is 0,6 on rate 1 temperature 0 value 1 defence 5
-[_10_0]  o action is 2,7 on rate 0.093 temperature 0.95 value -0.779616
-[_10_0]  x action is 5,5 on rate 0.455 temperature 0.95 value 0.954109
-[_10_0]  o action is 6,5 on rate 0.611 temperature 0.94 value -0.899326  defence 3
+[_0_1] random action is 11,7 on game
+[_0_1]  o action is 10,6 on rate 0.387 temperature 1 value -0.107926 VCT search on 22
+[_0_1]  x action is 10,5 on rate 0.173 temperature 1 value 0.176608 VCT search on 22
+[_0_1]  o action is 10,4 on rate 0.145 temperature 0.99 value -0.138907 VCT search on 22
+[_0_1]  x action is 12,6 on rate 0.42 temperature 0.99 value 0.165429 VCT search on 22
+[_0_1]  o action is 9,5 on rate 0.226 temperature 0.98 value 0.64487 VCT search on 22
+[_0_1]  x action is 12,7 on rate 0.039 temperature 0.98 value -0.0966841 VCT search on 22
+[_0_1]  o action is 9,7 on rate 0.758 temperature 0.97 value -0.822905 VCT search on 22
 
-[_10_0]  x action is 1,5 on rate 1 temperature 0 value 1 VCT!
+[_0_1]  x action is 11,6 on rate 1 temperature 0.97 value -0.208362 VCT! 10

@@ -43,6 +43,7 @@ std::vector<Point> getLineEmptyPoints(Point action, Game &game, int direct) {
 
 std::vector<Point> getNearByEmptyPoints(Point action, Game &game, int range) {
     std::vector<Point> empty_points;
+    empty_points.reserve(200);
     if (!action.isNull()) {
         int last_row = action.x;
         int last_col = action.y;
@@ -436,16 +437,15 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     auto attackNearMoves4 = getNearByEmptyPoints(attackPoint, game, 4);
     auto attackNearMoves3 = getNearByEmptyPoints(attackPoint, game, 3);
     nearMoves4.insert(nearMoves4.end(), attackNearMoves4.begin(), attackNearMoves4.end());
-    nearMoves3.insert(nearMoves3.end(), attackNearMoves4.begin(), attackNearMoves4.end());
+    nearMoves3.insert(nearMoves3.end(), attackNearMoves3.begin(), attackNearMoves3.end());
 
     nearMoves4 = removeDuplicates(nearMoves4);
     nearMoves3 = removeDuplicates(nearMoves3);
 
     if (attack) {
-        auto rangeMove1 = game.getNearEmptyPoints(1);
-        auto rangeMove2 = game.getNearEmptyPoints(2);
+        vector<Point> oppNearMove = getNearByEmptyPoints(lastMove, game, 4);
 
-        auto oppWinMoves = getWinningMoves(3 - currentPlayer, game, rangeMove1);
+        auto oppWinMoves = getWinningMoves(3 - currentPlayer, game, oppNearMove);
         auto activeMoves = getActiveFourMoves(currentPlayer, game, nearMoves4);
         auto sleepMoves = getSleepyFourMoves(currentPlayer, game, nearMoves4);
 
@@ -482,10 +482,10 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             }
 
             //快速胜利
-//            auto quickWinMove = getQuickWinMoves(currentPlayer, game, nearMoves4);
-//            if (!quickWinMove.empty()) {
-//                return std::make_pair(true, quickWinMove);
-//            }
+            auto quickWinMove = getQuickWinMoves(currentPlayer, game, nearMoves4);
+            if (!quickWinMove.empty()) {
+                return std::make_pair(true, quickWinMove);
+            }
 
             //活3模式的情形
             if (!fourMode) {
@@ -496,7 +496,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
                 //如果对手有活4，则看防守点是否是长3点
                 auto allEmptyMoves = game.getNearEmptyPoints(2);
-                auto myThreeDefenceMoves = getThreeDefenceMoves(currentPlayer, game, nearMoves3);
+                auto myThreeDefenceMoves = getThreeDefenceMoves(currentPlayer, game, allEmptyMoves);
 
 //                cout << "threeActiveMoves ";
 //                printVector(threeActiveMoves);
@@ -645,7 +645,6 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, int level) {
     if (level == 0 || level == 1) {
         auto vctMoves = dfsVCTIter(game.currentPlayer, game.currentPlayer, game);
         if (!vctMoves.second.empty()) {
-            cout << "MESSAGE vct got " << vctMoves.first << endl;
             return make_tuple(false, vctMoves.second, " VCT! " + to_string(vctMoves.first));
         }
         if (vctMoves.first > 0) {

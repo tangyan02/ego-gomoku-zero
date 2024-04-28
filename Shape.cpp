@@ -245,7 +245,6 @@ std::vector<std::vector<int>> generateAllCombinations() {
     return combinations;
 }
 
-
 void printKeys(const vector<int> &keys) {
     vector<char> values = {'.', 'x', 'o', '#'};
     for (const auto &item: keys) {
@@ -254,40 +253,48 @@ void printKeys(const vector<int> &keys) {
     cout << endl;
 }
 
-vector<int> getKeysInGame(Game &game, int player, Point &action, int direct) {
-    vector<int> result;
+void printKeys(const std::array<int, 9> &keys) {
+    vector<char> values = {'.', 'x', 'o', '#'};
+    for (const auto &item: keys) {
+        cout << values[item];
+    }
+    cout << endl;
+}
+
+std::array<int, 9> getKeysInGame(Game &game, int player, Point &action, int direct) {
+    std::array<int, 9> result;
     int x = action.x;
     int y = action.y;
     for (int k = -4; k <= 4; k++) {
         if (k == 0) {
-            result.emplace_back(1);
+            result[4] = 1;
             continue;
         }
         int tx = x + k * ddx[direct];
         int ty = y + k * ddy[direct];
         if (!(tx >= 0 && tx < game.boardSize && ty >= 0 && ty < game.boardSize)) {
-            result.emplace_back(3);
+            result[4 + k] = 3;
             continue;
         }
         if (game.board[tx][ty] == 0) {
-            result.emplace_back(0);
-        }
+            result[4 + k] = 0;
+        } else
         if (game.board[tx][ty] == player) {
-            result.emplace_back(1);
-        }
+            result[4 + k] = 1;
+        } else
         if (game.board[tx][ty] == 3 - player) {
-            result.emplace_back(2);
+            result[4 + k] = 2;
         }
     }
     return result;
 }
 
-int hashKeys(const std::vector<int> &vec) {
+int hashKeys(const std::array<int, 9> &arr) {
     int hashValue = 0;
     int multiplier = 1;
 
-    for (int i = vec.size() - 1; i >= 0; i--) {
-        hashValue += vec[i] * multiplier;
+    for (int i = arr.size() - 1; i >= 0; i--) {
+        hashValue += arr[i] * multiplier;
         multiplier *= 4;
     }
 
@@ -320,7 +327,11 @@ void initShape() {
     std::vector<std::vector<int>> combinations = generateAllCombinations();
     for (const auto &item: combinations) {
         vector<int> keyList = item;
-        int key = hashKeys(item);
+        std::array<int, 9> arr;
+        for (int i = 0; i < 9; i++) {
+            arr[i] = keyList[i];
+        }
+        int key = hashKeys(arr);
         if (win(keyList)) {
             shapeMapping[LONG_FIVE][key] = true;
         }
