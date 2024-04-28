@@ -294,10 +294,17 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         if (oppWinMoves.empty()) {
 
             if (activeMoves.empty()) {
-//                auto quickWinMove = getQuickWinMoves(currentPlayer, game, nearMoves);
-//                if (!quickWinMove.empty()) {
-//                    return std::make_pair(true, quickWinMove);
-//                }
+                //双3的情形
+                auto rangeMove2 = game.getNearEmptyPoints(2);
+                auto oppActiveFourMoves = getActiveFourMoves(3 - currentPlayer, game, rangeMove2);
+                auto oppSleepyFourMoves = getSleepyFourMoves(3 - currentPlayer, game, rangeMove2);
+                if (oppActiveFourMoves.empty() && oppSleepyFourMoves.empty()) {
+                    auto doubleThreeMoves = getTwoShapeMoves(currentPlayer, game, nearMoves, ACTIVE_THREE,
+                                                             ACTIVE_THREE);
+                    if (!doubleThreeMoves.empty()) {
+                        return std::make_pair(true, doubleThreeMoves);
+                    }
+                }
 
                 //没有活4就冲4
                 auto fourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR, SLEEPY_THREE);
@@ -655,9 +662,6 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, int level) {
         auto vctMoves = dfsVCTIter(game.currentPlayer, game.currentPlayer, game);
         if (!vctMoves.second.empty()) {
             return make_tuple(false, vctMoves.second, " VCT! " + to_string(vctMoves.first));
-        }
-        if (vctMoves.first > 0) {
-            msg += " VCT search on " + to_string(vctMoves.first);
         }
     }
 
