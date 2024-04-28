@@ -489,6 +489,13 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
             //活3模式的情形
             if (!fourMode) {
+
+                //对方有VCF则转换VCF模式
+                auto oppVCFMoves = dfsVCF(3 - currentPlayer, 3 - currentPlayer, game, Point(), lastMove);
+                if (oppVCFMoves.first) {
+                    return dfsVCF(currentPlayer, currentPlayer, game, lastMove, lastLastMove);
+                }
+
                 //活3接活3，活3接长4
                 auto threeActiveMoves = getTwoShapeMoves(currentPlayer, game, nearMoves3, ACTIVE_THREE, ACTIVE_TWO);
                 auto threeActiveMoves2 = getTwoShapeMoves(currentPlayer, game, nearMoves3, ACTIVE_THREE, SLEEPY_THREE);
@@ -526,9 +533,11 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             //长4的情形
             auto fourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves4, SLEEPY_FOUR, SLEEPY_THREE);
             auto fourMoreMoves = getShapeMoves(currentPlayer, game, nearMoves4, SLEEPY_FOUR_MORE);
+            auto fourThreeMoves = getTwoShapeMoves(currentPlayer, game, nearMoves4, SLEEPY_FOUR, ACTIVE_THREE);
             auto doubleFourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves4, SLEEPY_FOUR, SLEEPY_FOUR);
             moves.insert(moves.end(), fourMoves.begin(), fourMoves.end());
             moves.insert(moves.end(), fourMoreMoves.begin(), fourMoreMoves.end());
+            moves.insert(moves.end(), fourThreeMoves.begin(), fourThreeMoves.end());
             moves.insert(moves.end(), doubleFourMoves.begin(), doubleFourMoves.end());
         }
     } else {
@@ -622,7 +631,7 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, int level) {
     }
 
     //快速胜利
-    auto quickWinMove = getQuickWinMoves(game.getOtherPlayer(), game, emptyPoints);
+    auto quickWinMove = getQuickWinMoves(game.currentPlayer, game, emptyPoints);
     if (!quickWinMove.empty()) {
         return make_tuple(true, quickWinMove, " quick win");
     }

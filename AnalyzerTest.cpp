@@ -1558,3 +1558,51 @@ bool testDfsVCT9() {
     }
     return true;
 }
+
+
+bool testDfsVCT10() {
+    cout << "testDfsVCT10" << endl;
+    Game game(20);
+    game.currentPlayer = 1;
+    game.makeMove(Point(2, 17));
+    game.makeMove(Point(4, 15));
+    game.makeMove(Point(2, 15));
+    game.makeMove(Point(2, 14));
+    game.makeMove(Point(5, 13));
+    game.makeMove(Point(3, 14));
+    game.makeMove(Point(4, 14));
+    game.makeMove(Point(5, 16));
+    game.makeMove(Point(6, 17));
+    game.makeMove(Point(3, 15));
+    game.makeMove(Point(3, 13));
+    game.makeMove(Point(8, 15));
+    game.makeMove(Point(4, 16));
+    game.makeMove(Point(5, 15));
+    game.makeMove(Point(6, 15));
+    game.makeMove(Point(8, 14));
+    game.makeMove(Point(5, 17));
+    game.makeMove(Point(6, 13));
+    game.makeMove(Point(4, 17));
+    game.makeMove(Point(3, 17));
+    game.makeMove(Point(6, 14));
+    game.makeMove(Point(8, 17));
+    game.makeMove(Point(8, 16));
+    game.makeMove(Point(7, 15));
+    game.makeMove(Point(7, 17));
+//    game.makeMove(Point(9,16));
+
+    auto startTime = getSystemTime();
+    game.vctTimeOut = 10000;
+    auto result = dfsVCTIter(game.currentPlayer, game.currentPlayer, game);
+    cout << "cost " << getSystemTime() - startTime << endl;
+    for (Point &move: result.second) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+
+    cout << result.second.size() << endl;
+    if (!result.second.empty()) {
+        return false;
+    }
+    return true;
+}
