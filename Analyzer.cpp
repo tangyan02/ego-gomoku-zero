@@ -164,8 +164,13 @@ getThreeFourWinMoves(int player, Game &game, vector<Point> &myBasedMoves, vector
 }
 
 std::vector<Point>
-getDoubleFourWinMoves(int player, Game &game, vector<Point> &myBasedMoves) {
-    return getTwoShapeMoves(player, game, myBasedMoves, SLEEPY_FOUR, SLEEPY_FOUR);
+getDoubleFourWinMoves(int player, Game &game, vector<Point> &myBasedMoves, vector<Point> &oppBasedMoves) {
+    auto oppSleepFour = getSleepyFourMoves(3 - player, game, oppBasedMoves);
+    auto oppActiveFour = getActiveFourMoves(3 - player, game, oppBasedMoves);
+    if (oppSleepFour.empty() && oppActiveFour.empty()) {
+        return getTwoShapeMoves(player, game, myBasedMoves, SLEEPY_FOUR, SLEEPY_FOUR);
+    }
+    return {};
 }
 
 vector<Point> getVCFDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
@@ -296,18 +301,19 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         if (oppWinMoves.empty()) {
 
             if (activeMoves.empty()) {
+                auto rangeMove2 = game.getNearEmptyPoints(2);
                 //没有活4就冲4
                 auto fourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR, SLEEPY_THREE);
                 auto fourMoreMoves = getShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR_MORE);
                 auto fourThreeMoves = getTwoShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR, ACTIVE_THREE);
-                auto doubleFourMoves = getDoubleFourWinMoves(currentPlayer, game, nearMoves);
+                auto doubleFourMoves = getDoubleFourWinMoves(currentPlayer, game, nearMoves, rangeMove2);
                 moves.insert(moves.end(), fourMoves.begin(), fourMoves.end());
                 moves.insert(moves.end(), fourMoreMoves.begin(), fourMoreMoves.end());
                 moves.insert(moves.end(), fourThreeMoves.begin(), fourThreeMoves.end());
                 moves.insert(moves.end(), doubleFourMoves.begin(), doubleFourMoves.end());
             } else {
                 //活4
-                moves.insert(moves.end(), activeMoves.begin(), activeMoves.end());
+                return std::make_pair(true, activeMoves);
             }
 
             if (moves.empty()) {
@@ -360,10 +366,8 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             }
             finalResult = true;
             winMoves.emplace_back(item);
-            if (level > 0) {
-                game.board[item.x][item.y] = 0;
-                return std::make_pair(true, winMoves);
-            }
+            game.board[item.x][item.y] = 0;
+            return std::make_pair(true, winMoves);
         }
         game.board[item.x][item.y] = 0;
     }
@@ -413,32 +417,32 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     bool attack = checkPlayer == currentPlayer;
     bool attackMove = true;
 
-    std::vector<Point> nearMoves;
+    std::vector<Point> nearMoves4;
     std::vector<Point> nearMoves3;
     if (lastLastMove.isNull()) {
-        nearMoves = game.getEmptyPoints();
+        nearMoves4 = game.getEmptyPoints();
         nearMoves3 = game.getEmptyPoints();
     } else {
         if (attack) {
-            nearMoves = getNearByEmptyPoints(lastLastMove, game, 4);
+            nearMoves4 = getNearByEmptyPoints(lastLastMove, game, 4);
             nearMoves3 = getNearByEmptyPoints(lastLastMove, game, 3);
             std::vector<Point> moves3;
         } else {
-//            nearMoves = getNearByEmptyPoints(lastMove, game, 4);
-//            nearMoves3 = getNearByEmptyPoints(lastMove, game, 3)
+            nearMoves4 = getNearByEmptyPoints(lastMove, game, 4);
+            nearMoves3 = getNearByEmptyPoints(lastMove, game, 3);
 
-            nearMoves = game.getNearEmptyPoints();
-            nearMoves3 = game.getNearEmptyPoints();
+//            nearMoves4 = game.getNearEmptyPoints();
+//            nearMoves3 = game.getNearEmptyPoints();
         }
     }
 
     // 其实还是要考虑的，防守端计算会让局面更完整
-    auto attackNearMoves = getNearByEmptyPoints(attackPoint, game, 4);
+    auto attackNearMoves4 = getNearByEmptyPoints(attackPoint, game, 4);
     auto attackNearMoves3 = getNearByEmptyPoints(attackPoint, game, 3);
-    nearMoves.insert(nearMoves.end(), attackNearMoves.begin(), attackNearMoves.end());
-    nearMoves3.insert(nearMoves3.end(), attackNearMoves.begin(), attackNearMoves.end());
+    nearMoves4.insert(nearMoves4.end(), attackNearMoves4.begin(), attackNearMoves4.end());
+    nearMoves3.insert(nearMoves3.end(), attackNearMoves4.begin(), attackNearMoves4.end());
 
-    nearMoves = removeDuplicates(nearMoves);
+    nearMoves4 = removeDuplicates(nearMoves4);
     nearMoves3 = removeDuplicates(nearMoves3);
 
     if (attack) {
@@ -446,8 +450,8 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         auto rangeMove2 = game.getNearEmptyPoints(2);
 
         auto oppWinMoves = getWinningMoves(3 - currentPlayer, game, rangeMove1);
-        auto activeMoves = getActiveFourMoves(currentPlayer, game, nearMoves);
-        auto sleepMoves = getSleepyFourMoves(currentPlayer, game, nearMoves);
+        auto activeMoves = getActiveFourMoves(currentPlayer, game, nearMoves4);
+        auto sleepMoves = getSleepyFourMoves(currentPlayer, game, nearMoves4);
 
         //如果对方有2个胜利点，则失败
         if (oppWinMoves.size() > 1) {
@@ -482,13 +486,13 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             }
 
             //如果有冲4活3也直接下
-            auto threeFourMoves = getThreeFourWinMoves(currentPlayer, game, nearMoves, rangeMove2);
+            auto threeFourMoves = getThreeFourWinMoves(currentPlayer, game, nearMoves4, rangeMove2);
             if (!threeFourMoves.empty()) {
                 return std::make_pair(true, threeFourMoves);
             }
 
             //如果有双冲4也直接下
-            auto doubleFourMoves = getDoubleFourWinMoves(currentPlayer, game, nearMoves);
+            auto doubleFourMoves = getDoubleFourWinMoves(currentPlayer, game, nearMoves4, rangeMove2);
             if (!doubleFourMoves.empty()) {
                 return std::make_pair(true, doubleFourMoves);
             }
@@ -496,7 +500,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             //如果有双3，对手没有冲4，直接胜利
             auto oppActiveFourMoves = getActiveFourMoves(3 - currentPlayer, game, rangeMove2);
             auto oppSleepyFourMoves = getSleepyFourMoves(3 - currentPlayer, game, rangeMove2);
-            auto doubleThreeMoves = getTwoShapeMoves(currentPlayer, game, nearMoves, ACTIVE_THREE, ACTIVE_THREE);
+            auto doubleThreeMoves = getTwoShapeMoves(currentPlayer, game, nearMoves4, ACTIVE_THREE, ACTIVE_THREE);
             if (oppActiveFourMoves.empty() && oppSleepyFourMoves.empty() && !doubleThreeMoves.empty()) {
                 return std::make_pair(true, doubleThreeMoves);
             }
@@ -509,7 +513,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
                 //如果对手有活4，则看防守点是否是长3点
                 auto allEmptyMoves = game.getNearEmptyPoints(2);
-                auto myThreeDefenceMoves = getThreeDefenceMoves(currentPlayer, game, allEmptyMoves);
+                auto myThreeDefenceMoves = getThreeDefenceMoves(currentPlayer, game, nearMoves3);
 
 //                cout << "threeActiveMoves ";
 //                printVector(threeActiveMoves);
@@ -532,13 +536,13 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
                 }
 
                 //长4接活3
-                auto fourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR, ACTIVE_TWO);
+                auto fourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves4, SLEEPY_FOUR, ACTIVE_TWO);
                 moves.insert(moves.end(), fourMoves.begin(), fourMoves.end());
             }
 
             //长4的情形
-            auto fourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR, SLEEPY_THREE);
-            auto fourMoreMoves = getShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR_MORE);
+            auto fourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves4, SLEEPY_FOUR, SLEEPY_THREE);
+            auto fourMoreMoves = getShapeMoves(currentPlayer, game, nearMoves4, SLEEPY_FOUR_MORE);
             moves.insert(moves.end(), fourMoves.begin(), fourMoves.end());
             moves.insert(moves.end(), fourMoreMoves.begin(), fourMoreMoves.end());
             moves.insert(moves.end(), doubleFourMoves.begin(), doubleFourMoves.end());
@@ -546,7 +550,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     } else {
 
 //        cout << "正在计算防御点" << endl;
-        auto oppWinMoves = getWinningMoves(checkPlayer, game, nearMoves);
+        auto oppWinMoves = getWinningMoves(checkPlayer, game, nearMoves4);
         //防守眠4
         if (oppWinMoves.size() == 1) {
             moves.emplace_back(oppWinMoves[0]);
@@ -559,7 +563,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             if (oppWinMoves.empty()) {
                 //防活3
 //                cout << "正在计算防活3" << endl;
-                auto threeDefenceMoves = getThreeDefenceMoves(currentPlayer, game, nearMoves);
+                auto threeDefenceMoves = getThreeDefenceMoves(currentPlayer, game, nearMoves4);
                 moves.insert(moves.end(), threeDefenceMoves.begin(), threeDefenceMoves.end());
             }
         }
@@ -655,7 +659,7 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, int level) {
     if (level == 0 || level == 1) {
         auto vctMoves = dfsVCTIter(game.currentPlayer, game.currentPlayer, game);
         if (!vctMoves.second.empty()) {
-            cout << "MESSAGE vct got " << vctMoves.first<<endl;
+            cout << "MESSAGE vct got " << vctMoves.first << endl;
             return make_tuple(false, vctMoves.second, " VCT! " + to_string(vctMoves.first));
         }
         if (vctMoves.first > 0) {

@@ -497,6 +497,7 @@ bool testDfsVCF2() {
     game.makeMove(Point(7, 7));
 
     auto result = dfsVCF(1, 1, game, Point(), Point());
+    cout << "first " << result.first << endl;
     for (Point &move: result.second) {
         game.board[move.x][move.y] = 3;
     }
