@@ -405,7 +405,9 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         }
     }
 
+//    cout << "level " << level << endl;
     if (level > maxLevel) {
+//        cout << "超出层数" << endl;
         return std::make_pair(false, std::vector<Point>());
     }
     //使用有限点长3，防止检索范围爆炸
@@ -491,6 +493,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             //快速胜利
             auto quickWinMove = getQuickWinMoves(currentPlayer, game, nearMoves4);
             if (!quickWinMove.empty()) {
+//                cout << "发现快速胜利" << endl;
                 return std::make_pair(true, quickWinMove);
             }
 
@@ -500,7 +503,12 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
                 //对方有VCF则转换VCF模式
                 auto oppVCFMoves = dfsVCF(3 - currentPlayer, 3 - currentPlayer, game, Point(), lastMove);
                 if (oppVCFMoves.first) {
-                    return dfsVCF(currentPlayer, currentPlayer, game, lastMove, lastLastMove);
+//                    cout << "对方有VCF" << endl;
+                    auto myVCMoves = dfsVCF(currentPlayer, currentPlayer, game, lastMove, lastLastMove);
+                    if (myVCMoves.first) {
+//                        cout << "我方也有VCF" << endl;
+                    }
+                    return myVCMoves;
                 }
 
                 //活3接活3，活3接长4
@@ -570,7 +578,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     }
 
     if (moves.empty()) {
-//        cout <<"attack "<< attack << "没有可移动的点了" << endl;
+//        cout << "attack " << attack << "没有可移动的点了" << endl;
         return std::make_pair(false, std::vector<Point>());
     }
 
