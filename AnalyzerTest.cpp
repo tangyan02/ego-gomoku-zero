@@ -1472,7 +1472,7 @@ bool testDfsVCT7() {
     auto result = dfsVCT(game.currentPlayer, game.currentPlayer,
                          game, Point(), Point(),
                          Point(), false, 0,
-                         0, 9, 18);
+                         0, 99, 18);
     cout << "cost " << getSystemTime() - startTime << endl;
     for (Point &move: result.second) {
         game.board[move.x][move.y] = 3;
@@ -1629,6 +1629,17 @@ bool testDfsVCT11() {
     game.makeMove(Point(9, 16));
     game.makeMove(Point(8, 16));
 
+    cout << "双3点" << endl;
+    auto allMoves = game.getEmptyPoints();
+    auto doubleThreeMoves = getTwoShapeMoves(game.currentPlayer, game, allMoves, ACTIVE_THREE, ACTIVE_THREE);
+    for (Point &move: doubleThreeMoves) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+    for (Point &move: doubleThreeMoves) {
+        game.board[move.x][move.y] = 0;
+    }
+    cout << "====" << endl;
     auto startTime = getSystemTime();
     game.vctTimeOut = 10000;
     auto result = dfsVCTIter(game.currentPlayer, game.currentPlayer, game);

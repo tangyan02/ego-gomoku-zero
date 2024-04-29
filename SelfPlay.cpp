@@ -100,7 +100,7 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
             //开始mcts预测
             long startTime = getSystemTime();
             int simiNum = 800;
-            game.vctTimeOut = 1000;
+            game.vctTimeOut = 2000;
             Node node;
             mcts.search(game, &node, simiNum);
             cout << part << "search cost " << getSystemTime() - startTime << " ms, simi num " << simiNum << ", "
