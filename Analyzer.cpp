@@ -90,13 +90,17 @@ vector<Point> getTwoShapeMoves(int player, Game &game, std::vector<Point> &based
         bool shape2Exist = false;
         for (int i = 0; i < 4; i++) {
             auto action = point;
-            if (checkPointDirectShape(game, player, action, i, shape1)) {
-                shape1Exist = true;
-                continue;
+            if (!shape1Exist) {
+                if (checkPointDirectShape(game, player, action, i, shape1)) {
+                    shape1Exist = true;
+                    continue;
+                }
             }
-            if (checkPointDirectShape(game, player, action, i, shape2)) {
-                shape2Exist = true;
-                continue;
+            if (!shape2Exist) {
+                if (checkPointDirectShape(game, player, action, i, shape2)) {
+                    shape2Exist = true;
+                    continue;
+                }
             }
         }
         if (shape1Exist && shape2Exist) {
@@ -251,7 +255,8 @@ vector<Point> getThreeDefenceMoves(int player, Game &game, std::vector<Point> &b
 
 std::pair<bool, std::vector<Point>>
 dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level,
-       vector<Point> *attackPoints, vector<Point> *defencePoints, vector<Point> *allAttackPoints) {
+       vector<Point> *attackPoints, vector<Point> *defencePoints, vector<Point> *allAttackPoints,
+       bool checkDoubleThree) {
 //    std::cout << "===" << std::endl;
 //    game.printBoard();
 //    std::cout << "===" << std::endl;
@@ -294,10 +299,20 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         if (oppWinMoves.empty()) {
 
             if (activeMoves.empty()) {
-//                auto quickWinMove = getQuickWinMoves(currentPlayer, game, nearMoves);
-//                if (!quickWinMove.empty()) {
-//                    return std::make_pair(true, quickWinMove);
-//                }
+
+                if(checkDoubleThree) {
+                    //双3的情形
+                    auto rangeMove2 = game.getNearEmptyPoints(2);
+                    auto oppActiveFourMoves = getActiveFourMoves(3 - currentPlayer, game, rangeMove2);
+                    auto oppSleepyFourMoves = getSleepyFourMoves(3 - currentPlayer, game, rangeMove2);
+                    if (oppActiveFourMoves.empty() && oppSleepyFourMoves.empty()) {
+                        auto doubleThreeMoves = getTwoShapeMoves(currentPlayer, game, nearMoves, ACTIVE_THREE,
+                                                                 ACTIVE_THREE);
+                        if (!doubleThreeMoves.empty()) {
+                            return std::make_pair(true, doubleThreeMoves);
+                        }
+                    }
+                }
 
                 //没有活4就冲4
                 auto fourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves, SLEEPY_FOUR, SLEEPY_THREE);
@@ -348,7 +363,8 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         game.board[item.x][item.y] = currentPlayer;
         auto dfsResult = dfsVCF(checkPlayer, 3 - currentPlayer,
                                 game, item, lastMove,
-                                level + 1, attackPoints, defencePoints, allAttackPoints);
+                                level + 1, attackPoints, defencePoints, allAttackPoints,
+                                checkDoubleThree);
         if (dfsResult.first) {
             if (attack) {
                 //记录进攻点
@@ -376,15 +392,16 @@ std::pair<int, std::vector<Point>>
 dfsVCTIter(int checkPlayer, int currentPlayer, Game &game) {
     long long timeout = game.vctTimeOut + getSystemTime();
     int maxLevel = 20;
-    int level = 2;
-    for (; level <= maxLevel; level += 2) {
+    int level = 4;
+    int nodeLast = 0;
+    for (; level <= maxLevel; level += 4) {
         auto result = dfsVCT(checkPlayer, currentPlayer, game,
                              Point(), Point(), Point(),
                              false, 0, 0, 99, level, timeout);
         if (result.first) {
             return make_pair(level, result.second);
         }
-//        cout << "level=" << to_string(level) << endl;
+        cout << "level=" << to_string(level) << endl;
     }
     return std::make_pair(level, std::vector<Point>());
 }
@@ -398,7 +415,9 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         }
     }
 
+//    cout << "level " << level << endl;
     if (level > maxLevel) {
+//        cout << "超出层数" << endl;
         return std::make_pair(false, std::vector<Point>());
     }
     //使用有限点长3，防止检索范围爆炸
@@ -451,6 +470,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
         //如果对方有2个胜利点，则失败
         if (oppWinMoves.size() > 1) {
+//            cout << "对方2个胜利点" << endl;
             return std::make_pair(false, std::vector<Point>());
         }
 
@@ -484,11 +504,25 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             //快速胜利
             auto quickWinMove = getQuickWinMoves(currentPlayer, game, nearMoves4);
             if (!quickWinMove.empty()) {
+//                cout << "发现快速胜利" << endl;
                 return std::make_pair(true, quickWinMove);
             }
 
             //活3模式的情形
             if (!fourMode) {
+
+                //对方有VCF则转换VCF模式
+                auto oppVCFMoves = dfsVCF(3 - currentPlayer, 3 - currentPlayer,
+                                          game, Point(), lastMove, 0, nullptr, nullptr, nullptr, false);
+                if (oppVCFMoves.first) {
+//                    cout << "对方有VCF" << endl;
+                    auto myVCMoves = dfsVCF(currentPlayer, currentPlayer, game, lastMove, lastLastMove);
+                    if (myVCMoves.first) {
+//                        cout << "我方也有VCF" << endl;
+                    }
+                    return myVCMoves;
+                }
+
                 //活3接活3，活3接长4
                 auto threeActiveMoves = getTwoShapeMoves(currentPlayer, game, nearMoves3, ACTIVE_THREE, ACTIVE_TWO);
                 auto threeActiveMoves2 = getTwoShapeMoves(currentPlayer, game, nearMoves3, ACTIVE_THREE, SLEEPY_THREE);
@@ -526,9 +560,11 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             //长4的情形
             auto fourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves4, SLEEPY_FOUR, SLEEPY_THREE);
             auto fourMoreMoves = getShapeMoves(currentPlayer, game, nearMoves4, SLEEPY_FOUR_MORE);
+            auto fourThreeMoves = getTwoShapeMoves(currentPlayer, game, nearMoves4, SLEEPY_FOUR, ACTIVE_THREE);
             auto doubleFourMoves = getTwoShapeMoves(currentPlayer, game, nearMoves4, SLEEPY_FOUR, SLEEPY_FOUR);
             moves.insert(moves.end(), fourMoves.begin(), fourMoves.end());
             moves.insert(moves.end(), fourMoreMoves.begin(), fourMoreMoves.end());
+            moves.insert(moves.end(), fourThreeMoves.begin(), fourThreeMoves.end());
             moves.insert(moves.end(), doubleFourMoves.begin(), doubleFourMoves.end());
         }
     } else {
@@ -554,7 +590,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     }
 
     if (moves.empty()) {
-//        cout <<"attack "<< attack << "没有可移动的点了" << endl;
+//        cout << "attack " << attack << "没有可移动的点了" << endl;
         return std::make_pair(false, std::vector<Point>());
     }
 
@@ -622,7 +658,7 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, int level) {
     }
 
     //快速胜利
-    auto quickWinMove = getQuickWinMoves(game.getOtherPlayer(), game, emptyPoints);
+    auto quickWinMove = getQuickWinMoves(game.currentPlayer, game, emptyPoints);
     if (!quickWinMove.empty()) {
         return make_tuple(true, quickWinMove, " quick win");
     }
@@ -645,10 +681,7 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, int level) {
     if (level == 0 || level == 1) {
         auto vctMoves = dfsVCTIter(game.currentPlayer, game.currentPlayer, game);
         if (!vctMoves.second.empty()) {
-            return make_tuple(false, vctMoves.second, " VCT! " + to_string(vctMoves.first));
-        }
-        if (vctMoves.first > 0) {
-            msg += " VCT search on " + to_string(vctMoves.first);
+            return make_tuple(true, vctMoves.second, " VCT! " + to_string(vctMoves.first));
         }
     }
 

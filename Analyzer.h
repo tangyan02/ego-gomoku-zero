@@ -29,7 +29,7 @@ vector<Point> getSleepyTwoMoves(int player, Game &game, vector<Point> &basedMove
 pair<bool, vector<Point>>
 dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, int level = 0,
        vector<Point> *attackPoints = nullptr, vector<Point> *defencePoints = nullptr,
-       vector<Point> *allAttackPoints = nullptr);
+       vector<Point> *allAttackPoints = nullptr, bool checkDoubleThree = true);
 
 
 std::pair<bool, std::vector<Point>>
@@ -46,5 +46,7 @@ vector<Point> getThreeDefenceMoves(int player, Game &game, vector<Point> &basedM
 vector<Point> getNearByEmptyPoints(Point action, Game &game, int range = 5);
 
 vector<Point> getLineEmptyPoints(Point action, Game &game, int direct);
+
+vector<Point> getTwoShapeMoves(int player, Game &game, std::vector<Point> &basedMoves, Shape shape1, Shape shape2);
 
 #endif //EGO_GOMOKU_ZERO_ANALYZER_H
