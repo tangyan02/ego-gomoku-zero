@@ -47,7 +47,7 @@ void Node::update(double value) {
 }
 
 MonteCarloTree::MonteCarloTree(Model *model, float exploration_factor)
-        :model(model),  root(nullptr), exploration_factor(exploration_factor) {
+        : model(model), root(nullptr), exploration_factor(exploration_factor) {
 }
 
 void MonteCarloTree::simulate(Game game) {
@@ -76,15 +76,26 @@ void MonteCarloTree::simulate(Game game) {
         auto actions = selectActions(game, level);
         node->selectInfo = get<2>(actions);
 
-        auto state = game.getState();
-        std::pair<float, std::vector<float>>
-                result = model->evaluate_state(state);
-        value = result.first;
-        if(get<0>(actions)){
+        if (get<0>(actions) && node->parent != nullptr) {
             value = 1;
+        } else {
+            auto state = game.getState();
+            std::pair<float, std::vector<float>>
+                    result = model->evaluate_state(state);
+            value = result.first;
+            std::vector<float> priorProb = result.second;
+            node->expand(game, get<1>(actions), priorProb);
         }
-        std::vector<float> priorProb = result.second;
-        node->expand(game, get<1>(actions), priorProb);
+
+//        auto state = game.getState();
+//        std::pair<float, std::vector<float>>
+//                result = model->evaluate_state(state);
+//        value = result.first;
+//        if(get<0>(actions)){
+//            value = 1;
+//        }
+//        std::vector<float> priorProb = result.second;
+//        node->expand(game, get<1>(actions), priorProb);
     }
 
     backpropagate(node, -value);
