@@ -10,6 +10,7 @@
 #include <sstream>
 #include <thread>
 #include <iomanip>
+#include "Pruner.h"
 
 void printGame(Game &game, int action, std::vector<float> &action_probs, float temperature);
 

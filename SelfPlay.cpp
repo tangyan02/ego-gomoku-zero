@@ -82,27 +82,18 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
         std::vector<std::tuple<vector<vector<vector<float>>>, int, std::vector<float>>> game_data;
 
         game = randomGame(game, part);
+        game.vctTimeOut = 1000;
 
         int step = 0;
+        Node *node = new Node();
         while (!game.isGameOver()) {
-            //如果只有唯一选择，则直接选择
-            auto nextActions = selectActions(game);
-            if (get<1>(nextActions).size() == 1) {
-                int actionIndex = game.getActionIndex(get<1>(nextActions)[0]);
-                vector<float> probs(game.boardSize * game.boardSize);
-                probs[actionIndex] = 1;
-                addAction(game, actionIndex, game_data, probs);
-                printGame(game, actionIndex, probs, 0, part, get<2>(nextActions), nullptr);
-                step++;
-                continue;
-            }
-
             //开始mcts预测
+            mcts.search(game, node, 1);
+            pruning(node,game);
+
             long startTime = getSystemTime();
-            int simiNum = 800;
-            game.vctTimeOut = 2000;
-            Node node;
-            mcts.search(game, &node, simiNum);
+            int simiNum = numSimulations - node->visits;
+            mcts.search(game, node, simiNum - 1);
             cout << part << "search cost " << getSystemTime() - startTime << " ms, simi num " << simiNum << ", "
                  << "per simi " << (getSystemTime() - startTime) / simiNum << " ms" << endl;
 
@@ -134,8 +125,20 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
             int action = actions[distribution(gen)];
 
             addAction(game, action, game_data, action_probs);
-            printGame(game, action, action_probs_normalized, temperature, part, node.selectInfo, &model);
+            printGame(game, action, action_probs_normalized, temperature, part, node->selectInfo, &model);
             step++;
+
+            //更新node
+            for (const auto &item: node->children) {
+                if (item.first != action) {
+                    item.second->release();
+                }
+            }
+            for (const auto item: node->children) {
+                if (item.first == action) {
+                    node = item.second;
+                }
+            }
         }
 
         bool win = game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer());

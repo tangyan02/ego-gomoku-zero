@@ -30,6 +30,8 @@ public:
     void expand(Game &game, std::vector<Point> &actions, const std::vector<float> &prior_probs);
 
     void update(double value);
+
+    void release();
 };
 
 class MonteCarloTree {
@@ -46,7 +48,6 @@ public:
 
     std::vector<float> apply_temperature(std::vector<float> action_probabilities, float temperature);
 
-    void release(Node *node);
 
 private:
     Node *root;

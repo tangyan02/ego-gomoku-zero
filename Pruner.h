@@ -7,6 +7,6 @@
 #include "Analyzer.h"
 #include "array"
 
-void pruning(Node &node, Game &game, int timeLimit);
+void pruning(Node *node, Game &game);
 
 #endif //EGO_GOMOKU_ZERO_PRUNER_H
