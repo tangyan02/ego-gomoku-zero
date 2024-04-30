@@ -8,21 +8,19 @@ void pruning(Node *node, Game &game, const string logPrefix) {
 
         long long timeout = game.vctTimeOut + getSystemTime();
         int maxLevel = 20;
-        array<bool, 400> lose = {false};
-        array<bool, 400> loseLast = {false};
-        int loseCount = 0;
-        int loseCountLast = 0;
+        array<array<bool, 400>, 10> lose = {false};
+        array<int, 10> loseCount = {false};
+
         int winMoveIndex = -1;
         int currentLevel = 0;
+        bool backUp = false;
 
         //搜索VCT点
         for (int level = 4; level <= maxLevel; level += 4) {
             //更新前一层的必败点
-            if (loseCount != loseCountLast) {
-                for (const auto &item: node->children) {
-                    loseLast[item.first] = lose[item.first];
-                    loseCountLast = loseCount;
-                }
+            int loseIdx = level / 4;
+            for (const auto &item: node->children) {
+                lose[loseIdx][item.first] = lose[loseIdx - 1][item.first];
             }
 
             currentLevel = level;
@@ -45,6 +43,7 @@ void pruning(Node *node, Game &game, const string logPrefix) {
                     if (result.first) {
                         lose[actionIndex] = true;
                         loseCount++;
+                        backUp = true;
                     }
                     game.board[action.x][action.y] = 0;
                 }
