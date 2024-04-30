@@ -4,7 +4,7 @@
 using namespace std;
 
 std::vector<Point> removeDuplicates(const std::vector<Point> &points) {
-    std::array<std::array<bool, 20>, 20> pointExists = {}; // 初始化为 false
+    std::array<std::array<bool, 20>, 20> pointExists = {false}; // 初始化为 false
     std::vector<Point> uniquePoints;
     for (const auto& point : points) {
         int row = point.x;
@@ -55,7 +55,7 @@ Point Game::getPointFromIndex(int actionIndex) {
 }
 
 std::vector<Point> Game::getNearEmptyPoints(int range) {
-    std::array<std::array<bool, 20>, 20> nearbyPointsArray = {}; // 初始化为 false
+    std::array<std::array<bool, 20>, 20> nearbyPointsArray = {false}; // 初始化为 false
 
     for (int row = 0; row < boardSize; row++) {
         for (int col = 0; col < boardSize; col++) {

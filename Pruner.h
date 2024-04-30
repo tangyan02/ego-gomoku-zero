@@ -7,6 +7,6 @@
 #include "Analyzer.h"
 #include "array"
 
-void pruning(Node *node, Game &game);
+void pruning(Node *node, Game &game, const string logPrefix = "");
 
 #endif //EGO_GOMOKU_ZERO_PRUNER_H
