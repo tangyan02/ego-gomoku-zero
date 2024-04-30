@@ -4,7 +4,7 @@
 using namespace std;
 
 std::vector<Point> removeDuplicates(const std::vector<Point> &points) {
-    std::array<std::array<bool, 20>, 20> pointExists = {false}; // 初始化为 false
+    std::array<std::array<bool, 20>, 20> pointExists = {{{false}}}; // 初始化为 false
     std::vector<Point> uniquePoints;
     for (const auto& point : points) {
         int row = point.x;

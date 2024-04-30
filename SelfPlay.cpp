@@ -82,7 +82,7 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
         std::vector<std::tuple<vector<vector<vector<float>>>, int, std::vector<float>>> game_data;
 
         game = randomGame(game, part);
-        game.vctTimeOut = 1000;
+        game.vctTimeOut = 5000;
 
         int step = 0;
         Node *node = new Node();
