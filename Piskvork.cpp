@@ -13,7 +13,7 @@
 #include <iostream>
 #include "Utils.h"
 #include "Shape.h"
-
+#include "Pruner.h"
 
 const char* infotext = "name=\"Ego-Zero\", author=\"TangYan\", version=\"1.0\", country=\"China\", email=\"tangyan1412@foxmail.com\"";
 
@@ -79,7 +79,7 @@ void brain_restart()
     delete game;
     game = new Game(boardSize);
     MonteCarloTree mcts = MonteCarloTree(model, 1);
-    mcts.release(node);
+    node->release();
     node = new Node();
     pipeOut("MESSAGE : RESTARTED");
     pipeOut("OK");
@@ -104,7 +104,7 @@ void tree_down(int x, int y) {
     MonteCarloTree mcts = MonteCarloTree(model, 1);
     for (auto item : node->children) {
         if (item.second != select) {
-            mcts.release(item.second);
+            item.second->release();
         }
     }
 
@@ -205,7 +205,7 @@ bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum) {
         //估计值
         int estimateVisit = total - simiNum + ((int)((double)simiNum / (double)passTime * (double)thisTimeOut));
 
-        if ((secondMax + (estimateVisit - total)) * beta < max) {
+        if ((secondMax + (estimateVisit - total)) * beta < max && max > 10) {
             pipeOut("MESSAGE prebreak at max %d, secondMax %d, total %d, simiNum %d, estimateVisit %d", max, secondMax, total, simiNum, estimateVisit);
             return true;
         }
@@ -228,10 +228,22 @@ void brain_turn()
         firstCost = 0;
     }
 
+    int vctTimeOut = thisTimeOut / 5;
+ 
+
     pipeOut("MESSAGE time limit %d", thisTimeOut);
+    pipeOut("MESSAGE vctTimeOut limit %d", vctTimeOut);
     pipeOut("MESSAGE current player %d", game->currentPlayer);
 
     auto startTime = getSystemTime();
+    mcts.search(*game, node, 1);
+    game->vctTimeOut = vctTimeOut;
+    pruning(node, *game, "MESSAGE ");
+    auto vctCost = getSystemTime() - startTime;
+    thisTimeOut -= vctCost;
+    pipeOut("MESSAGE time limit updated %d", thisTimeOut);
+    
+    startTime = getSystemTime();
     int simiNum = 0;
     while (true) {
         mcts.search(*game, node, 1);

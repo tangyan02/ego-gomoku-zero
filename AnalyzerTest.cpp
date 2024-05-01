@@ -1629,7 +1629,7 @@ bool testDfsVCT11() {
     game.makeMove(Point(9, 16));
     game.makeMove(Point(8, 16));
 
-    cout << "双3点" << endl;
+    cout << "double 3" << endl;
     auto allMoves = game.getEmptyPoints();
     auto doubleThreeMoves = getTwoShapeMoves(game.currentPlayer, game, allMoves, ACTIVE_THREE, ACTIVE_THREE);
     for (Point &move: doubleThreeMoves) {

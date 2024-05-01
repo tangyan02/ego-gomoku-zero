@@ -68,7 +68,7 @@ void pruning(Node *node, Game &game, const string &logPrefix) {
                 int actionIndex = item.first;
                 if (lose[iterLevel][actionIndex]) {
                     auto pLose = game.getPointFromIndex(actionIndex);
-                    cout << "(" << pLose.x << "," << pLose.y << "),";
+//                    cout << "(" << pLose.x << "," << pLose.y << "),";
                 }
             }
             cout << endl;
@@ -108,6 +108,8 @@ void pruning(Node *node, Game &game, const string &logPrefix) {
             cout << logPrefix << "level=" << iterLevel * 4
                  << " cut " << childCountBefore << "->" << childCountNow
                  << endl;
+        } else {
+            cout << logPrefix << "vct search at level " << iterLevel * 4  << endl;
         }
     }
 }
