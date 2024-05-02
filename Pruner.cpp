@@ -15,7 +15,7 @@ void pruning(Node *node, Game &game, const string &logPrefix) {
         int iterLevel = 0;
 
         //搜索VCT点
-        for (int level = 4; level <= maxLevel; level += 4) {
+        for (int level = 4; level <= maxLevel; level += 2) {
             //更新前一层的必败点
             iterLevel++;
             for (const auto &item: node->children) {
@@ -31,19 +31,24 @@ void pruning(Node *node, Game &game, const string &logPrefix) {
                 break;
             }
 
-            for (const auto &item: node->children) {
-                int actionIndex = item.first;
-                if (!lose[iterLevel][actionIndex]) {
-                    auto action = game.getPointFromIndex(actionIndex);
-                    game.board[action.x][action.y] = game.currentPlayer;
-                    auto result = dfsVCT(game.getOtherPlayer(), game.getOtherPlayer(), game,
-                                         Point(), Point(), Point(),
-                                         false, 0, 0, 99, level, timeout);
-                    if (result.first) {
-                        lose[iterLevel][actionIndex] = true;
-                        loseCount[iterLevel]++;
+            auto oppResult = dfsVCT(game.getOtherPlayer(), game.getOtherPlayer(), game,
+                                    Point(), Point(), Point(),
+                                    false, 0, 0, 99, level, timeout);
+            if (oppResult.first) {
+                for (const auto &item: node->children) {
+                    int actionIndex = item.first;
+                    if (!lose[iterLevel][actionIndex]) {
+                        auto action = game.getPointFromIndex(actionIndex);
+                        game.board[action.x][action.y] = game.currentPlayer;
+                        auto result = dfsVCT(game.getOtherPlayer(), game.getOtherPlayer(), game,
+                                             Point(), Point(), Point(),
+                                             false, 0, 0, 99, level, timeout);
+                        if (result.first) {
+                            lose[iterLevel][actionIndex] = true;
+                            loseCount[iterLevel]++;
+                        }
+                        game.board[action.x][action.y] = 0;
                     }
-                    game.board[action.x][action.y] = 0;
                 }
             }
 
