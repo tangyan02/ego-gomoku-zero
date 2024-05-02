@@ -300,7 +300,7 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
             if (activeMoves.empty()) {
 
-                if(checkDoubleThree) {
+                if (checkDoubleThree) {
                     //双3的情形
                     auto rangeMove2 = game.getNearEmptyPoints(2);
                     auto oppActiveFourMoves = getActiveFourMoves(3 - currentPlayer, game, rangeMove2);
@@ -632,7 +632,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 /**
  * 返回两个值，第一个值代表返回值是否是必胜点
  */
-tuple<bool, vector<Point>, string> selectActions(Game &game, int level) {
+tuple<bool, vector<Point>, string> selectActions(Game &game) {
     int range = 3;
     if (game.historyMoves.size() <= 3) {
         range = 4;
@@ -676,14 +676,6 @@ tuple<bool, vector<Point>, string> selectActions(Game &game, int level) {
     }
 
     string msg;
-
-    //根部情形做vct
-//    if (level == 0 || level == 1) {
-//        auto vctMoves = dfsVCTIter(game.currentPlayer, game.currentPlayer, game);
-//        if (!vctMoves.second.empty()) {
-//            return make_tuple(true, vctMoves.second, " VCT! " + to_string(vctMoves.first));
-//        }
-//    }
 
     //对方VCF点判断
     auto otherVCFMoves = game.getOppVCFMoves();

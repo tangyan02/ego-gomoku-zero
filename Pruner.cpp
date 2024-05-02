@@ -47,6 +47,9 @@ void pruning(Node *node, Game &game, const string &logPrefix) {
                 }
             }
 
+            if (getSystemTime() > timeout) {
+                break;
+            }
 //            cout << "level=" << level << ", lose count=" << loseCount[iterLevel] << endl;
         }
 
@@ -109,7 +112,7 @@ void pruning(Node *node, Game &game, const string &logPrefix) {
                  << " cut " << childCountBefore << "->" << childCountNow
                  << endl;
         } else {
-            cout << logPrefix << "vct search at level " << iterLevel * 4  << endl;
+            cout << logPrefix << "vct search at level " << iterLevel * 4 << endl;
         }
     }
 }
