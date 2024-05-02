@@ -8,14 +8,15 @@ void pruning(Node *node, Game &game, const string &logPrefix) {
 
         long long timeout = game.vctTimeOut + getSystemTime();
         int maxLevel = 32;
-        array<array<bool, 400>, 10> lose = {{{false}}};
-        array<int, 10> loseCount = {false};
+        array<array<bool, 400>, 20> lose = {{{false}}};
+        array<int, 20> loseCount = {false};
 
         int winMoveIndex = -1;
         int iterLevel = 0;
 
         //搜索VCT点
-        for (int level = 4; level <= maxLevel; level += 2) {
+        int interval = 2;
+        for (int level = 4; level <= maxLevel; level += interval) {
             //更新前一层的必败点
             iterLevel++;
             for (const auto &item: node->children) {
@@ -60,11 +61,11 @@ void pruning(Node *node, Game &game, const string &logPrefix) {
 
         if (winMoveIndex != -1) {
             auto p = game.getPointFromIndex(winMoveIndex);
-            cout << logPrefix << "found vct (" << p.x << "," << p.y << ") on " << iterLevel * 4 << endl;
+            cout << logPrefix << "found vct (" << p.x << "," << p.y << ") on " << iterLevel * interval << endl;
         }
 
         if (loseCount[iterLevel] == node->children.size()) {
-            cout << logPrefix << "level " << iterLevel * 4 << ", all lose and bake up" << endl;
+            cout << logPrefix << "level " << iterLevel * interval << ", all lose and bake up" << endl;
         }
         while (loseCount[iterLevel] == node->children.size()) {
             iterLevel--;
@@ -113,11 +114,11 @@ void pruning(Node *node, Game &game, const string &logPrefix) {
 
         int childCountNow = node->children.size();
         if (childCountBefore != childCountNow) {
-            cout << logPrefix << "level=" << iterLevel * 4
+            cout << logPrefix << "level=" << iterLevel * interval
                  << " cut " << childCountBefore << "->" << childCountNow
                  << endl;
         } else {
-            cout << logPrefix << "vct search at level " << iterLevel * 4 << endl;
+            cout << logPrefix << "vct search at level " << iterLevel * interval << endl;
         }
     }
 }
