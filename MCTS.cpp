@@ -33,10 +33,23 @@ std::pair<int, Node *> Node::selectChild(double exploration_factor) {
 }
 
 void Node::expand(Game &game, std::vector<Point> &actions, const std::vector<float> &prior_probs) {
+    // 计算概率总和
+    float sum_probs = 0.0;
+    for (auto &prob: prior_probs) {
+        sum_probs += prob;
+    }
+
     for (auto &action: actions) {
         Node *child = new Node(this);
         int actionIndex = game.getActionIndex(action);
-        child->prior_prob = prior_probs[actionIndex];
+
+        // 归一化处理
+        if (sum_probs != 0) {
+            child->prior_prob = prior_probs[actionIndex] / sum_probs;
+        } else {
+            child->prior_prob = prior_probs[actionIndex];
+        }
+
         children[actionIndex] = child;
     }
 }
