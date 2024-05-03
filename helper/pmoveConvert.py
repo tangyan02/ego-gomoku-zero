@@ -1,4 +1,4 @@
-f = open("pmoves7.txt", "r")
+f = open("pmoves8.txt", "r")
 lines = f.readlines()
 
 for line in lines:

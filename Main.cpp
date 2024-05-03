@@ -19,7 +19,7 @@ void selfPlay(int argc, char *argv[]) {
     }
 
     int numGames = 1;
-    int sumSimulations = 50;
+    int sumSimulations = 800;
     float temperatureDefault = 1;
     float explorationFactor = 4;
     int boardSize = 20;
@@ -86,7 +86,8 @@ void test() {
             testDfsVCT8,
             testDfsVCT9,
             testDfsVCT10,
-            testDfsVCT11
+            testDfsVCT11,
+            testDfsVCT12
     };
 
     int total = sizeof(functions) / sizeof(functions[0]);

@@ -5,6 +5,7 @@
 
 #include "Game.h"
 #include "Analyzer.h"
+#include "Pruner.h"
 
 bool testGetWinnerMove();
 bool testGetActiveFourMoves();
@@ -49,5 +50,6 @@ bool testDfsVCT8();
 bool testDfsVCT9();
 bool testDfsVCT10();
 bool testDfsVCT11();
+bool testDfsVCT12();
 
 #endif //EGO_GOMOKU_ZERO_ANALYZERTEST_H

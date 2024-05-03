@@ -1655,3 +1655,43 @@ bool testDfsVCT11() {
     }
     return false;
 }
+
+
+bool testDfsVCT12() {
+    cout << "testDfsVCT12" << endl;
+    Game game(20);
+    game.currentPlayer = 1;
+    game.makeMove(Point(9,13));
+    game.makeMove(Point(9,15));
+    game.makeMove(Point(13,15));
+    game.makeMove(Point(14,14));
+    game.makeMove(Point(16,11));
+    game.makeMove(Point(14,13));
+    game.makeMove(Point(14,12));
+    game.makeMove(Point(13,13));
+    game.makeMove(Point(12,12));
+    game.makeMove(Point(13,12));
+    game.makeMove(Point(15,14));
+
+
+//    game.makeMove(Point(12,13));
+//    game.makeMove(Point(11,13));
+
+//    game.makeMove(Point(14,11));
+//    game.makeMove(Point(11,14));
+
+    auto startTime = getSystemTime();
+    game.vctTimeOut = 10000;
+    auto result = dfsVCTIter(game.currentPlayer, game.currentPlayer, game);
+    cout << "cost " << getSystemTime() - startTime << endl;
+    for (Point &move: result.second) {
+        game.board[move.x][move.y] = 3;
+    }
+    game.printBoard();
+
+    cout << result.second.size() << endl;
+    if (!result.second.empty()) {
+        return true;
+    }
+    return false;
+}
