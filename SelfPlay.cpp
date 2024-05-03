@@ -88,12 +88,11 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
         Node *node = new Node();
         while (!game.isGameOver()) {
             //开始mcts预测
-            mcts.search(game, node, 1);
-            pruning(node, game, part);
+//            pruning(node, game, part);
 
             long startTime = getSystemTime();
             int simiNum = numSimulations - node->visits;
-            mcts.search(game, node, simiNum - 1);
+            mcts.search(game, node, simiNum);
             cout << part << "search cost " << getSystemTime() - startTime << " ms, simi num " << simiNum << ", "
                  << "per simi " << (getSystemTime() - startTime) / simiNum << " ms" << endl;
 
