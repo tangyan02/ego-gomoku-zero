@@ -88,8 +88,6 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
         Node *node = new Node();
         while (!game.isGameOver()) {
             //开始mcts预测
-//            pruning(node, game, part);
-
             long startTime = getSystemTime();
             int simiNum = numSimulations - node->visits;
             mcts.search(game, node, simiNum);
