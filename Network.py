@@ -5,8 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 
-from Utils import getDevice, getTimeStr
-
 
 # 定义一个Residual block
 class ResidualBlock(nn.Module):
@@ -38,7 +36,7 @@ class ResidualBlock(nn.Module):
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
         self.board_size = 20
-        self.input_channels = 4
+        self.input_channels = 16
         self.residual_channels = 128
         super(PolicyValueNetwork, self).__init__()
 

@@ -583,7 +583,10 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
  * 返回两个值，第一个值代表返回值是否是必胜点
  */
 tuple<bool, vector<Point>, string> selectActions(Game &game) {
-    int range = 3;
+    int range = 2;
+    if (game.historyMoves.size() <= 6) {
+        range = 3;
+    }
     if (game.historyMoves.size() <= 3) {
         range = 4;
     }
@@ -627,11 +630,11 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
 
     string msg;
 
-    //对方VCF点判断
-    auto otherVCFMoves = game.getOppVCFMoves();
-    if (!otherVCFMoves.empty()) {
-        msg += " Opp VCF!";
-    }
+//    //对方VCF点判断
+//    auto otherVCFMoves = game.getOppVCFMoves();
+//    if (!otherVCFMoves.empty()) {
+//        msg += " Opp VCF!";
+//    }
 
     return make_tuple(false, emptyPoints, msg);
 }
