@@ -6,7 +6,7 @@ using namespace std;
 std::vector<Point> removeDuplicates(const std::vector<Point> &points) {
     std::array<std::array<bool, 20>, 20> pointExists = {{{false}}}; // 初始化为 false
     std::vector<Point> uniquePoints;
-    for (const auto& point : points) {
+    for (const auto &point: points) {
         int row = point.x;
         int col = point.y;
 
@@ -108,7 +108,7 @@ std::vector<Point> Game::getEmptyPoints() {
 
 vector<vector<vector<float>>> Game::getState() {
 
-    vector<vector<vector<float>>> data(16, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
+    vector<vector<vector<float>>> data(52, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
@@ -121,50 +121,46 @@ vector<vector<vector<float>>> Game::getState() {
         }
     }
 
-//    //VCF点
-//    auto myVCFMoves = getMyVCFMoves();
-//    if (!myVCFMoves.empty()) {
-//        for (const auto &item: myVCFMoves) {
-//            data[2][item.x][item.y] = 1;
-//        }
-//    }
-//
-//    auto oppVCFMoves = getOppVCFMoves();
-//    if (!oppVCFMoves.empty()) {
-//        for (const auto &item: oppVCFMoves) {
-//            data[3][item.x][item.y] += 1;
-//        }
-//    }
-//
-    // 构造最近7步的局面
-    int numMoves = 7;
-    if (historyMoves.size() < numMoves) {
-        numMoves = historyMoves.size();
-    }
-    int k = historyMoves.size() - 1;
-    int kPlayer = currentPlayer;
-    int tensorIndex = 2;
-    for (int i = 0; i < numMoves; i++, k--, tensorIndex += 2) {
-        auto p = historyMoves[k];
-        kPlayer = 3 - kPlayer;
-        board[p.x][p.y] = 0;
-
-        for (int row = 0; row < boardSize; row++) {
-            for (int col = 0; col < boardSize; col++) {
-                if (board[row][col] == currentPlayer) {
-                    data[tensorIndex][row][col] = 1;
-                } else if (board[row][col] == getOtherPlayer()) {
-                    data[tensorIndex + 1][row][col] = 1;
-                }
-            }
+    //VCF点
+    auto myVCFMoves = getMyVCFMoves();
+    if (!myVCFMoves.empty()) {
+        for (const auto &item: myVCFMoves) {
+            data[2][item.x][item.y] += 1;
         }
     }
 
-    k += 1;
-    for (int i = k; i < historyMoves.size(); i++) {
-        auto p = historyMoves[i];
-        board[p.x][p.y] = kPlayer;
-        kPlayer = 3 - kPlayer;
+    auto oppVCFMoves = getOppVCFMoves();
+    if (!oppVCFMoves.empty()) {
+        for (const auto &item: oppVCFMoves) {
+            data[3][item.x][item.y] += 1;
+        }
+    }
+
+    //棋型点
+    auto list = {ACTIVE_FOUR, ACTIVE_THREE, SLEEPY_FOUR, SLEEPY_THREE, SLEEPY_TWO};
+    auto players = {1, 2};
+    auto moves = getNearEmptyPoints(4);
+    Game game = *this;
+    int p = 4;
+    for (const auto &shape: list) {
+        for (const auto &player: players) {
+            for (const auto &move: moves) {
+                Point action = move;
+                int count = 0;
+                for (int direct = 0; direct < 4; direct++) {
+                    if (checkPointDirectShape(game, player, action, direct, shape)) {
+                        count++;
+                    }
+                }
+                if (count > 0) {
+                    int x = action.x;
+                    int y = action.y;
+                    for (int k = 0; k < count; k++)
+                        data[p + k][x][y] = 1;
+                }
+            }
+            p += 4;
+        }
     }
 
     return data;

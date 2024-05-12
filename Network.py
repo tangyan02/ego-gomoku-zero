@@ -36,7 +36,7 @@ class ResidualBlock(nn.Module):
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
         self.board_size = 20
-        self.input_channels = 16
+        self.input_channels = 52
         self.residual_channels = 128
         super(PolicyValueNetwork, self).__init__()
 
@@ -44,22 +44,6 @@ class PolicyValueNetwork(nn.Module):
         self.conv1 = nn.Conv2d(self.input_channels, self.residual_channels, kernel_size=(3, 3), padding=1)
 
         self.residual_blocks = nn.Sequential(
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),
