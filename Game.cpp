@@ -108,7 +108,7 @@ std::vector<Point> Game::getEmptyPoints() {
 
 vector<vector<vector<float>>> Game::getState() {
 
-    vector<vector<vector<float>>> data(52, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
+    vector<vector<vector<float>>> data(16, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
@@ -137,7 +137,7 @@ vector<vector<vector<float>>> Game::getState() {
     }
 
     //棋型点
-    auto list = {ACTIVE_FOUR, ACTIVE_THREE, SLEEPY_FOUR, SLEEPY_THREE, SLEEPY_TWO};
+    auto list = {ACTIVE_FOUR, ACTIVE_THREE, ACTIVE_TWO, SLEEPY_FOUR, SLEEPY_THREE, SLEEPY_TWO};
     auto players = {1, 2};
     auto moves = getNearEmptyPoints(4);
     Game game = *this;
@@ -155,11 +155,10 @@ vector<vector<vector<float>>> Game::getState() {
                 if (count > 0) {
                     int x = action.x;
                     int y = action.y;
-                    for (int k = 0; k < count; k++)
-                        data[p + k][x][y] = 1;
+                    data[p][x][y] += count;
                 }
             }
-            p += 4;
+            p += 1;
         }
     }
 
