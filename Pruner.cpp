@@ -19,10 +19,10 @@ void pruning(Node *node, Game &game, const string &logPrefix) {
         for (int level = 4; level <= maxLevel; level += interval) {
             //更新前一层的必败点
             iterLevel++;
-            for (const auto &item: node->children) {
-                lose[iterLevel][item.first] = lose[iterLevel - 1][item.first];
-            }
-            loseCount[iterLevel] = loseCount[iterLevel - 1];
+//            for (const auto &item: node->children) {
+//                lose[iterLevel][item.first] = lose[iterLevel - 1][item.first];
+//            }
+//            loseCount[iterLevel] = loseCount[iterLevel - 1];
 
             auto result = dfsVCT(game.currentPlayer, game.currentPlayer, game,
                                  Point(), Point(), Point(),
@@ -64,24 +64,24 @@ void pruning(Node *node, Game &game, const string &logPrefix) {
             cout << logPrefix << "found vct (" << p.x << "," << p.y << ") on " << iterLevel * interval << endl;
         }
 
-        if (loseCount[iterLevel] == node->children.size()) {
-            cout << logPrefix << "level " << iterLevel * interval << ", all lose and bake up" << endl;
-        }
-        while (loseCount[iterLevel] == node->children.size()) {
-            iterLevel--;
-        }
+//        if (loseCount[iterLevel] == node->children.size()) {
+//            cout << logPrefix << "level " << iterLevel * interval << ", all lose and bake up" << endl;
+//        }
+//        while (loseCount[iterLevel] == node->children.size()) {
+//            iterLevel--;
+//        }
 
-        if (loseCount[iterLevel] > 0) {
-            cout << logPrefix << "handle lose points ";
-            for (const auto &item: node->children) {
-                int actionIndex = item.first;
-                if (lose[iterLevel][actionIndex]) {
-                    auto pLose = game.getPointFromIndex(actionIndex);
-//                    cout << "(" << pLose.x << "," << pLose.y << "),";
-                }
-            }
-            cout << endl;
-        }
+//        if (loseCount[iterLevel] > 0) {
+//            cout << logPrefix << "handle lose points ";
+//            for (const auto &item: node->children) {
+//                int actionIndex = item.first;
+//                if (lose[iterLevel][actionIndex]) {
+//                    auto pLose = game.getPointFromIndex(actionIndex);
+////                    cout << "(" << pLose.x << "," << pLose.y << "),";
+//                }
+//            }
+//            cout << endl;
+//        }
 
         //剪枝
         if (winMoveIndex >= 0) {
@@ -97,20 +97,21 @@ void pruning(Node *node, Game &game, const string &logPrefix) {
                 node->children[item]->release();
                 node->children.erase(item);
             }
-        } else {
-            vector<int> excludeIndex;
-            for (const auto &item: node->children) {
-                if (lose[iterLevel][item.first]) {
-                    excludeIndex.emplace_back(item.first);
-                }
-            }
-            for (const auto &item: excludeIndex) {
-                node->visits -= node->children[item]->visits;
-                node->value_sum -= node->children[item]->value_sum;
-                node->children[item]->release();
-                node->children.erase(item);
-            }
         }
+//        else {
+//            vector<int> excludeIndex;
+//            for (const auto &item: node->children) {
+//                if (lose[iterLevel][item.first]) {
+//                    excludeIndex.emplace_back(item.first);
+//                }
+//            }
+//            for (const auto &item: excludeIndex) {
+//                node->visits -= node->children[item]->visits;
+//                node->value_sum -= node->children[item]->value_sum;
+//                node->children[item]->release();
+//                node->children.erase(item);
+//            }
+//        }
 
         int childCountNow = node->children.size();
         if (childCountBefore != childCountNow) {
