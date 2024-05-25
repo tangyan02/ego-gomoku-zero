@@ -112,7 +112,7 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
                     temperatureDefault * (game.boardSize * game.boardSize - step * 2) /
                     (game.boardSize * game.boardSize);
 
-            temperature /= 3;
+            temperature /= 5;
             if (temperature < 0.1) {
                 temperature = 0.1;
             }
