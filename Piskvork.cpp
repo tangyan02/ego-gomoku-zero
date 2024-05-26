@@ -182,7 +182,7 @@ bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum) {
     int total = node->visits;
     if (simiNum > 10 && total > 30) {
         //安全比例，减少误差
-        double beta = 1.05;
+        double beta = 1.2;
 
         //最大值
         int max = -1;
@@ -232,15 +232,15 @@ void brain_turn()
  
 
     pipeOut("MESSAGE time limit %d", thisTimeOut);
-    pipeOut("MESSAGE vctTimeOut limit %d", vctTimeOut);
+    //pipeOut("MESSAGE vctTimeOut limit %d", vctTimeOut);
     pipeOut("MESSAGE current player %d", game->currentPlayer);
 
     auto startTime = getSystemTime();
-    mcts.search(*game, node, 1);
-    game->vctTimeOut = vctTimeOut;
-    pruning(node, *game, "MESSAGE ");
-    auto vctCost = getSystemTime() - startTime;
-    thisTimeOut -= vctCost;
+    //mcts.search(*game, node, 1);
+    //game->vctTimeOut = vctTimeOut;
+    //pruning(node, *game, "MESSAGE ");
+    //auto vctCost = getSystemTime() - startTime;
+    //thisTimeOut -= vctCost;
     pipeOut("MESSAGE time limit updated %d", thisTimeOut);
     
     startTime = getSystemTime();
