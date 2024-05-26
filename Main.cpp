@@ -21,7 +21,7 @@ void selfPlay(int argc, char *argv[]) {
     int numGames = 1;
     int sumSimulations = 800;
     float temperatureDefault = 1;
-    float explorationFactor = 8;
+    float explorationFactor = 3;
     int boardSize = 20;
 
     std::vector<std::thread> threads; // 存储线程的容器
