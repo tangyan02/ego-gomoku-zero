@@ -89,7 +89,7 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
             //剪枝
             mcts.search(game, node, 1);
             if (node->children.size() > 1) {
-                game.vctTimeOut = 10000;
+                game.vctTimeOut = 8000;
                 pruning(node, game, part);
             }
 
@@ -111,15 +111,9 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
                     temperatureDefault * (game.boardSize * game.boardSize - step * 2) /
                     (game.boardSize * game.boardSize);
 
-            //减小温度
             temperature /= 4;
             if (temperature < 0.1) {
                 temperature = 0.1;
-            }
-
-            //前6步开局增加随机
-            if (game.historyMoves.size() <= 6) {
-                temperature = 4;
             }
 
             std::vector<float> action_probs_temperature = mcts.apply_temperature(action_probs, temperature);
