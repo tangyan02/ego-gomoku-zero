@@ -23,6 +23,7 @@ static bool piskvorkMessageEnable;
 static Game* game;
 
 static int firstCost = -1;
+static double exp_factor = 3.0;
 
 static Node* node;
 static Model* model;
@@ -78,7 +79,7 @@ void brain_restart()
 {
     delete game;
     game = new Game(boardSize);
-    MonteCarloTree mcts = MonteCarloTree(model, 1);
+    MonteCarloTree mcts = MonteCarloTree(model, exp_factor);
     node->release();
     node = new Node();
     pipeOut("MESSAGE : RESTARTED");
@@ -101,7 +102,7 @@ void tree_down(int x, int y) {
         }
     }
 
-    MonteCarloTree mcts = MonteCarloTree(model, 1);
+    MonteCarloTree mcts = MonteCarloTree(model, exp_factor);
     for (auto item : node->children) {
         if (item.second != select) {
             item.second->release();
@@ -215,7 +216,7 @@ bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum) {
 
 void brain_turn()
 {
-    MonteCarloTree mcts = MonteCarloTree(model, 1);
+    MonteCarloTree mcts = MonteCarloTree(model, exp_factor);
 
     piskvorkMessageEnable = true;
 
