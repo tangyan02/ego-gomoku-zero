@@ -88,8 +88,8 @@ dirPreBuild()
 lr = 1e-3
 batch_size = 128
 episode = 100000
-shard_nums = [12, 14, 14, 14]
-worker_nums = [6, 7, 7, 7]
+shard_nums = [10, 12, 12, 12]
+worker_nums = [5, 6, 6, 6]
 part_nums = [2, 2, 2, 2]
 node_num = 4
 
