@@ -2,8 +2,13 @@
 
 using namespace std;
 
-void printGame(Game &game, int action, std::vector<float> &action_probs, float temperature) {
-    game.printBoard();
+// 创建一个随机数生成器
+std::random_device rd;
+std::mt19937 gen(rd());
+
+void printGame(Game &game, int action, std::vector<float> &action_probs,
+               float temperature, const std::string &part, const string selectInfo, Model *model) {
+    game.printBoard(part);
     std::string line;
     for (int i = 0; i < game.boardSize * game.boardSize; i++) {
         std::stringstream ss;
@@ -14,80 +19,103 @@ void printGame(Game &game, int action, std::vector<float> &action_probs, float t
             line = "";
         }
     }
-    std::string pic = (game.getOtherPlayer() == 1) ? "x" : "o";
-    cout << pic << " action is " << game.getPointFromIndex(action).x << "," << game.getPointFromIndex(action).y
-         << " on rate " << round(action_probs[action] * 1000) / 1000
-         << " temperature " << round(temperature * 100) / 100 << endl;
-}
 
-torch::jit::Module getNetwork(torch::Device device) {
-    std::string path = "model/net_latest.mdl.pt";
-    auto model = torch::jit::load(path);
-    model.to(device);
-    std::cout << "模型" << path << "已加载" << endl;
-    return model;
-}
-
-torch::Device getDevice() {
-    if (torch::cuda::is_available()) {
-        return torch::kCUDA;
-    } else {
-        return torch::kCPU;
+    float value = 1;
+    if (model != nullptr) {
+        auto state = game.getState();
+        auto eval = model->evaluate_state(state);
+        value = -eval.first;
     }
-//    return torch::kCPU;
+
+    std::string pic = (game.getOtherPlayer() == 1) ? "x" : "o";
+    cout << part << " " << pic << " action is " << game.getPointFromIndex(action).x << ","
+         << game.getPointFromIndex(action).y
+         << " on rate " << round(action_probs[action] * 1000) / 1000
+         << " temperature " << round(temperature * 100) / 100
+         << " value " << value
+         << selectInfo << endl;
 }
 
-void addAction(Game &game, int action,
-               std::vector<std::tuple<torch::Tensor, int, std::vector<float>>> &game_data,
-               float temperature,
-               std::vector<float> &action_probs,
-               std::vector<float> &action_probs_normalized
+void addAction(Game &game,
+               int action,
+               std::vector<std::tuple<vector<vector<vector<float>>>, int, std::vector<float>>> &game_data,
+               std::vector<float> &action_probs
 ) {
     auto state = game.getState();
-    std::tuple<torch::Tensor, int, std::vector<float>> record(state, game.currentPlayer, action_probs);
+    std::tuple<vector<vector<vector<float>>>, int, std::vector<float>> record(state, game.currentPlayer, action_probs);
     game.makeMove(game.getPointFromIndex(action));
     game_data.push_back(record);
-    printGame(game, action, action_probs_normalized, temperature);
 }
 
-std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> selfPlay(int boardSize,
-                                                                                        int numGames,
-                                                                                        int numSimulations,
-                                                                                        float temperatureDefault,
-                                                                                        float explorationFactor) {
-    torch::Device device = getDevice();
-    auto network = getNetwork(device);
-    MonteCarloTree mcts = MonteCarloTree(&network, device, explorationFactor);
-    std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> training_data;
+Game randomGame(Game &game, const std::string &part) {
+    //开局随机去下完后，价值接近0的点
+    auto moves = game.getEmptyPoints();
+
+    std::uniform_int_distribution<> dis(0, moves.size() - 1);
+    // 生成一个随机索引
+    int random_index = dis(gen);
+
+    // 使用随机索引从数组中获取一个元素
+    auto random_element = moves[random_index];
+    game.makeMove(random_element);
+
+    cout << part << "random action is " << random_element.x << "," << random_element.y << " on game" << endl;
+
+    return game;
+}
+
+std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::vector<float>>> selfPlay(int boardSize,
+                                                                                                        int numGames,
+                                                                                                        int numSimulations,
+                                                                                                        float temperatureDefault,
+                                                                                                        float explorationFactor,
+                                                                                                        const std::string &part
+) {
+    Model model;
+    model.init("model/agent_model.onnx");
+
+    MonteCarloTree mcts = MonteCarloTree(&model, explorationFactor);
+    std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::vector<float>>> training_data;
 
     for (int i = 0; i < numGames; i++) {
         Game game(boardSize);
-        std::vector<std::tuple<torch::Tensor, int, std::vector<float>>> game_data;
+        std::vector<std::tuple<vector<vector<vector<float>>>, int, std::vector<float>>> game_data;
+
+        game = randomGame(game, part);
 
         int step = 0;
+        Node *node = new Node();
         while (!game.isGameOver()) {
-            //如果只有唯一选择，则直接选择
-            vector<Point> nextActions = selectActions(game);
-            if (nextActions.size() == 1) {
-                int actionIndex = game.getActionIndex(nextActions[0]);
-                vector<float> probs(game.boardSize * game.boardSize);
-                probs[actionIndex] = 1;
-                addAction(game, actionIndex, game_data, 0, probs, probs);
-                step++;
-                continue;
+            //剪枝
+            mcts.search(game, node, 1);
+            if (node->children.size() > 1) {
+                game.vctTimeOut = 8000;
+                pruning(node, game, part);
             }
 
             //开始mcts预测
-            Node node;
-            mcts.search(game, &node, numSimulations);
+            long startTime = getSystemTime();
+            int simiNum = numSimulations - node->visits;
+            mcts.search(game, node, simiNum);
+            if (simiNum > 0) {
+                cout << part << "search cost " << getSystemTime() - startTime << " ms, simi num " << simiNum << ", "
+                     << "per simi " << (getSystemTime() - startTime) / simiNum << " ms" << endl;
+            }
 
             std::vector<int> actions;
             std::vector<float> action_probs;
             std::tie(actions, action_probs) = mcts.get_action_probabilities(game);
-            mcts.release(&node);
 
+            //计算温度
             float temperature =
-                    temperatureDefault * (game.boardSize * game.boardSize - step) / (game.boardSize * game.boardSize);
+                    temperatureDefault * (game.boardSize * game.boardSize - step * 2) /
+                    (game.boardSize * game.boardSize);
+
+            temperature /= 4;
+            if (temperature < 0.1) {
+                temperature = 0.1;
+            }
+
             std::vector<float> action_probs_temperature = mcts.apply_temperature(action_probs, temperature);
 
             // 归一化概率分布
@@ -98,14 +126,25 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
             }
 
             // 随机选择
-            std::random_device rd;
-            std::mt19937 gen(rd());
             std::discrete_distribution<int> distribution(action_probs_normalized.begin(),
                                                          action_probs_normalized.end());
             int action = actions[distribution(gen)];
 
-            addAction(game, action, game_data, temperature, action_probs, action_probs_normalized);
+            addAction(game, action, game_data, action_probs);
+            printGame(game, action, action_probs_normalized, temperature, part, node->selectInfo, &model);
             step++;
+
+            //更新node
+            for (const auto &item: node->children) {
+                if (item.first != action) {
+                    item.second->release();
+                }
+            }
+            for (const auto item: node->children) {
+                if (item.first == action) {
+                    node = item.second;
+                }
+            }
         }
 
         bool win = game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer());
@@ -118,7 +157,7 @@ std::vector<std::tuple<torch::Tensor, std::vector<float>, std::vector<float>>> s
             training_data.emplace_back(state, mcts_probs, std::vector<float>{value});
         }
 
-        cout << "winner is " << winner << endl;
+        cout << part << "winner is " << winner << endl;
     }
     return training_data;
 }
@@ -129,29 +168,30 @@ void recordSelfPlay(
         int numSimulations,
         float temperatureDefault,
         float explorationFactor,
-        const std::string &shard) {
+        const std::string &part) {
     // 创建文件流对象
-    std::ofstream file("record/data" + shard + ".txt");
+    std::ofstream file("record/data" + part + ".txt");
 
     if (file.is_open()) {
 
-        auto data = selfPlay(boardSize, numGames, numSimulations, temperatureDefault, explorationFactor);
+        auto data = selfPlay(boardSize, numGames, numSimulations, temperatureDefault, explorationFactor,
+                             "[" + part + "] ");
         file << data.size() << endl;
         std::cout << "data count " << data.size() << endl;
         for (auto &item: data) {
             auto state = get<0>(item);
 
             // 获取张量的维度
-            int64_t dim0 = state.size(0);
-            int64_t dim1 = state.size(1);
-            int64_t dim2 = state.size(2);
+            int64_t dim0 = state.size();
+            int64_t dim1 = state[0].size();
+            int64_t dim2 = state[0][0].size();
 
             file << dim0 << " " << dim1 << " " << dim2 << endl;
             // 遍历张量并打印数值
             for (int64_t i = 0; i < dim0; ++i) {
                 for (int64_t j = 0; j < dim1; ++j) {
                     for (int64_t k = 0; k < dim2; ++k) {
-                        file << state[i][j][k].item<float>() << " ";
+                        file << state[i][j][k] << " ";
                     }
                     file << endl;
                 }

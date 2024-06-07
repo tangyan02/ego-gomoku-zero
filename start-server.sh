@@ -1,0 +1,1 @@
+nohup python3 -u Server.py > server.log 2>&1 &

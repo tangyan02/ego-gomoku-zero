@@ -1,0 +1,180 @@
+0) [16,16],  1 ms
+ 1) [14,16],  0 ms
+ 2) [16,14],  0 ms
+ 3) [14,14],  0 ms
+ 4) [16,12],  0 ms
+ 5) [14,12],  0 ms
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ..............o.x...
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ..............o.x...
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ..............o.x...
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: ....................
+ 6) pbrain-ego7.exe: time limit 5000
+ 6) pbrain-ego7.exe: lose point count 0
+ 6) pbrain-ego7.exe: level 2, value -100, (14 ,13), speed 414 k, cost 1 ms
+ 6) pbrain-ego7.exe: level 4, value -170, (14 ,15), speed 580 k, cost 18 ms
+ 6) pbrain-ego7.exe: level 6, value -145, (16 ,15), speed 593 k, cost 117 ms
+ 6) pbrain-ego7.exe: level 8, value -115, (14 ,15), speed 605 k, cost 1020 ms
+ 6) pbrain-ego7.exe: ○● level 8(35) value -115 (14,15) speed 605 k (617368) ●○
+ 6) [14,15],  1256 ms
+ 7) pbrain-ego-gomoku-zero.exe: : LOADED
+ 7) pbrain-ego-gomoku-zero.exe: =====renew node====== 
+ 7) pbrain-ego-gomoku-zero.exe: =====renew node====== 
+ 7) pbrain-ego-gomoku-zero.exe: =====renew node====== 
+ 7) pbrain-ego-gomoku-zero.exe: =====renew node====== 
+ 7) pbrain-ego-gomoku-zero.exe: =====renew node====== 
+ 7) pbrain-ego-gomoku-zero.exe: =====renew node====== 
+ 7) pbrain-ego-gomoku-zero.exe: =====renew node====== 
+ 7) pbrain-ego-gomoku-zero.exe: time limit 3682
+ 7) pbrain-ego-gomoku-zero.exe: current player 1
+ 7) pbrain-ego-gomoku-zero.exe: children size 56
+ 7) pbrain-ego-gomoku-zero.exe: : action 16,15, max 80, total 161 rate 0.50 score -0.29 last simi 0 info 
+ 7) [16,15],  5007 ms
+ 8) pbrain-ego7.exe: time limit 5000
+ 8) pbrain-ego7.exe: lose point count 0
+ 8) pbrain-ego7.exe: level 2, value -120, (15 ,14), speed 654 k, cost 4 ms
+ 8) pbrain-ego7.exe: level 4, value -140, (15 ,14), speed 672 k, cost 16 ms
+ 8) pbrain-ego7.exe: level 6, value -120, (15 ,14), speed 584 k, cost 48 ms
+ 8) pbrain-ego7.exe: level 8, value -105, (15 ,14), speed 563 k, cost 439 ms
+ 8) pbrain-ego7.exe: level 10, value -100, (15 ,14), speed 601 k, cost 3179 ms
+ 8) pbrain-ego7.exe: ○● level 10(5) value -100 (15,14) speed 601 k (1913224) ●○
+ 8) [15,14],  3838 ms
+ 9) pbrain-ego-gomoku-zero.exe: time limit 5000
+ 9) pbrain-ego-gomoku-zero.exe: current player 1
+ 9) pbrain-ego-gomoku-zero.exe: children size 54
+ 9) pbrain-ego-gomoku-zero.exe: : action 16,13, max 207, total 230 rate 0.90 score 0.11 last simi 0 info 
+ 9) [16,13],  5057 ms
+10) pbrain-ego7.exe: time limit 5000
+10) pbrain-ego7.exe: lose point count 0
+10) pbrain-ego7.exe: level 2, value -45, (15 ,11), speed 514 k, cost 2 ms
+10) pbrain-ego7.exe: level 4, value -45, (15 ,11), speed 563 k, cost 6 ms
+10) pbrain-ego7.exe: level 6, value -40, (15 ,11), speed 599 k, cost 147 ms
+10) pbrain-ego7.exe: level 8, value -20, (15 ,11), speed 537 k, cost 486 ms
+10) pbrain-ego7.exe: level 10, value -65, (15 ,11), speed 535 k, cost 3100 ms
+10) pbrain-ego7.exe: ○● level 10(3) value -65 (15,11) speed 535 k (1660055) ●○
+10) [15,11],  3922 ms
+11) pbrain-ego-gomoku-zero.exe: time limit 5000
+11) pbrain-ego-gomoku-zero.exe: current player 1
+11) pbrain-ego-gomoku-zero.exe: children size 57
+11) pbrain-ego-gomoku-zero.exe: : action 17,13, max 166, total 226 rate 0.73 score 0.24 last simi 2 info 
+11) [17,13],  5046 ms
+12) pbrain-ego7.exe: time limit 5000
+12) pbrain-ego7.exe: lose point count 0
+12) pbrain-ego7.exe: level 2, value -10, (15 ,13), speed 547 k, cost 1 ms
+12) pbrain-ego7.exe: level 4, value -20, (15 ,13), speed 636 k, cost 5 ms
+12) pbrain-ego7.exe: level 6, value -25, (15 ,13), speed 688 k, cost 42 ms
+12) pbrain-ego7.exe: level 8, value -15, (15 ,13), speed 642 k, cost 404 ms
+12) pbrain-ego7.exe: level 10, value -15, (15 ,13), speed 582 k, cost 2328 ms
+12) pbrain-ego7.exe: ○● level 10(35) value -15 (15,13) speed 582 k (1355671) ●○
+12) [15,13],  3885 ms
+13) pbrain-ego-gomoku-zero.exe: time limit 5000
+13) pbrain-ego-gomoku-zero.exe: current player 1
+13) pbrain-ego-gomoku-zero.exe: children size 3
+13) pbrain-ego-gomoku-zero.exe: : action 15,12, max 212, total 223 rate 0.95 score 0.32 last simi 2 info   defence 3 
+13) [15,12],  5039 ms
+14) pbrain-ego7.exe: time limit 5000
+14) pbrain-ego7.exe: lose point count 0
+14) pbrain-ego7.exe: level 2, value -10, (17 ,14), speed 616 k, cost 2 ms
+14) pbrain-ego7.exe: level 4, value -5, (17 ,14), speed 667 k, cost 15 ms
+14) pbrain-ego7.exe: level 6, value -45, (17 ,14), speed 593 k, cost 137 ms
+14) pbrain-ego7.exe: level 8, value -55, (17 ,14), speed 605 k, cost 843 ms
+14) pbrain-ego7.exe: ○● level 8(19) value -55 (17,14) speed 605 k (510296) ●○
+14) [17,14],  2066 ms
+15) pbrain-ego-gomoku-zero.exe: time limit 4992
+15) pbrain-ego-gomoku-zero.exe: current player 1
+15) pbrain-ego-gomoku-zero.exe: children size 59
+15) pbrain-ego-gomoku-zero.exe: : action 13,10, max 134, total 203 rate 0.66 score 0.51 last simi 3 info 
+15) [13,10],  5051 ms
+16) pbrain-ego7.exe: time limit 5000
+16) pbrain-ego7.exe: lose point count 8
+16) pbrain-ego7.exe: level 2, value 75, (14 ,11), speed 517 k, cost 1 ms
+16) pbrain-ego7.exe: level 4, value 70, (14 ,11), speed 509 k, cost 9 ms
+16) pbrain-ego7.exe: level 6, value 50, (14 ,11), speed 490 k, cost 39 ms
+16) pbrain-ego7.exe: level 8, value 30, (14 ,11), speed 583 k, cost 1293 ms
+16) pbrain-ego7.exe: ○● level 8(19) value 30 (14,11) speed 583 k (754883) ●○
+16) [14,11],  2419 ms
+17) pbrain-ego-gomoku-zero.exe: time limit 4740
+17) pbrain-ego-gomoku-zero.exe: current player 1
+17) pbrain-ego-gomoku-zero.exe: children size 67
+17) pbrain-ego-gomoku-zero.exe: : action 16,11, max 104, total 228 rate 0.46 score 0.47 last simi 24 info 
+17) [16,11],  4787 ms
+18) pbrain-ego7.exe: time limit 5000
+18) pbrain-ego7.exe: lose point count 0
+18) pbrain-ego7.exe: level 2, value 105, (15 ,17), speed 677 k, cost 1 ms
+18) pbrain-ego7.exe: level 4, value 55, (15 ,17), speed 650 k, cost 20 ms
+18) pbrain-ego7.exe: level 6, value 15, (15 ,17), speed 605 k, cost 120 ms
+18) pbrain-ego7.exe: level 8, value 15, (15 ,17), speed 536 k, cost 2841 ms
+18) pbrain-ego7.exe: ○● level 8(35) value 15 (15,17) speed 536 k (1524877) ●○
+18) [15,17],  3155 ms
+19) pbrain-ego-gomoku-zero.exe: time limit 4500
+19) pbrain-ego-gomoku-zero.exe: current player 1
+19) pbrain-ego-gomoku-zero.exe: children size 6
+19) pbrain-ego-gomoku-zero.exe: : action 18,14, max 195, total 196 rate 0.99 score 0.81 last simi 1 info   defence VCF 
+19) [18,14],  4555 ms
+20) pbrain-ego7.exe: time limit 5000
+20) pbrain-ego7.exe: lose point count 0
+20) pbrain-ego7.exe: level 2, value 35, (15 ,10), speed 492 k, cost 2 ms
+20) pbrain-ego7.exe: level 4, value 35, (12 ,17), speed 654 k, cost 16 ms
+20) pbrain-ego7.exe: level 6, value 35, (12 ,17), speed 638 k, cost 356 ms
+20) pbrain-ego7.exe: level 8, value 25, (12 ,17), speed 564 k, cost 1268 ms
+20) pbrain-ego7.exe: ○● level 8(35) value 25 (12,17) speed 564 k (715769) ●○
+20) [12,17],  1953 ms
+21) pbrain-ego-gomoku-zero.exe: time limit 4272
+21) pbrain-ego-gomoku-zero.exe: current player 1
+21) pbrain-ego-gomoku-zero.exe: children size 80
+21) pbrain-ego-gomoku-zero.exe: : action 13,16, max 181, total 184 rate 0.98 score 0.86 last simi 1 info 
+21) [13,16],  4336 ms
+22) pbrain-ego7.exe: time limit 5000
+22) pbrain-ego7.exe: lose point count 0
+22) pbrain-ego7.exe: level 2, value 25, (15 ,16), speed 199 k, cost 1 ms
+22) pbrain-ego7.exe: level 4, value 45, (11 ,16), speed 641 k, cost 12 ms
+22) pbrain-ego7.exe: level 6, value 60, (11 ,16), speed 616 k, cost 333 ms
+22) pbrain-ego7.exe: level 8, value 75, (12 ,15), speed 583 k, cost 1164 ms
+22) pbrain-ego7.exe: ○● level 8(27) value 75 (12,15) speed 583 k (679634) ●○
+22) [12,15],  2579 ms
+23) pbrain-ego-gomoku-zero.exe: time limit 4056
+23) pbrain-ego-gomoku-zero.exe: current player 1
+23) pbrain-ego-gomoku-zero.exe: children size 82
+23) pbrain-ego-gomoku-zero.exe: : action 11,15, max 176, total 225 rate 0.78 score 0.50 last simi 50 info 
+23) [11,15],  4095 ms
+24) pbrain-ego7.exe: time limit 5000
+24) pbrain-ego7.exe: lose point count 0
+24) pbrain-ego7.exe: level 2, value 110, (15 ,16), speed 0 k, cost 0 ms
+24) pbrain-ego7.exe: level 4, value 120, (15 ,16), speed 427 k, cost 10 ms
+24) pbrain-ego7.exe: level 6, value 75, (15 ,16), speed 467 k, cost 274 ms
+24) pbrain-ego7.exe: level 8, value 90, (11 ,16), speed 467 k, cost 1376 ms
+24) pbrain-ego7.exe: ○● level 8(25) value 90 (11,16) speed 467 k (643759) ●○
+24) [11,16],  2732 ms
+25) pbrain-ego-gomoku-zero.exe: time limit 3851
+25) pbrain-ego-gomoku-zero.exe: current player 1
+25) pbrain-ego-gomoku-zero.exe: children size 86
+25) pbrain-ego-gomoku-zero.exe: : action 13,14, max 145, total 153 rate 0.95 score 0.80 last simi 3 info 
+25) [13,14],  3895 ms
+26) pbrain-ego7.exe: time limit 5000
+26) pbrain-ego7.exe: lose point count 0
+26) pbrain-ego7.exe: level 2, value 130, (10 ,15), speed 600 k, cost 1 ms
+26) pbrain-ego7.exe: level 4, value 120, (10 ,15), speed 653 k, cost 12 ms
+26) pbrain-ego7.exe: level 6, value 110, (10 ,15), speed 571 k, cost 64 ms
+26) pbrain-ego7.exe: level 8, value 75, (10 ,15), speed 508 k, cost 404 ms
+26) pbrain-ego7.exe: ○● level 8(19) value 75 (10,15) speed 508 k (205607) ●○
+26) [10,15],  5042 ms
+27) pbrain-ego-gomoku-zero.exe: time limit 3656
+27) pbrain-ego-gomoku-zero.exe: current player 1
+27) pbrain-ego-gomoku-zero.exe: children size 4
+27) pbrain-ego-gomoku-zero.exe: : action 13,18, max 94, total 138 rate 0.68 score 0.82 last simi 7 info   defence 3 
+27) [13,18],  3710 ms

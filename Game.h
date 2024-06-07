@@ -3,8 +3,9 @@
 
 #include <iostream>
 #include <vector>
-#include <torch/torch.h>
 #include <unordered_set>
+
+using namespace std;
 
 class Point {
 public:
@@ -14,23 +15,49 @@ public:
     Point();
 
     Point(int x, int y);
+
+    bool isNull();
 };
 
+struct PointHash {
+    size_t operator()(const Point &p) const {
+        return hash<int>()(p.x) ^ hash<int>()(p.y);
+    }
+};
 
-const int MAX_BOARD_SIZE = 15;
+struct PointEqual {
+    bool operator()(const Point &lhs, const Point &rhs) const {
+        return lhs.x == rhs.x && lhs.y == rhs.y;
+    }
+};
+
+const int MAX_BOARD_SIZE = 20;
 const int CONNECT = 5;
 
 #define NONE_P 0
 #define BLACK 1
 #define WHITE 2
+#define FLAG1 3
+#define FLAG2 4
 
 class Game {
 public:
     int board[MAX_BOARD_SIZE][MAX_BOARD_SIZE];
+    vector<Point> historyMoves;
     Point lastAction;
     Point lastLastAction;
     int boardSize;
     int currentPlayer;
+    int vctTimeOut = 0;
+
+    bool myVcfDone = false;
+    bool oppVcfDone = false;
+    vector<Point> myVcfMoves;
+    vector<Point> myAllAttackMoves;
+    vector<Point> oppVcfMoves;
+    vector<Point> oppVcfAttackMoves;
+    vector<Point> oppVcfDefenceMoves;
+
 
     Game(int boardSize);
 
@@ -40,19 +67,26 @@ public:
 
     Point getPointFromIndex(int actionIndex);
 
-    std::vector<Point> getEmptyPoints();
+    vector<Point> getEmptyPoints();
 
-    torch::Tensor getState();
+    vector<Point> getNearEmptyPoints(int range = 2);
+
+    vector<vector<vector<float>>> getState();
 
     bool isGameOver();
 
-    void printBoard();
+    void printBoard(const string &part = "");
 
     bool makeMove(Point p);
 
     bool checkWin(int row, int col, int player);
 
+    vector<Point> getMyVCFMoves();
+
+    vector<Point> getOppVCFMoves();
+
 };
 
+std::vector<Point> removeDuplicates(const std::vector<Point> &points);
 
 #endif //EGO_GOMOKU_ZERO_GAME_H

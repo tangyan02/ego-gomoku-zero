@@ -32,14 +32,24 @@ std::pair<int, Node *> Node::selectChild(double exploration_factor) {
     return std::make_pair(selected_action, children[selected_action]);
 }
 
-void Node::expand(Game &game, const std::vector<float> &prior_probs) {
-
-    std::vector<Point> actions = selectActions(game);
+void Node::expand(Game &game, std::vector<Point> &actions, const std::vector<float> &prior_probs) {
+    // 计算概率总和
+    float sum_probs = 0.0;
+    for (auto &prob: prior_probs) {
+        sum_probs += prob;
+    }
 
     for (auto &action: actions) {
         Node *child = new Node(this);
         int actionIndex = game.getActionIndex(action);
-        child->prior_prob = prior_probs[actionIndex];
+
+        // 归一化处理
+        if (sum_probs != 0) {
+            child->prior_prob = prior_probs[actionIndex] / sum_probs;
+        } else {
+            child->prior_prob = prior_probs[actionIndex];
+        }
+
         children[actionIndex] = child;
     }
 }
@@ -49,9 +59,8 @@ void Node::update(double value) {
     value_sum += value;
 }
 
-MonteCarloTree::MonteCarloTree(torch::jit::Module *network, torch::Device device,
-                               float exploration_factor)
-        : network(network), root(nullptr), device(device), exploration_factor(exploration_factor) {
+MonteCarloTree::MonteCarloTree(Model *model, float exploration_factor)
+        : model(model), root(nullptr), exploration_factor(exploration_factor) {
 }
 
 void MonteCarloTree::simulate(Game game) {
@@ -70,15 +79,34 @@ void MonteCarloTree::simulate(Game game) {
         // game.printBoard();
     }
 
-    auto state = game.getState();
-    std::pair<float, std::vector<float>>
-            result = evaluate_state(state);
-    float value = result.first;
-    std::vector<float> priorProb = result.second;
+    float value;
+
     if (game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer())) {
         value = -1;
     } else {
-        node->expand(game, priorProb);
+        auto actions = selectActions(game);
+        node->selectInfo = get<2>(actions);
+
+//        if (get<0>(actions) && node->parent != nullptr) {
+//            value = 1;
+//        } else {
+//            auto state = game.getState();
+//            std::pair<float, std::vector<float>>
+//                    result = model->evaluate_state(state);
+//            value = result.first;
+//            std::vector<float> priorProb = result.second;
+//            node->expand(game, get<1>(actions), priorProb);
+//        }
+
+        auto state = game.getState();
+        std::pair<float, std::vector<float>>
+                result = model->evaluate_state(state);
+        value = result.first;
+        if (get<0>(actions)) {
+            value = 1;
+        }
+        std::vector<float> priorProb = result.second;
+        node->expand(game, get<1>(actions), priorProb);
     }
 
     backpropagate(node, -value);
@@ -93,26 +121,6 @@ void MonteCarloTree::search(Game &game, Node *node, int num_simulations) {
     }
 }
 
-std::pair<float, std::vector<float>> MonteCarloTree::evaluate_state(torch::Tensor &state) {
-    torch::Tensor state_tensor = state.to(device).clone();
-    std::vector<torch::jit::IValue> inputs;
-    inputs.emplace_back(state_tensor);
-
-    auto outputs = network->forward(inputs).toTuple();
-    torch::Tensor value = outputs->elements()[0].toTensor();
-    torch::Tensor policy = outputs->elements()[1].toTensor();
-
-    auto valueFloat = value[0][0].cpu().item<float>();
-
-    // 将张量转换为 CPU 上的张量
-    torch::Tensor cpu_policy = torch::exp(policy).cpu();
-
-    // 打平并转换为 std::vector<float>
-    std::vector<float> prior_prob(cpu_policy.data<float>(), cpu_policy.data<float>() + cpu_policy.numel());
-
-    return std::make_pair(valueFloat, prior_prob);
-}
-
 void MonteCarloTree::backpropagate(Node *node, float value) {
     while (node != nullptr) {
         node->update(value);
@@ -122,7 +130,7 @@ void MonteCarloTree::backpropagate(Node *node, float value) {
 }
 
 std::pair<std::vector<int>, std::vector<float>>
-MonteCarloTree::get_action_probabilities(Game game, float temperature) {
+MonteCarloTree::get_action_probabilities(Game game) {
     Node *node = root;
     std::vector<std::pair<int, int>> action_visits;
     for (auto &item: node->children) {
@@ -151,9 +159,6 @@ MonteCarloTree::get_action_probabilities(Game game, float temperature) {
 
     std::vector<float> probs(game.boardSize * game.boardSize, 0);
     for (int i = 0; i < actions.size(); i++) {
-        //劣势的情况下会有大量节点只访问一次，并影响了原有的概率，自我对战时不考虑选点
-        if (visits[i] == 1)
-            action_probs[i] = 0;
         probs[actions[i]] = action_probs[i];
     }
 
@@ -175,13 +180,11 @@ std::vector<float> MonteCarloTree::apply_temperature(std::vector<float> action_p
     return action_probabilities;
 }
 
-void MonteCarloTree::release(Node *node) {
-    if (!node->children.empty()) {
-        for (const auto &item: node->children) {
-            release(item.second);
-        }
+void Node::release() {
+    for (const auto &item: this->children) {
+        item.second->release();
     }
-    if (node->parent != nullptr) {
-        delete node;
+    if (this->parent != nullptr) {
+        delete this;
     }
 }

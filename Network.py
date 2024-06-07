@@ -3,8 +3,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from Utils import getDevice
+from torch import optim
 
 
 # 定义一个Residual block
@@ -12,10 +11,10 @@ class ResidualBlock(nn.Module):
     def __init__(self, channels):
         super(ResidualBlock, self).__init__()
 
-        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(channels)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(channels)
 
     def forward(self, x):
@@ -34,37 +33,36 @@ class ResidualBlock(nn.Module):
         return out
 
 
-
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
-        self.board_size = 15
+        self.board_size = 20
         self.input_channels = 4
-        self.filters = 128
+        self.residual_channels = 128
         super(PolicyValueNetwork, self).__init__()
 
         # common layers
-        self.conv1 = nn.Conv2d(self.input_channels, self.filters, kernel_size=(3, 3), padding=1)
+        self.conv1 = nn.Conv2d(self.input_channels, self.residual_channels, kernel_size=(3, 3), padding=1)
 
         self.residual_blocks = nn.Sequential(
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters),
-            ResidualBlock(self.filters)
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
         )
 
         # action policy layers
-        self.act_conv1 = nn.Conv2d(self.filters, 2, kernel_size=(1, 1))
-        self.act_bn1 = nn.BatchNorm2d(2)
-        self.act_fc1 = nn.Linear(2 * self.board_size * self.board_size,
+        self.act_conv1 = nn.Conv2d(self.residual_channels, 4, kernel_size=(1, 1), bias=False)
+        self.act_bn1 = nn.BatchNorm2d(4)
+        self.act_fc1 = nn.Linear(4 * self.board_size * self.board_size,
                                  self.board_size * self.board_size)
         # state value layers
-        self.val_conv1 = nn.Conv2d(self.filters, 2, kernel_size=(1, 1))
+        self.val_conv1 = nn.Conv2d(self.residual_channels, 2, kernel_size=(1, 1), bias=False)
         self.val_bn1 = nn.BatchNorm2d(2)
         self.val_fc1 = nn.Linear(2 * self.board_size * self.board_size, 64)
         self.val_fc2 = nn.Linear(64, 1)
@@ -81,7 +79,7 @@ class PolicyValueNetwork(nn.Module):
         x_act = self.act_conv1(x)
         x_act = self.act_bn1(x_act)
         x_act = F.relu(x_act)
-        x_act = x_act.view(-1, 2 * self.board_size * self.board_size)
+        x_act = x_act.view(-1, 4 * self.board_size * self.board_size)
         x_act = F.log_softmax(self.act_fc1(x_act), dim=1)
 
         # state value layers
@@ -95,14 +93,41 @@ class PolicyValueNetwork(nn.Module):
         return x_val, x_act
 
 
-def get_network(device=getDevice()):
+def get_network(device, lr):
     network = PolicyValueNetwork()
-    if os.path.exists(f"../model/net_latest.mdl"):
-        network.load_state_dict(torch.load(f"../model/net_latest.mdl", map_location=torch.device(device)))
-    network.to(device)
-    return network
+    network.to(device)  # 将网络移动到设备
+
+    # 定义优化器
+    optimizer = optim.Adam(network.parameters(), lr)
+
+    if os.path.exists(f"model/checkpoint.pth"):
+        checkpoint = torch.load("model/checkpoint.pth", device)
+        network.load_state_dict(checkpoint['model_state_dict'])
+
+        # 重新定义优化器，确保优化器的状态在正确的设备上
+        optimizer = optim.Adam(network.parameters(), lr)
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+    return network, optimizer
 
 
-def save_network(network, path=f"model/net_latest.mdl"):
-    torch.save(network.state_dict(), path)
-    torch.jit.save(torch.jit.script(network), path + ".pt")
+def save_network(network, optimizer, subfix=""):
+    path = f"model/checkpoint{subfix}.pth"
+    torch.save({
+        'model_state_dict': network.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+    }, path)
+
+    torch.jit.save(torch.jit.script(network), "model/model_latest.pt")
+
+    # 导出onnx
+    network.eval()
+    example = torch.randn(network.input_channels, 20, 20, requires_grad=True, device=next(network.parameters()).device)
+    torch.onnx.export(network,
+                      (example),
+                      'model/model_latest.onnx',
+                      input_names=['input'],
+                      output_names=['value', "act"],
+                      opset_version=17,
+                      verbose=False)
+    network.train()
