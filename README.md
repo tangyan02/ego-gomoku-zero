@@ -7,8 +7,3 @@ A Gomoku AI based on the AlphaZero algorithm, utilizing the Torch framework for 
 - C++
 - ONNX in C++
 
-# branchs
-| branch name | Description   |
-| ----------- | -----------   |
-| gomoku-x    | for gomoku ai |
-| go-x        | for go ai     |
