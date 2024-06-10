@@ -136,11 +136,11 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
         Node *node = new Node();
         while (!game.isGameOver()) {
             //剪枝
-            mcts.search(game, node, 1);
-            if (node->children.size() > 1) {
-                game.vctTimeOut = 8000;
-                pruning(node, game, part);
-            }
+//            mcts.search(game, node, 1);
+//            if (node->children.size() > 1) {
+//                game.vctTimeOut = 8000;
+//                pruning(node, game, part);
+//            }
 
             //开始mcts预测
             long startTime = getSystemTime();
