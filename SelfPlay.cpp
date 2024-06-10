@@ -58,7 +58,9 @@ Game randomGame(Game &game, const std::string &part) {
         if (file.is_open()) {
             std::string line;
             while (std::getline(file, line)) {
-                lines.push_back(line); // 将每一行添加到 lines 向量中
+                if (!line.empty()) { // 检查行是否为空
+                    lines.push_back(line); // 将非空行添加到 lines 向量中
+                }
             }
             file.close(); // 关闭文件
         } else {
@@ -69,8 +71,9 @@ Game randomGame(Game &game, const std::string &part) {
         std::uniform_int_distribution<int> disInt(0, lines.size());
         int randomIndex = disInt(gen); // 生成随机数
 
+        std::cout << part << "Randomly selected index: " << randomIndex << std::endl;
         std::string randomLine = lines[randomIndex]; // 获取随机选择的行
-        std::cout << "Randomly selected coordinates: " << randomLine << std::endl;
+        std::cout << part << "Randomly selected coordinates: " << randomLine << std::endl;
 
         std::vector<Point> points; // 存储 Point 对象的数组
         // 将字符串分割为坐标点，并将它们转换为 Point 对象
@@ -90,7 +93,7 @@ Game randomGame(Game &game, const std::string &part) {
         for (const auto &item: points) {
             int x = item.x + game.boardSize / 2;
             int y = item.y + game.boardSize / 2;
-            cout << "make move " << x << "," << y << endl;
+            cout << part << "make move " << x << "," << y << endl;
             game.makeMove(Point(x, y));
         }
 
