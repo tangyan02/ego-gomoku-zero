@@ -68,7 +68,7 @@ Game randomGame(Game &game, const std::string &part) {
             return 1;
         }
 
-        std::uniform_int_distribution<int> disInt(0, lines.size());
+        std::uniform_int_distribution<int> disInt(0, lines.size() - 1);
         int randomIndex = disInt(gen); // 生成随机数
 
         std::cout << part << "Randomly selected index: " << randomIndex << std::endl;
