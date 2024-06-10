@@ -48,18 +48,67 @@ void addAction(Game &game,
 }
 
 Game randomGame(Game &game, const std::string &part) {
-    //开局随机去下完后，价值接近0的点
-    auto moves = game.getEmptyPoints();
+    std::uniform_real_distribution<double> dis(0.0, 1.0); // 生成 0 到 1 之间的均匀分布的随机数
+    double randomNum = dis(gen); // 生成随机数
+    cout << randomNum << endl;
+    if (randomNum < 0.4) {
+        std::ifstream file("opennings/opennings.txt"); // 打开文件
+        std::vector<std::string> lines; // 存储文件中的每一行
 
-    std::uniform_int_distribution<> dis(0, moves.size() - 1);
-    // 生成一个随机索引
-    int random_index = dis(gen);
+        if (file.is_open()) {
+            std::string line;
+            while (std::getline(file, line)) {
+                lines.push_back(line); // 将每一行添加到 lines 向量中
+            }
+            file.close(); // 关闭文件
+        } else {
+            std::cout << "Failed to open the file." << std::endl;
+            return 1;
+        }
 
-    // 使用随机索引从数组中获取一个元素
-    auto random_element = moves[random_index];
-    game.makeMove(random_element);
+        std::uniform_int_distribution<int> disInt(0, lines.size());
+        int randomIndex = disInt(gen); // 生成随机数
 
-    cout << part << "random action is " << random_element.x << "," << random_element.y << " on game" << endl;
+        std::string randomLine = lines[randomIndex]; // 获取随机选择的行
+        std::cout << "Randomly selected coordinates: " << randomLine << std::endl;
+
+        std::vector<Point> points; // 存储 Point 对象的数组
+        // 将字符串分割为坐标点，并将它们转换为 Point 对象
+        std::stringstream ss(randomLine);
+        std::string token;
+
+        while (std::getline(ss, token, ',')) {
+            Point point;
+            point.x = std::stoi(token);
+
+            std::getline(ss, token, ',');
+            point.y = std::stoi(token);
+
+            points.push_back(point);
+        }
+
+        for (const auto &item: points) {
+            int x = item.x + game.boardSize / 2;
+            int y = item.y + game.boardSize / 2;
+            cout << "make move " << x << "," << y << endl;
+            game.makeMove(Point(x, y));
+        }
+
+        return game;
+    } else {
+        //开局随机去下完后，价值接近0的点
+        auto moves = game.getEmptyPoints();
+
+        std::uniform_int_distribution<> dis(0, moves.size() - 1);
+        // 生成一个随机索引
+        int random_index = dis(gen);
+
+        // 使用随机索引从数组中获取一个元素
+        auto random_element = moves[random_index];
+        game.makeMove(random_element);
+
+        cout << part << "random action is " << random_element.x << "," << random_element.y << " on game" << endl;
+    }
 
     return game;
 }
