@@ -16,7 +16,7 @@ public:
 
     Model();
 
-    void init(string model_path);
+    void init(string model_path, int threadNum = 0);
 
     std::pair<float, std::vector<float>> evaluate_state(vector<vector<vector<float>>> &state);
 

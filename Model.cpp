@@ -12,13 +12,15 @@ std::wstring ConvertStringToWString(const std::string& str) {
 Model::Model() : memoryInfo(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)) {
 }
 
-void Model::init(string modelPath) {
+void Model::init(string modelPath, int threadNum) {
     // 初始化环境
     env = new Ort::Env(ORT_LOGGING_LEVEL_WARNING, "ModelInference");
 
     // 初始化会话选项并添加模型
     sessionOptions = new Ort::SessionOptions();
-    sessionOptions->SetIntraOpNumThreads(1);
+    if (threadNum > 0) {
+        sessionOptions->SetIntraOpNumThreads(threadNum);
+    }
     sessionOptions->SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
 
     // 判断是否有GPU
