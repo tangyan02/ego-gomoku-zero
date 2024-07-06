@@ -19,6 +19,7 @@ void Model::init(string modelPath) {
     // 初始化会话选项并添加模型
     sessionOptions = new Ort::SessionOptions();
     sessionOptions->SetIntraOpNumThreads(1);
+    sessionOptions->SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
 
     // 判断是否有GPU
     auto providers = Ort::GetAvailableProviders();
