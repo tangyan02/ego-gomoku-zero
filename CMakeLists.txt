@@ -72,7 +72,7 @@ endfunction()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3 -funroll-loops -ftree-vectorize -finline-functions -std=c++17")
 
-add_executable(ego-gomoku-zero SelfPlay.cpp Game.h Game.cpp MCTS.h MCTS.cpp SelfPlay.h Main.cpp Analyzer.cpp Analyzer.h AnalyzerTest.cpp AnalyzerTest.h Piskvork.cpp Pisqpipe.h Pisqpipe.cpp GameTest.cpp GameTest.h Console.cpp Console.cpp Console.cpp Console.h Utils.cpp Utils.h Shape.cpp Shape.h ShapeTest.cpp ShapeTest.h Model.cpp Model.h Pruner.cpp Pruner.h)
+add_executable(ego-gomoku-zero SelfPlay.cpp Game.h Game.cpp MCTS.h MCTS.cpp SelfPlay.h Main.cpp Analyzer.cpp Analyzer.h AnalyzerTest.cpp AnalyzerTest.h Piskvork.cpp Pisqpipe.h Pisqpipe.cpp GameTest.cpp GameTest.h Utils.cpp Utils.h Shape.cpp Shape.h ShapeTest.cpp ShapeTest.h Model.cpp Model.h Pruner.cpp Pruner.h)
 set_property(TARGET ego-gomoku-zero PROPERTY CXX_STANDARD 17)
 
 # ONNX

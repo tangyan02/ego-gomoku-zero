@@ -2,7 +2,6 @@
 #include "AnalyzerTest.h"
 #include "GameTest.h"
 #include "Pisqpipe.h"
-#include "Console.h"
 #include "Shape.h"
 #include "ShapeTest.h"
 
@@ -23,12 +22,13 @@ void selfPlay(int argc, char *argv[]) {
     float temperatureDefault = 1;
     float explorationFactor = 3;
     int boardSize = 20;
+    int modelBatchSize = 16;
 
     std::vector<std::thread> threads; // 存储线程的容器
     // 创建n个线程并将函数作为入口点
     for (int i = 0; i < partNum; ++i) {
         auto part = shard + "_" + std::to_string(i);
-        threads.emplace_back(recordSelfPlay, boardSize, numGames, sumSimulations, temperatureDefault,
+        threads.emplace_back(recordSelfPlay, boardSize, numGames, sumSimulations, modelBatchSize, temperatureDefault,
                              explorationFactor, part);
     }
 
@@ -115,6 +115,5 @@ int main(int argc, char *argv[]) {
     selfPlay(argc, argv);
 //    test();
 //    piskvork();
-//    startConsole(true);
     return 0;
 }

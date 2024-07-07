@@ -20,6 +20,7 @@ void recordSelfPlay(
         int boardSize,
         int numGames,
         int numSimulations,
+        int modelBatchSize,
         float temperatureDefault,
         float explorationFactor,
         const std::string& shard);
