@@ -4,12 +4,13 @@
 #include "Pisqpipe.h"
 #include "Shape.h"
 #include "ShapeTest.h"
+#include "Model.h"
 
 using namespace std;
 
 void selfPlay(int argc, char *argv[]) {
     string shard;
-    int partNum = 1;
+    int partNum = 4;
     if (argc > 1) {
         string firstArg = argv[1];
         partNum = std::stoi(argv[2]);;
@@ -22,20 +23,26 @@ void selfPlay(int argc, char *argv[]) {
     float temperatureDefault = 1;
     float explorationFactor = 3;
     int boardSize = 20;
-    int modelBatchSize = 16;
+    int modelBatchSize = 64;
+    int mctsThreadSize = 16;
+
+    Model *model = new Model();
+    model->init("model/agent_model.onnx", modelBatchSize);
 
     std::vector<std::thread> threads; // 存储线程的容器
     // 创建n个线程并将函数作为入口点
     for (int i = 0; i < partNum; ++i) {
         auto part = shard + "_" + std::to_string(i);
-        threads.emplace_back(recordSelfPlay, boardSize, numGames, sumSimulations, modelBatchSize, temperatureDefault,
-                             explorationFactor, part);
+        threads.emplace_back(recordSelfPlay, boardSize, numGames, sumSimulations, mctsThreadSize,
+                             temperatureDefault, explorationFactor, part, model);
     }
 
     // 等待所有线程执行完毕
     for (auto &thread: threads) {
         thread.join();
     }
+
+    delete model;
 }
 
 void test() {

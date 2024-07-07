@@ -32,7 +32,7 @@ void printGame(Game &game, int action, std::vector<float> &action_probs,
          << game.getPointFromIndex(action).y
          << " on rate " << round(action_probs[action] * 1000) / 1000
          << " temperature " << round(temperature * 100) / 100
-//         << " value " << value
+         //         << " value " << value
          << selectInfo << endl;
 }
 
@@ -119,13 +119,12 @@ Game randomGame(Game &game, const std::string &part) {
 std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::vector<float>>> selfPlay(int boardSize,
                                                                                                         int numGames,
                                                                                                         int numSimulations,
-                                                                                                        int modelBatchSize,
+                                                                                                        int mctsThreadSize,
                                                                                                         float temperatureDefault,
                                                                                                         float explorationFactor,
-                                                                                                        const std::string &part
+                                                                                                        const std::string &part,
+                                                                                                        Model &model
 ) {
-    Model model;
-    model.init("model/agent_model.onnx", modelBatchSize);
 
     MonteCarloTree mcts = MonteCarloTree(&model, explorationFactor);
     std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::vector<float>>> training_data;
@@ -149,7 +148,7 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
             //开始mcts预测
             long startTime = getSystemTime();
             int simiNum = numSimulations - node->visits;
-            int threadNum = modelBatchSize;
+            int threadNum = mctsThreadSize;
             mcts.search(game, node, simiNum, threadNum);
             if (simiNum > 0) {
                 cout << part << "search cost " << getSystemTime() - startTime << " ms, simi num " << simiNum << ", "
@@ -219,17 +218,18 @@ void recordSelfPlay(
         int boardSize,
         int numGames,
         int numSimulations,
-        int modelBatchSize,
+        int mctsThreadSize,
         float temperatureDefault,
         float explorationFactor,
-        const std::string &part) {
+        const std::string &part,
+        Model *model) {
     // 创建文件流对象
     std::ofstream file("record/data" + part + ".txt");
 
     if (file.is_open()) {
 
-        auto data = selfPlay(boardSize, numGames, numSimulations, modelBatchSize, temperatureDefault, explorationFactor,
-                             "[" + part + "] ");
+        auto data = selfPlay(boardSize, numGames, numSimulations, mctsThreadSize, temperatureDefault,
+                             explorationFactor, "[" + part + "] ", *model);
         file << data.size() << endl;
         std::cout << "data count " << data.size() << endl;
         for (auto &item: data) {

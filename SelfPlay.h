@@ -20,10 +20,11 @@ void recordSelfPlay(
         int boardSize,
         int numGames,
         int numSimulations,
-        int modelBatchSize,
+        int mctsThreadSize,
         float temperatureDefault,
         float explorationFactor,
-        const std::string& shard);
+        const std::string& shard,
+        Model* model);
 
 Game randomGame(Game &game);
 

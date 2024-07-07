@@ -88,9 +88,9 @@ dirPreBuild()
 lr = 1e-3
 batch_size = 64
 episode = 100000
-shard_nums = [10, 10, 10, 10]
+shard_nums = [4, 4, 4, 4]
 worker_nums = [2, 2, 2, 2]
-part_nums = [2, 2, 2, 2]
+part_nums = [4, 4, 4, 4]
 node_num = 4
 
 # 模型初始化

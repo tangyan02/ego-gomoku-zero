@@ -72,7 +72,6 @@ Model::evaluate_state_batch(const std::vector<std::vector<std::vector<std::vecto
     int dim2 = batchData[0][0].size();
     int dim3 = batchData[0][0][0].size();
 
-//    cout << "输入尺寸 " << batch_size << " " << dim1 << " " << dim2 << " " << dim3 << endl;
     // 将批量数据转换为一维数组
     std::vector<float> flattened_data(modelBatchSize * dim1 * dim2 * dim3);
     int index = 0;
@@ -141,8 +140,6 @@ Model::enqueueData(std::vector<std::vector<std::vector<float>>> data) {
     std::future<std::pair<float, std::vector<float>>> future = promise.get_future();
     {
         std::unique_lock<std::mutex> lock(queueMutex);
-//        cout << "放入数据 尺寸：" << data.size() << " " << data.front().size() << " " << data.front().front().size()
-//             << endl;
         dataQueue.emplace(data, std::move(promise));
     }
     condition.notify_one();
@@ -170,7 +167,7 @@ void Model::batchInference() {
 
         if (!batchData.empty()) {
             // 收集所有数据
-//            cout << "当前处理批量大小 " << batchData.size() << endl;
+            cout << "当前处理批量大小 " << batchData.size() << endl;
             vector<std::vector<std::vector<std::vector<float>>>> allData;
             for (const auto &dataPromisePair: batchData) {
                 allData.push_back(dataPromisePair.first);

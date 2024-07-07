@@ -134,7 +134,7 @@ def save_network(network, optimizer, subfix=""):
 
     # 导出onnx
     network.eval()
-    example = torch.randn(16, network.input_channels, 20, 20, requires_grad=True,
+    example = torch.randn(64, network.input_channels, 20, 20, requires_grad=True,
                           device=next(network.parameters()).device)
     torch.onnx.export(network,
                       (example),
