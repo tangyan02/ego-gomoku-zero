@@ -143,7 +143,9 @@ def save_network(network, optimizer, subfix=""):
                       output_names=['value', "act"],
                       opset_version=17,
                       verbose=False)
-    example = torch.randn(network.input_channels, 20, 20, requires_grad=True, device=next(network.parameters()).device)
+
+    example = torch.randn(1, network.input_channels, 20, 20, requires_grad=True,
+                          device=next(network.parameters()).device)
     torch.onnx.export(network,
                       (example),
                       'model/model_latest_single_batch.onnx',

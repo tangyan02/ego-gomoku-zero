@@ -151,7 +151,7 @@ void Model::batchInference() {
         std::vector<DataPromisePair> batchData;
         {
             std::unique_lock<std::mutex> lock(queueMutex);
-            condition.wait_for(lock, std::chrono::milliseconds(1000), [this] {
+            condition.wait_for(lock, std::chrono::milliseconds(50), [this] {
                 return dataQueue.size() >= modelBatchSize || stop;
             });
 
