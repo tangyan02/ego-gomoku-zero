@@ -167,7 +167,7 @@ void Model::batchInference() {
 
         if (!batchData.empty()) {
             // 收集所有数据
-            cout << "当前处理批量大小 " << batchData.size() << endl;
+//            cout << "当前处理批量大小 " << batchData.size() << endl;
             vector<std::vector<std::vector<std::vector<float>>>> allData;
             for (const auto &dataPromisePair: batchData) {
                 allData.push_back(dataPromisePair.first);
