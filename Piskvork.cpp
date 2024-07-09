@@ -65,7 +65,7 @@ void brain_init()
     }
     boardSize = width;
     model = new Model();
-    model->init(fullPath);
+    model->init(fullPath, 1);
 
     pipeOut("MESSAGE : LOADED");
 
@@ -181,7 +181,7 @@ int min(int a, int b) {
 
 bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum) {
     int total = node->visits;
-    if (simiNum > 10 && total > 30) {
+	if (passTime / (float)thisTimeOut > 0.25) {
         //安全比例，减少误差
         double beta = 1.2;
 
@@ -208,6 +208,10 @@ bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum) {
 
         if ((secondMax + (estimateVisit - total)) * beta < max && max > 10) {
             pipeOut("MESSAGE prebreak at max %d, secondMax %d, total %d, simiNum %d, estimateVisit %d", max, secondMax, total, simiNum, estimateVisit);
+            return true;
+        }
+        if (simiNum>1 && (((double)passTime / (double)simiNum) + passTime > (double)thisTimeOut)) {
+            pipeOut("MESSAGE stop for estimate may timeout");
             return true;
         }
     }

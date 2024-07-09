@@ -31,7 +31,7 @@ std::pair<int, Node *> Node::selectChild(double exploration_factor) {
         }
     }
     if (selected_action == -1) {
-        cout << "当前子节点数量" << children.size() << endl;
+        //cout << "当前子节点数量" << children.size() << endl;
         for (const auto &item: children) {
             cout << "idx = " << item.first << " visit = " << item.second->visits << " virtualLoss = "
                  << item.second->virtual_loss << " ubc = " << item.second->ucb

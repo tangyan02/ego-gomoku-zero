@@ -28,7 +28,7 @@ public:
 
     void init(std::string modelPath, int modelBatchSize);
 
-    std::future<std::pair<float, std::vector<float>>> enqueueData(std::vector<std::vector<std::vector<float>>> data);
+    future<std::pair<float, std::vector<float>>> enqueueData(std::vector<std::vector<std::vector<float>>> data);
 
     std::pair<float, std::vector<float>> evaluate_state(std::vector<std::vector<std::vector<float>>> &data);
     std::vector<std::pair<float, std::vector<float>>> evaluate_state_batch(const vector<std::vector<std::vector<std::vector<float>>>>& batchData);
