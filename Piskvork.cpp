@@ -65,7 +65,7 @@ void brain_init()
     }
     boardSize = width;
     model = new Model();
-    model->init(fullPath);
+    model->init(fullPath, 1);
 
     pipeOut("MESSAGE : LOADED");
 
@@ -181,7 +181,7 @@ int min(int a, int b) {
 
 bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum) {
     int total = node->visits;
-    if (simiNum > 10 && total > 30) {
+    if (passTime/thisTimeOut > 0.25) {
         //安全比例，减少误差
         double beta = 1.2;
 
