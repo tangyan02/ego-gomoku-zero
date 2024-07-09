@@ -210,7 +210,7 @@ bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum) {
             pipeOut("MESSAGE prebreak at max %d, secondMax %d, total %d, simiNum %d, estimateVisit %d", max, secondMax, total, simiNum, estimateVisit);
             return true;
         }
-        if (simiNum>1 && (double)passTime / (double)simiNum) + passTime > (double)thisTimeOut) {
+        if (simiNum>1 && (((double)passTime / (double)simiNum) + passTime > (double)thisTimeOut)) {
             pipeOut("MESSAGE stop for estimate may timeout");
             return true;
         }
