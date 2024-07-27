@@ -5,8 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 
-from Utils import getDevice
-
 
 # 定义一个Residual block
 class ResidualBlock(nn.Module):
@@ -46,16 +44,6 @@ class PolicyValueNetwork(nn.Module):
         self.conv1 = nn.Conv2d(self.input_channels, self.residual_channels, kernel_size=(3, 3), padding=1)
 
         self.residual_blocks = nn.Sequential(
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),
