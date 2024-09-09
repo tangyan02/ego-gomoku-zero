@@ -37,13 +37,23 @@ class PolicyValueNetwork(nn.Module):
     def __init__(self):
         self.board_size = 20
         self.input_channels = 4
-        self.residual_channels = 256
+        self.residual_channels = 128
         super(PolicyValueNetwork, self).__init__()
 
         # common layers
         self.conv1 = nn.Conv2d(self.input_channels, self.residual_channels, kernel_size=(3, 3), padding=1)
 
         self.residual_blocks = nn.Sequential(
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),

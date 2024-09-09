@@ -51,7 +51,8 @@ Game randomGame(Game &game, const std::string &part) {
     std::uniform_real_distribution<double> dis(0.0, 1.0); // 生成 0 到 1 之间的均匀分布的随机数
     double randomNum = dis(gen); // 生成随机数
     cout << randomNum << endl;
-    if (randomNum < 0.4) {
+//    if (randomNum < 0.4) {
+    if (randomNum < 0) {
         std::ifstream file("opennings/opennings.txt"); // 打开文件
         std::vector<std::string> lines; // 存储文件中的每一行
 
@@ -164,7 +165,7 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
                     temperatureDefault * (game.boardSize * game.boardSize - step * 8) /
                     (game.boardSize * game.boardSize);
 
-            temperature/=4;
+            temperature /= 2;
             if (temperature < 0.1) {
                 temperature = 0.1;
             }
