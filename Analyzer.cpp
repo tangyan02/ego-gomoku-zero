@@ -279,10 +279,18 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
         if (oppNearMoves.empty()) {
             oppNearMoves = game.getEmptyPoints();
         }
+//        printVector(oppNearMoves);
 
+        auto winMoves = getWinningMoves(currentPlayer, game, nearMoves);
         auto oppWinMoves = getWinningMoves(3 - currentPlayer, game, oppNearMoves);
         auto activeMoves = getActiveFourMoves(currentPlayer, game, nearMoves);
         auto sleepMoves = getSleepyFourMoves(currentPlayer, game, nearMoves);
+
+        //我方胜利点
+        if (!winMoves.empty()) {
+            return std::make_pair(true, winMoves);
+        }
+
         //如果对方有2个胜利点，则失败
         if (oppWinMoves.size() > 1) {
             return std::make_pair(false, std::vector<Point>());
@@ -450,9 +458,15 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
             oppNearMoves = game.getEmptyPoints();
         }
 
+        auto winMoves = getWinningMoves(currentPlayer, game, nearMoves4);
         auto oppWinMoves = getWinningMoves(3 - currentPlayer, game, oppNearMoves);
         auto activeMoves = getActiveFourMoves(currentPlayer, game, nearMoves4);
         auto sleepMoves = getSleepyFourMoves(currentPlayer, game, nearMoves4);
+
+        //我方胜利点
+        if (!winMoves.empty()) {
+            return std::make_pair(true, winMoves);
+        }
 
         //如果对方有2个胜利点，则失败
         if (oppWinMoves.size() > 1) {
