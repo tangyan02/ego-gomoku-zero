@@ -276,6 +276,9 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
     if (attack) {
         auto oppNearMoves = getNearByEmptyPoints(lastMove, game);
+        if (oppNearMoves.empty()) {
+            oppNearMoves = game.getEmptyPoints();
+        }
 
         auto oppWinMoves = getWinningMoves(3 - currentPlayer, game, oppNearMoves);
         auto activeMoves = getActiveFourMoves(currentPlayer, game, nearMoves);
@@ -442,9 +445,12 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     nearMoves3 = removeDuplicates(nearMoves3);
 
     if (attack) {
-        vector<Point> oppNearMove = getNearByEmptyPoints(lastMove, game, 4);
+        vector<Point> oppNearMoves = getNearByEmptyPoints(lastMove, game, 4);
+        if (oppNearMoves.empty()) {
+            oppNearMoves = game.getEmptyPoints();
+        }
 
-        auto oppWinMoves = getWinningMoves(3 - currentPlayer, game, oppNearMove);
+        auto oppWinMoves = getWinningMoves(3 - currentPlayer, game, oppNearMoves);
         auto activeMoves = getActiveFourMoves(currentPlayer, game, nearMoves4);
         auto sleepMoves = getSleepyFourMoves(currentPlayer, game, nearMoves4);
 

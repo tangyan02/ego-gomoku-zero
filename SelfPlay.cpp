@@ -140,11 +140,11 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
         Node *node = new Node();
         while (!game.isGameOver()) {
             //剪枝
-//            mcts.search(game, node, 1);
-//            if (node->children.size() > 1) {
-//                game.vctTimeOut = 8000;
-//                pruning(node, game, part);
-//            }
+            mcts.search(game, node, 1);
+            if (node->children.size() > 1) {
+                game.vctTimeOut = 8000;
+                pruning(node, game, part);
+            }
 
             //开始mcts预测
             long startTime = getSystemTime();
@@ -165,7 +165,7 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
                     temperatureDefault * (game.boardSize * game.boardSize - step * 8) /
                     (game.boardSize * game.boardSize);
 
-            temperature /= 2;
+            temperature /= 3;
             if (temperature < 0.1) {
                 temperature = 0.1;
             }
