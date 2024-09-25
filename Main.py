@@ -88,9 +88,9 @@ dirPreBuild()
 lr = 1e-3
 batch_size = 64
 episode = 100000
-shard_nums = [8, 10, 10, 10]
-worker_nums = [4, 5, 5, 5]
-part_nums = [4, 4, 4, 4]
+shard_nums = [10, 12, 12, 12]  # 任务数
+worker_nums = [5, 6, 6, 6]  # 进程池大小
+part_nums = [2, 2, 2, 2]  # 一个任务的线程
 node_num = 4
 
 # 模型初始化

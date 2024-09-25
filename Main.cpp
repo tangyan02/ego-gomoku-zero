@@ -23,8 +23,8 @@ void selfPlay(int argc, char *argv[]) {
     float temperatureDefault = 1;
     float explorationFactor = 3;
     int boardSize = 20;
-    int modelBatchSize = 64;
-    int mctsThreadSize = 16;
+    int modelBatchSize = 1;
+    int mctsThreadSize = 1;
 
     Model *model = new Model();
     model->init("model/agent_model.onnx", modelBatchSize);
