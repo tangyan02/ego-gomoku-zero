@@ -117,8 +117,9 @@ void MonteCarloTree::simulate(Game game) {
         node->selectInfo = get<2>(actions);
 
         auto state = game.getState();
-        auto future = model->enqueueData(state);
-        auto result = future.get();
+//        auto future = model->enqueueData(state);
+//        auto result = future.get();
+        auto result = model->evaluate_state(state);
         value = result.first;
         if (get<0>(actions)) {
             value = 1;
