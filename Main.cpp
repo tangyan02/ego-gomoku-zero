@@ -10,7 +10,7 @@ using namespace std;
 
 void selfPlay(int argc, char *argv[]) {
     string shard;
-    int partNum = 4;
+    int partNum = 1;
     if (argc > 1) {
         string firstArg = argv[1];
         partNum = std::stoi(argv[2]);;
