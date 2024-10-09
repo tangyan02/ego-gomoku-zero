@@ -23,8 +23,8 @@ void printGame(Game &game, int action, std::vector<float> &action_probs,
     float value = 1;
     if (model != nullptr) {
         auto state = game.getState();
-        auto eval = model->evaluate_state(state);
-        value = -eval.first;
+//        auto eval = model->evaluate_state(state);
+//        value = -eval.first;
     }
 
     std::string pic = (game.getOtherPlayer() == 1) ? "x" : "o";
@@ -32,7 +32,7 @@ void printGame(Game &game, int action, std::vector<float> &action_probs,
          << game.getPointFromIndex(action).y
          << " on rate " << round(action_probs[action] * 1000) / 1000
          << " temperature " << round(temperature * 100) / 100
-         << " value " << value
+         //         << " value " << value
          << selectInfo << endl;
 }
 
@@ -48,18 +48,71 @@ void addAction(Game &game,
 }
 
 Game randomGame(Game &game, const std::string &part) {
-    //开局随机去下完后，价值接近0的点
-    auto moves = game.getEmptyPoints();
+    std::uniform_real_distribution<double> dis(0.0, 1.0); // 生成 0 到 1 之间的均匀分布的随机数
+    double randomNum = dis(gen); // 生成随机数
+    cout << randomNum << endl;
+//    if (randomNum < 0.4) {
+    if (randomNum < 0) {
+        std::ifstream file("opennings/opennings.txt"); // 打开文件
+        std::vector<std::string> lines; // 存储文件中的每一行
 
-    std::uniform_int_distribution<> dis(0, moves.size() - 1);
-    // 生成一个随机索引
-    int random_index = dis(gen);
+        if (file.is_open()) {
+            std::string line;
+            while (std::getline(file, line)) {
+                if (!line.empty()) { // 检查行是否为空
+                    lines.push_back(line); // 将非空行添加到 lines 向量中
+                }
+            }
+            file.close(); // 关闭文件
+        } else {
+            std::cout << "Failed to open the file." << std::endl;
+            return 1;
+        }
 
-    // 使用随机索引从数组中获取一个元素
-    auto random_element = moves[random_index];
-    game.makeMove(random_element);
+        std::uniform_int_distribution<int> disInt(0, lines.size() - 1);
+        int randomIndex = disInt(gen); // 生成随机数
 
-    cout << part << "random action is " << random_element.x << "," << random_element.y << " on game" << endl;
+        std::cout << part << "Randomly selected index: " << randomIndex << std::endl;
+        std::string randomLine = lines[randomIndex]; // 获取随机选择的行
+        std::cout << part << "Randomly selected coordinates: " << randomLine << std::endl;
+
+        std::vector<Point> points; // 存储 Point 对象的数组
+        // 将字符串分割为坐标点，并将它们转换为 Point 对象
+        std::stringstream ss(randomLine);
+        std::string token;
+
+        while (std::getline(ss, token, ',')) {
+            Point point;
+            point.x = std::stoi(token);
+
+            std::getline(ss, token, ',');
+            point.y = std::stoi(token);
+
+            points.push_back(point);
+        }
+
+        for (const auto &item: points) {
+            int x = item.x + game.boardSize / 2;
+            int y = item.y + game.boardSize / 2;
+            cout << part << "make move " << x << "," << y << endl;
+            game.makeMove(Point(x, y));
+        }
+
+        return game;
+    } else {
+        //开局随机去下完后，价值接近0的点
+        auto moves = game.getEmptyPoints();
+
+        std::uniform_int_distribution<> dis(0, moves.size() - 1);
+        // 生成一个随机索引
+        int random_index = dis(gen);
+
+        // 使用随机索引从数组中获取一个元素
+        auto random_element = moves[random_index];
+        game.makeMove(random_element);
+
+        cout << part << "random action is " << random_element.x << "," << random_element.y << " on game" << endl;
+    }
 
     return game;
 }
@@ -67,12 +120,12 @@ Game randomGame(Game &game, const std::string &part) {
 std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::vector<float>>> selfPlay(int boardSize,
                                                                                                         int numGames,
                                                                                                         int numSimulations,
+                                                                                                        int mctsThreadSize,
                                                                                                         float temperatureDefault,
                                                                                                         float explorationFactor,
-                                                                                                        const std::string &part
+                                                                                                        const std::string &part,
+                                                                                                        Model &model
 ) {
-    Model model;
-    model.init("model/agent_model.onnx");
 
     MonteCarloTree mcts = MonteCarloTree(&model, explorationFactor);
     std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::vector<float>>> training_data;
@@ -96,7 +149,8 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
             //开始mcts预测
             long startTime = getSystemTime();
             int simiNum = numSimulations - node->visits;
-            mcts.search(game, node, simiNum);
+            int threadNum = mctsThreadSize;
+            mcts.search(game, node, simiNum, threadNum);
             if (simiNum > 0) {
                 cout << part << "search cost " << getSystemTime() - startTime << " ms, simi num " << simiNum << ", "
                      << "per simi " << (getSystemTime() - startTime) / simiNum << " ms" << endl;
@@ -108,10 +162,10 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
 
             //计算温度
             float temperature =
-                    temperatureDefault * (game.boardSize * game.boardSize - step * 2) /
+                    temperatureDefault * (game.boardSize * game.boardSize - step * 8) /
                     (game.boardSize * game.boardSize);
 
-            temperature /= 4;
+            temperature /= 3;
             if (temperature < 0.1) {
                 temperature = 0.1;
             }
@@ -166,16 +220,18 @@ void recordSelfPlay(
         int boardSize,
         int numGames,
         int numSimulations,
+        int mctsThreadSize,
         float temperatureDefault,
         float explorationFactor,
-        const std::string &part) {
+        const std::string &part,
+        Model *model) {
     // 创建文件流对象
     std::ofstream file("record/data" + part + ".txt");
 
     if (file.is_open()) {
 
-        auto data = selfPlay(boardSize, numGames, numSimulations, temperatureDefault, explorationFactor,
-                             "[" + part + "] ");
+        auto data = selfPlay(boardSize, numGames, numSimulations, mctsThreadSize, temperatureDefault,
+                             explorationFactor, "[" + part + "] ", *model);
         file << data.size() << endl;
         std::cout << "data count " << data.size() << endl;
         for (auto &item: data) {

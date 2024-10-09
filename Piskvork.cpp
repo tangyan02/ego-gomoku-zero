@@ -24,6 +24,7 @@ static Game* game;
 
 static int firstCost = -1;
 static double exp_factor = 3.0;
+static int searchThreadCount = 1;
 
 static Node* node;
 static Model* model;
@@ -65,7 +66,7 @@ void brain_init()
     }
     boardSize = width;
     model = new Model();
-    model->init(fullPath);
+    model->init(fullPath, 1);
 
     pipeOut("MESSAGE : LOADED");
 
@@ -179,9 +180,9 @@ int min(int a, int b) {
     return b;
 }
 
-bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum) {
+bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum, int searchThreadCount) {
     int total = node->visits;
-    if (simiNum > 10 && total > 30) {
+	if (passTime / (float)thisTimeOut > 0.25) {
         //安全比例，减少误差
         double beta = 1.2;
 
@@ -204,10 +205,14 @@ bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum) {
         }
 
         //估计值
-        int estimateVisit = total - simiNum + ((int)((double)simiNum / (double)passTime * (double)thisTimeOut));
+        int estimateVisit = total - simiNum + ((int)((double)simiNum * searchThreadCount / (double)passTime * (double)thisTimeOut));
 
         if ((secondMax + (estimateVisit - total)) * beta < max && max > 10) {
             pipeOut("MESSAGE prebreak at max %d, secondMax %d, total %d, simiNum %d, estimateVisit %d", max, secondMax, total, simiNum, estimateVisit);
+            return true;
+        }
+        if (simiNum>1 && (((double)passTime / (double)simiNum) + passTime > (double)thisTimeOut)) {
+            pipeOut("MESSAGE stop for estimate may timeout");
             return true;
         }
     }
@@ -247,7 +252,7 @@ void brain_turn()
     startTime = getSystemTime();
     int simiNum = 0;
     while (true) {
-        mcts.search(*game, node, 1);
+		mcts.search(*game, node, searchThreadCount, searchThreadCount);
         auto passTime = getSystemTime() - startTime;
         simiNum += 1;
         if (passTime > thisTimeOut) {
@@ -258,7 +263,7 @@ void brain_turn()
             break;
         }
 
-        if (checkNeedBreak(passTime, thisTimeOut, simiNum)) {
+        if (checkNeedBreak(passTime, thisTimeOut, simiNum, searchThreadCount)) {
             break;
         }
     }
@@ -286,6 +291,18 @@ void brain_turn()
             action = item.first;
             max = visit;
             score = item.second->value_sum / visit;
+        }
+    }
+
+    if (max == 1) {
+        double probMax = 0;
+        for (auto item : node->children) {
+            double prob = item.second->prior_prob;
+            if (prob > probMax) {
+                action = item.first;
+                probMax = prob;
+                score = item.second->value_sum / item.second->visits;
+            }
         }
     }
 

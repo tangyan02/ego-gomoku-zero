@@ -11,6 +11,8 @@
 #include <thread>
 #include <iomanip>
 #include "Pruner.h"
+#include <cstdlib>
+#include <ctime>
 
 void printGame(Game &game, int action, std::vector<float> &action_probs, float temperature);
 
@@ -18,9 +20,11 @@ void recordSelfPlay(
         int boardSize,
         int numGames,
         int numSimulations,
+        int mctsThreadSize,
         float temperatureDefault,
         float explorationFactor,
-        const std::string& shard);
+        const std::string& shard,
+        Model* model);
 
 Game randomGame(Game &game);
 
