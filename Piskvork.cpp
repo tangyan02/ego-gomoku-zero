@@ -184,7 +184,7 @@ bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum, int 
     int total = node->visits;
 	if (passTime / (float)thisTimeOut > 0.25) {
         //安全比例，减少误差
-        double beta = 1.2;
+        double beta = 1.5;
 
         //最大值
         int max = -1;
