@@ -138,7 +138,7 @@ vector<vector<vector<float>>> Game::getState() {
 
     //棋型点
 //    auto list = {ACTIVE_FOUR, ACTIVE_THREE, ACTIVE_TWO, SLEEPY_FOUR, SLEEPY_THREE, SLEEPY_TWO};
-    auto list = {ACTIVE_FOUR, ACTIVE_THREE};
+    auto list = {SLEEPY_FOUR, ACTIVE_THREE};
     auto players = {1, 2};
     auto moves = getNearEmptyPoints(4);
     Game game = *this;
