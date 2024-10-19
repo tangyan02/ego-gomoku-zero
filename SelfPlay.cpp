@@ -50,9 +50,9 @@ void addAction(Game &game,
 Game randomGame(Game &game, const std::string &part) {
     auto moves = game.getEmptyPoints();
 
-//    int n = 1;
-
-    int n = 6;
+    int n = 1;
+//
+//    int n = 6;
 
     // 生成一个单数的随机数 k，范围是 1 到 n
     std::vector<int> odd_numbers;
@@ -121,10 +121,10 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
 
             //计算温度
             float temperature =
-                    temperatureDefault * (game.boardSize * game.boardSize - step * 8) /
+                    temperatureDefault * (game.boardSize * game.boardSize - step * 4) /
                     (game.boardSize * game.boardSize);
 
-            temperature /= 4;
+//            temperature /= 2;
             if (temperature < 0.1) {
                 temperature = 0.1;
             }

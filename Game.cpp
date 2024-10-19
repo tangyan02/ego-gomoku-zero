@@ -89,10 +89,7 @@ std::vector<Point> Game::getNearEmptyPoints(int range) {
     return nearbyPoints;
 }
 
-std::vector<Point> Game::getEmptyPoints() {
-    if (!historyMoves.empty()) {
-        return getNearEmptyPoints();
-    }
+std::vector<Point> Game::getAllEmptyPoints() {
     std::vector<Point> emptyPoints;
     for (int row = 0; row < boardSize; row++) {
         for (int col = 0; col < boardSize; col++) {
@@ -101,8 +98,14 @@ std::vector<Point> Game::getEmptyPoints() {
             }
         }
     }
-
     return emptyPoints;
+}
+
+std::vector<Point> Game::getEmptyPoints() {
+    if (!historyMoves.empty()) {
+        return getNearEmptyPoints();
+    }
+    return getAllEmptyPoints();
 }
 
 

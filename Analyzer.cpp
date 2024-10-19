@@ -607,12 +607,13 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
 //    if (game.historyMoves.size() <= 6) {
 //        range = 3;
 //    }
-    int range = 3;
-    if (game.historyMoves.size() <= 3) {
-        range = 4;
-    }
+//    if (game.historyMoves.size() <= 3) {
+//        range = 4;
+//    }
+//
+//    auto emptyPoints = game.getNearEmptyPoints(range);
+    vector<Point> emptyPoints = game.getAllEmptyPoints();
 
-    auto emptyPoints = game.getNearEmptyPoints(range);
     //我方长5
     auto currentWinnerMoves = getWinningMoves(game.currentPlayer, game, emptyPoints);
     if (!currentWinnerMoves.empty()) {
