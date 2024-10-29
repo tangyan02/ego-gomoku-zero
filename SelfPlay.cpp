@@ -53,7 +53,7 @@ Game randomGame(Game &game, const std::string &part) {
     cout << randomNum << endl;
     if (randomNum < 0.5) {
 //    if (randomNum < 0) {
-        std::ifstream file("opennings/opennings.txt"); // 打开文件
+        std::ifstream file("openings/openings.txt"); // 打开文件
         std::vector<std::string> lines; // 存储文件中的每一行
 
         if (file.is_open()) {
