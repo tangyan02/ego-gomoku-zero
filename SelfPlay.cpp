@@ -48,29 +48,70 @@ void addAction(Game &game,
 }
 
 Game randomGame(Game &game, const std::string &part) {
-    auto moves = game.getEmptyPoints();
+    std::uniform_real_distribution<double> dis(0.0, 1.0); // 生成 0 到 1 之间的均匀分布的随机数
+    double randomNum = dis(gen); // 生成随机数
+    cout << randomNum << endl;
+    if (randomNum < 0.5) {
+//    if (randomNum < 0) {
+        std::ifstream file("opennings/opennings.txt"); // 打开文件
+        std::vector<std::string> lines; // 存储文件中的每一行
 
-    int n = 1;
-//
-//    int n = 6;
+        if (file.is_open()) {
+            std::string line;
+            while (std::getline(file, line)) {
+                if (!line.empty()) { // 检查行是否为空
+                    lines.push_back(line); // 将非空行添加到 lines 向量中
+                }
+            }
+            file.close(); // 关闭文件
+        } else {
+            std::cout << "Failed to open the file." << std::endl;
+            return 1;
+        }
 
-    // 生成一个单数的随机数 k，范围是 1 到 n
-    std::vector<int> odd_numbers;
-    for (int i = 1; i <= n; i += 2) {
-        odd_numbers.push_back(i);
-    }
+        std::uniform_int_distribution<int> disInt(0, lines.size() - 1);
+        int randomIndex = disInt(gen); // 生成随机数
 
-    std::uniform_int_distribution<> dis_k(0, odd_numbers.size() - 1);
-    int k = odd_numbers[dis_k(gen)];
+        std::cout << part << "Randomly selected index: " << randomIndex << std::endl;
+        std::string randomLine = lines[randomIndex]; // 获取随机选择的行
+        std::cout << part << "Randomly selected coordinates: " << randomLine << std::endl;
 
-    cout << part << "random number of moves: " << k << endl;
+        std::vector<Point> points; // 存储 Point 对象的数组
+        // 将字符串分割为坐标点，并将它们转换为 Point 对象
+        std::stringstream ss(randomLine);
+        std::string token;
 
-    std::vector<Point> selected_moves;
-    std::sample(moves.begin(), moves.end(), std::back_inserter(selected_moves), k, gen);
+        while (std::getline(ss, token, ',')) {
+            Point point;
+            point.x = std::stoi(token);
 
-    for (const auto &move : selected_moves) {
-        game.makeMove(move);
-        cout << part << "random action is " << move.x << "," << move.y << " on game" << endl;
+            std::getline(ss, token, ',');
+            point.y = std::stoi(token);
+
+            points.push_back(point);
+        }
+
+        for (const auto &item: points) {
+            int x = item.x + game.boardSize / 2;
+            int y = item.y + game.boardSize / 2;
+            cout << part << "make move " << x << "," << y << endl;
+            game.makeMove(Point(x, y));
+        }
+
+        return game;
+    } else {
+        //开局随机去下完后，价值接近0的点
+        auto moves = game.getEmptyPoints();
+
+        std::uniform_int_distribution<> dis(0, moves.size() - 1);
+        // 生成一个随机索引
+        int random_index = dis(gen);
+
+        // 使用随机索引从数组中获取一个元素
+        auto random_element = moves[random_index];
+        game.makeMove(random_element);
+
+        cout << part << "random action is " << random_element.x << "," << random_element.y << " on game" << endl;
     }
 
     return game;
@@ -124,7 +165,7 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
                     temperatureDefault * (game.boardSize * game.boardSize - step * 4) /
                     (game.boardSize * game.boardSize);
 
-//            temperature /= 2;
+            temperature /= 2;
             if (temperature < 0.1) {
                 temperature = 0.1;
             }
