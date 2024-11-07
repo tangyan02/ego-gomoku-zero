@@ -142,7 +142,7 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
             //剪枝
             mcts.search(game, node, 1);
             if (node->children.size() > 1) {
-                game.vctTimeOut = 8000;
+                game.vctTimeOut = 16000;
                 pruning(node, game, part);
             }
 
