@@ -111,7 +111,7 @@ std::vector<Point> Game::getEmptyPoints() {
 
 vector<vector<vector<float>>> Game::getState() {
 
-    vector<vector<vector<float>>> data(4, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
+    vector<vector<vector<float>>> data(16, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
@@ -140,31 +140,31 @@ vector<vector<vector<float>>> Game::getState() {
     }
 
     //棋型点
-//    auto list = {ACTIVE_FOUR, ACTIVE_THREE, ACTIVE_TWO, SLEEPY_FOUR, SLEEPY_THREE, SLEEPY_TWO};
+    auto list = {ACTIVE_FOUR, ACTIVE_THREE, ACTIVE_TWO, SLEEPY_FOUR, SLEEPY_THREE, SLEEPY_TWO};
 //    auto list = {ACTIVE_FOUR, ACTIVE_THREE};
-//    auto players = {1, 2};
-//    auto moves = getNearEmptyPoints(4);
-//    Game game = *this;
-//    int p = 4;
-//    for (const auto &shape: list) {
-//        for (const auto &player: players) {
-//            for (const auto &move: moves) {
-//                Point action = move;
-//                int count = 0;
-//                for (int direct = 0; direct < 4; direct++) {
-//                    if (checkPointDirectShape(game, player, action, direct, shape)) {
-//                        count++;
-//                    }
-//                }
-//                if (count > 0) {
-//                    int x = action.x;
-//                    int y = action.y;
-//                    data[p][x][y] += count;
-//                }
-//            }
-//            p += 1;
-//        }
-//    }
+    auto players = {1, 2};
+    auto moves = getNearEmptyPoints(4);
+    Game game = *this;
+    int p = 4;
+    for (const auto &shape: list) {
+        for (const auto &player: players) {
+            for (const auto &move: moves) {
+                Point action = move;
+                int count = 0;
+                for (int direct = 0; direct < 4; direct++) {
+                    if (checkPointDirectShape(game, player, action, direct, shape)) {
+                        count++;
+                    }
+                }
+                if (count > 0) {
+                    int x = action.x;
+                    int y = action.y;
+                    data[p][x][y] += count;
+                }
+            }
+            p += 1;
+        }
+    }
 
     return data;
 }

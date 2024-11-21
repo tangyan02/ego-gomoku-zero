@@ -51,8 +51,8 @@ Game randomGame(Game &game, const std::string &part) {
     std::uniform_real_distribution<double> dis(0.0, 1.0); // 生成 0 到 1 之间的均匀分布的随机数
     double randomNum = dis(gen); // 生成随机数
     cout << randomNum << endl;
-    if (randomNum < 0.5) {
-//    if (randomNum < 0) {
+//    if (randomNum < 0.5) {
+    if (randomNum < 0) {
         std::ifstream file("openings/openings.txt"); // 打开文件
         std::vector<std::string> lines; // 存储文件中的每一行
 
@@ -140,11 +140,11 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
         Node *node = new Node();
         while (!game.isGameOver()) {
             //剪枝
-            mcts.search(game, node, 1);
-            if (node->children.size() > 1) {
-                game.vctTimeOut = 16000;
-                pruning(node, game, part);
-            }
+//            mcts.search(game, node, 1);
+//            if (node->children.size() > 1) {
+//                game.vctTimeOut = 16000;
+//                pruning(node, game, part);
+//            }
 
             //开始mcts预测
             long startTime = getSystemTime();
@@ -162,7 +162,7 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
 
             //计算温度
             float temperature =
-                    temperatureDefault * (game.boardSize * game.boardSize - step * 4) /
+                    temperatureDefault * (game.boardSize * game.boardSize - step * 16) /
                     (game.boardSize * game.boardSize);
 
             temperature /= 2;
