@@ -128,7 +128,7 @@ void MonteCarloTree::simulate(Game game) {
         node->expand(game, get<1>(actions), priorProb);
     }
 
-    backpropagate(node, value, virtual_loss);
+    backpropagate(node, -value, virtual_loss);
 }
 
 void MonteCarloTree::search(Game &game, Node *node, int num_simulations, int threadNum) {
