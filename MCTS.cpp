@@ -64,6 +64,8 @@ void Node::expand(Game &game, std::vector<Point> &actions, const std::vector<flo
             child->prior_prob = prior_probs[actionIndex];
         }
 
+        child->parent = this;
+
         children[actionIndex] = child;
     }
 }
