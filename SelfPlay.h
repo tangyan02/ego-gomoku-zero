@@ -10,7 +10,6 @@
 #include <sstream>
 #include <thread>
 #include <iomanip>
-#include "Pruner.h"
 #include <cstdlib>
 #include <ctime>
 

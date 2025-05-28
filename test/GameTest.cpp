@@ -1,12 +1,11 @@
 
-#include "Game.h"
+#include "../Game.h"
 
 using namespace std;
 static const int boardSize = 15;
 
-bool testGetState() {
+TEST_CASE("testGetState") {
 
-    cout << "testGetState" << endl;
     Game game(boardSize);
 
     game.makeMove(Point(0, 1));
@@ -17,14 +16,12 @@ bool testGetState() {
     game.makeMove(Point(1, 2));
     game.makeMove(Point(0, 4));
 
-    game.printBoard();
+    //game.printBoard();
 
-    return true;
+    CHECK(1);
 }
 
-
-bool testGetNearEmptyPoints() {
-    cout << "testGetNearEmptyPoints" << endl;
+TEST_CASE("testGetNearEmptyPoints") {
     Game game(boardSize);
 
     game.makeMove(Point(8, 8));
@@ -32,14 +29,10 @@ bool testGetNearEmptyPoints() {
     game.makeMove(Point(0, 2));
 
     auto points = game.getEmptyPoints();
-    cout << points.size() << endl;
+    // cout << points.size() << endl;
     for (const auto &item: points) {
         game.board[item.x][item.y] = 3;
     }
-    game.printBoard();
-    if (points.size() == 42) {
-        return true;
-    } else {
-        return false;
-    }
+    // game.printBoard();
+    CHECK(points.size() == 42);
 }
