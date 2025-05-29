@@ -50,7 +50,7 @@ void addAction(Game &game,
 Game randomGame(Game &game, const std::string &part) {
     std::uniform_real_distribution<double> dis(0.0, 1.0); // 生成 0 到 1 之间的均匀分布的随机数
     double randomNum = dis(gen); // 生成随机数
-    cout << randomNum << endl;
+    // cout << randomNum << endl;
 //    if (randomNum < 0.5) {
     if (randomNum < 0) {
         std::ifstream file("openings/openings.txt"); // 打开文件

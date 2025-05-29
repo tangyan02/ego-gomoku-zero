@@ -30,11 +30,10 @@ void selfPlay(int argc, char* argv[])
     int numProcesses = stoi(ConfigReader::get("numProcesses"));
     string coreType = ConfigReader::get("coreType");
 
-    int modelBatchSize = 1;
     int mctsThreadSize = 1;
 
     Model* model = new Model();
-    model->init(modelPath, modelBatchSize);
+    model->init(modelPath, coreType);
 
     std::vector<std::thread> threads; // 存储线程的容器
 

@@ -66,7 +66,7 @@ void brain_init()
     }
     boardSize = width;
     model = new Model();
-    model->init(fullPath, 1);
+    model->init(fullPath);
 
     pipeOut("MESSAGE : LOADED");
 
