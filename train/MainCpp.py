@@ -71,7 +71,7 @@ if __name__ == "__main__":
     device = getDevice()
     model, optimizer = get_model(device, lr)
 
-    save_model(model, optimizer, board_size)
+    save_model(model, optimizer)
 
     for i_episode in range(1, episode + 1):
 
@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
         loss = train(extended_data, model, device, optimizer, batch_size, i_episode)
 
-        save_model(model, optimizer, board_size)
+        save_model(model, optimizer)
         Logger.infoD(f"最新模型已保存 episode:{i_episode}")
 
         Logger.infoD(f"episode {i_episode} 完成")

@@ -18,12 +18,10 @@ void printGame(Game &game, int action, std::vector<float> &action_probs, float t
 void recordSelfPlay(
         int boardSize,
         int numGames,
-        int numSimulations,
-        int mctsThreadSize,
+        int numSimulation,
         float temperatureDefault,
         float explorationFactor,
-        const std::string& shard,
-        Model* model);
+        int shard);
 
 Game randomGame(Game &game);
 
