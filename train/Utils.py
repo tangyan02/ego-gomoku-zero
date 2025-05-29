@@ -7,12 +7,15 @@ import torch
 def getTimeStr():
     return time.strftime("[%Y-%m-%d %H:%M:%S] ", time.localtime())
 
+
 def dirPreBuild():
     if not os.path.exists("model"):
         os.mkdir("model")
-
     if not os.path.exists("record"):
         os.mkdir("record")
+    if not os.path.exists(f"log"):
+        os.mkdir("log")
+
 
 def getDevice():
     device = "cpu"

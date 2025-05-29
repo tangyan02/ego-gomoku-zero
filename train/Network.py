@@ -103,7 +103,7 @@ class PolicyValueNetwork(nn.Module):
         return x_val, x_act
 
 
-def get_network(device, lr):
+def get_model(device, lr):
     network = PolicyValueNetwork()
     network.to(device)  # 将网络移动到设备
 
@@ -121,7 +121,7 @@ def get_network(device, lr):
     return network, optimizer
 
 
-def save_network(network, optimizer, subfix=""):
+def save_model(network, optimizer, subfix=""):
     path = f"model/checkpoint{subfix}.pth"
     torch.save({
         'model_state_dict': network.state_dict(),
