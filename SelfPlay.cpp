@@ -8,66 +8,78 @@ using namespace std;
 std::random_device rd;
 std::mt19937 gen(rd());
 
-void printGame(Game &game, Point action, float rate,
-               float temperature, const std::string &prefix, const string selectInfo, Model *model) {
+void printGame(Game& game, Point action, float rate, vector<float> probs,
+               float temperature, const std::string& prefix, const string selectInfo, Model* model)
+{
     game.printBoard(prefix);
     std::string line;
-    for (int i = 0; i < game.boardSize * game.boardSize; i++) {
+    for (int i = 0; i < game.boardSize * game.boardSize; i++)
+    {
         std::stringstream ss;
-        ss << std::fixed << std::setprecision(3) << rate;
+        ss << std::fixed << std::setprecision(3) << probs[i];
         line += ss.str() + " ";
-        if ((i + 1) % game.boardSize == 0) {
+        if ((i + 1) % game.boardSize == 0)
+        {
             cout << line << endl;
             line = "";
         }
     }
 
     float value = 1;
-    if (model != nullptr) {
+    if (model != nullptr)
+    {
         auto state = game.getState();
         //        auto eval = model->evaluate_state(state);
         //        value = -eval.first;
     }
 
     std::string pic = (game.getOtherPlayer() == 1) ? "x" : "o";
-    cout << prefix << " " << pic << " action is " <<action.x << ","
-            << action.y
-            << " on rate " << round(rate * 1000) / 1000
-            << " temperature " << round(temperature * 100) / 100
-            //         << " value " << value
-            << selectInfo << endl;
+    cout << prefix << " " << pic << " action is " << action.x << ","
+        << action.y
+        << " on rate " << round(rate * 1000) / 1000
+        << " temperature " << round(temperature * 100) / 100
+        //         << " value " << value
+        << selectInfo << endl;
 }
 
-void addAction(Game &game,
+void addAction(Game& game,
                Point action,
-               std::vector<std::tuple<vector<vector<vector<float> > >, int, std::vector<float> > > &game_data,
-               std::vector<float> &action_probs
-) {
+               std::vector<std::tuple<vector<vector<vector<float>>>, int, std::vector<float>>>& game_data,
+               std::vector<float>& action_probs
+)
+{
     auto state = game.getState();
     std::tuple record(state, game.currentPlayer, action_probs);
     game.makeMove(action);
     game_data.push_back(record);
 }
 
-Game randomGame(Game &game, const string &prefix) {
+Game randomGame(Game& game, const string& prefix)
+{
     std::uniform_real_distribution<double> dis(0.0, 1.0); // 生成 0 到 1 之间的均匀分布的随机数
     double randomNum = dis(gen); // 生成随机数
     // cout << randomNum << endl;
     //    if (randomNum < 0.5) {
-    if (randomNum < 0) {
+    if (randomNum < 0)
+    {
         std::ifstream file("openings/openings.txt"); // 打开文件
         std::vector<std::string> lines; // 存储文件中的每一行
 
-        if (file.is_open()) {
+        if (file.is_open())
+        {
             std::string line;
-            while (std::getline(file, line)) {
-                if (!line.empty()) {
+            while (std::getline(file, line))
+            {
+                if (!line.empty())
+                {
                     // 检查行是否为空
                     lines.push_back(line); // 将非空行添加到 lines 向量中
                 }
             }
             file.close(); // 关闭文件
-        } else {
+        }
+        else
+        {
             std::cout << "Failed to open the file." << std::endl;
             return 1;
         }
@@ -84,7 +96,8 @@ Game randomGame(Game &game, const string &prefix) {
         std::stringstream ss(randomLine);
         std::string token;
 
-        while (std::getline(ss, token, ',')) {
+        while (std::getline(ss, token, ','))
+        {
             Point point;
             point.x = std::stoi(token);
 
@@ -94,7 +107,8 @@ Game randomGame(Game &game, const string &prefix) {
             points.push_back(point);
         }
 
-        for (const auto &item: points) {
+        for (const auto& item : points)
+        {
             int x = item.x + game.boardSize / 2;
             int y = item.y + game.boardSize / 2;
             cout << prefix << "make move " << x << "," << y << endl;
@@ -102,7 +116,9 @@ Game randomGame(Game &game, const string &prefix) {
         }
 
         return game;
-    } else {
+    }
+    else
+    {
         //开局随机去下完后，价值接近0的点
         auto moves = game.getEmptyPoints();
 
@@ -120,38 +136,41 @@ Game randomGame(Game &game, const string &prefix) {
     return game;
 }
 
-std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std::vector<float> > > selfPlay(
+std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::vector<float>>> selfPlay(
     int boardSize,
     int numGames,
     int numSimulations,
     float temperatureDefault,
     float explorationFactor,
     int shard,
-    Model &model
-) {
+    Model& model
+)
+{
     MonteCarloTree mcts = MonteCarloTree(&model, explorationFactor, true);
-    std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std::vector<float> > > training_data;
+    std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::vector<float>>> training_data;
 
-    for (int i = 0; i < numGames; i++) {
+    for (int i = 0; i < numGames; i++)
+    {
         string prefix = "[" + to_string(shard) + "-" + std::to_string(i) + "]";
 
         cout << "============= " << prefix << "============" << endl;
 
         Game game(boardSize);
-        std::vector<std::tuple<vector<vector<vector<float> > >, int, std::vector<float> > > game_data;
+        std::vector<std::tuple<vector<vector<vector<float>>>, int, std::vector<float>>> game_data;
 
         game = randomGame(game, prefix);
 
         int step = 0;
-        while (!game.isGameOver()) {
+        while (!game.isGameOver())
+        {
             Node node;
             //开始mcts预测
             long startTime = getSystemTime();
             mcts.search(game, &node, numSimulations);
 
             cout << prefix << "search cost " << getSystemTime() - startTime << " ms, simi num " << numSimulations <<
-                    ", "
-                    << "per simi " << (getSystemTime() - startTime) / numSimulations << " ms" << endl;
+                ", "
+                << "per simi " << (getSystemTime() - startTime) / numSimulations << " ms" << endl;
 
             //计算温度
             float temperature = temperatureDefault;
@@ -168,16 +187,18 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             auto rate = action_probs[index];
 
             addAction(game, action, game_data, action_probs);
-            printGame(game, action, rate, temperature, prefix, node.selectInfo, &model);
+            printGame(game, action, rate, action_probs, temperature, prefix, node.selectInfo, &model);
             step++;
         }
 
         bool win = game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer());
         int winner = 0;
-        if (win) {
+        if (win)
+        {
             winner = game.getOtherPlayer();
         }
-        for (const auto &[state, player, mcts_probs]: game_data) {
+        for (const auto& [state, player, mcts_probs] : game_data)
+        {
             float value = (winner == player) ? 1.0f : ((winner == (3 - player)) ? -1.0f : 0.0f);
             training_data.emplace_back(state, mcts_probs, std::vector<float>{value});
         }
@@ -193,21 +214,24 @@ void recordSelfPlay(
     int numSimulations,
     float temperatureDefault,
     float explorationFactor,
-    int shard) {
+    int shard)
+{
     string modelPath = ConfigReader::get("modelPath");
     string coreType = ConfigReader::get("coreType");
-    Model *model = new Model();
+    Model* model = new Model();
     model->init(modelPath, coreType);
 
     // 创建文件流对象
     std::ofstream file("record/data_" + to_string(shard) + ".txt");
 
-    if (file.is_open()) {
+    if (file.is_open())
+    {
         auto data = selfPlay(boardSize, numGames, numSimulations, temperatureDefault,
                              explorationFactor, shard, *model);
         file << data.size() << endl;
         std::cout << "data count " << data.size() << endl;
-        for (auto &item: data) {
+        for (auto& item : data)
+        {
             auto state = get<0>(item);
 
             // 获取张量的维度
@@ -217,9 +241,12 @@ void recordSelfPlay(
 
             file << dim0 << " " << dim1 << " " << dim2 << endl;
             // 遍历张量并打印数值
-            for (int64_t i = 0; i < dim0; ++i) {
-                for (int64_t j = 0; j < dim1; ++j) {
-                    for (int64_t k = 0; k < dim2; ++k) {
+            for (int64_t i = 0; i < dim0; ++i)
+            {
+                for (int64_t j = 0; j < dim1; ++j)
+                {
+                    for (int64_t k = 0; k < dim2; ++k)
+                    {
                         file << state[i][j][k] << " ";
                     }
                     file << endl;
@@ -228,14 +255,16 @@ void recordSelfPlay(
 
             vector<float> mctsProbList = get<1>(item);
             file << mctsProbList.size() << endl;
-            for (auto f: mctsProbList) {
+            for (auto f : mctsProbList)
+            {
                 file << f << " ";
             }
             file << endl;
 
             vector<float> valueList = get<2>(item);
             file << valueList.size() << endl;
-            for (auto f: valueList) {
+            for (auto f : valueList)
+            {
                 file << f << " ";
             }
             file << endl;
@@ -244,7 +273,9 @@ void recordSelfPlay(
         // 关闭文件
         file.close();
         std::cout << "Data has been written to file." << std::endl;
-    } else {
+    }
+    else
+    {
         std::cerr << "Failed to open file." << std::endl;
     }
 }
