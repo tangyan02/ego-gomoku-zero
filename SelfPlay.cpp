@@ -186,8 +186,17 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
             Point action = actions[index];
             auto rate = action_probs[index];
 
-            addAction(game, action, game_data, action_probs);
-            printGame(game, action, rate, action_probs, temperature, prefix, node.selectInfo, &model);
+            // 构造矩阵
+            vector<float> probs_matrix(game.boardSize * game.boardSize, 0);
+
+            if (!actions[0].isNull()) {
+                for (int k = 0; k < actions.size(); k++) {
+                    auto p = actions[k];
+                    probs_matrix[game.getActionIndex(p)] = action_probs[k];
+                }
+            }
+            addAction(game, action, game_data, probs_matrix);
+            printGame(game, action, rate, probs_matrix, temperature, prefix, node.selectInfo, &model);
             step++;
         }
 
