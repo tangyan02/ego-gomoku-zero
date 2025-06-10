@@ -40,4 +40,7 @@ def train(extended_data, network, device, optimizer, batch_size, i_episode):
 
         running_loss += loss.item()
 
-    print(getTimeStr() + f"episode {i_episode} Loss: {running_loss / len(dataloader)}")
+    loss_avg = running_loss / len(dataloader)
+    print(getTimeStr() + f"episode {i_episode} Loss: {loss_avg}")
+    return loss_avg
+
