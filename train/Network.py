@@ -53,16 +53,6 @@ class PolicyValueNetwork(nn.Module):
             ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels)
         )
 

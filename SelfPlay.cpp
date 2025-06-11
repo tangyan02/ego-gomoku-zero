@@ -175,6 +175,10 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
             //计算温度
             float temperature = temperatureDefault;
 
+            if (step > stoi(ConfigReader::get("temperatureDownBeginStep"))) {
+                temperature = temperature - static_cast<float>(step) * stof(ConfigReader::get("decreasePerStep"));
+            }
+
             auto [actions, action_probs] = mcts.get_action_probabilities(temperature);
 
 
