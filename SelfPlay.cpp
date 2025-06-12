@@ -133,41 +133,63 @@ float getMoveValue(Game game, Point move, Model *model) {
     return -eva_value;
 }
 
-size_t selectRandomFromClosestToZero(const std::vector<float> &vec, size_t n = 20) {
+size_t selectRandomFromClosestToZero(const std::vector<float>& vec, size_t n) {
     if (vec.empty()) {
         throw std::invalid_argument("Input vector is empty");
     }
 
     // 创建索引向量
     std::vector<size_t> indices(vec.size());
-    for (size_t i = 0; i < vec.size(); ++i) {
-        indices[i] = i;
-    }
+    std::iota(indices.begin(), indices.end(), 0); // 填充0,1,2,...
 
-    // 按绝对值排序，找出最接近0的n个元素
-    std::partial_sort(
+    // 分割出绝对值小于0.1的索引
+    auto partition_point = std::partition(
         indices.begin(),
-        indices.begin() + std::min(n, vec.size()),
         indices.end(),
-        [&vec](size_t a, size_t b) {
-            return std::abs(vec[a]) < std::abs(vec[b]);
-        }
+        [&vec](size_t i) { return std::abs(vec[i]) < 0.1f; }
     );
 
-    // 获取前n个最接近0的元素的索引
-    std::vector<size_t> closestIndices(
-        indices.begin(),
-        indices.begin() + std::min(n, vec.size())
-    );
+    // 获取绝对值小于0.1的元素数量
+    size_t small_count = std::distance(indices.begin(), partition_point);
 
-    // 设置随机数生成器
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    std::default_random_engine generator(seed);
-    std::uniform_int_distribution<size_t> distribution(0, closestIndices.size() - 1);
+    if (small_count >= n) {
+        // 如果绝对值小于0.1的元素足够多，只在这些元素中随机选择
+        std::vector<size_t> small_indices(indices.begin(), partition_point);
 
-    // 随机选择一个索引
-    size_t randomIndex = distribution(generator);
-    return closestIndices[randomIndex];
+        // 设置随机数生成器
+        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+        std::default_random_engine generator(seed);
+        std::uniform_int_distribution<size_t> distribution(0, small_count - 1);
+
+        return small_indices[distribution(generator)];
+    } else {
+        // 如果不足，先保留所有绝对值小于0.1的元素，再补充其他最接近0的元素
+        std::vector<size_t> closest_indices(indices.begin(), partition_point);
+
+        // 对剩余元素按绝对值排序
+        std::partial_sort(
+            partition_point,
+            partition_point + std::min(n - small_count, static_cast<size_t>(std::distance(partition_point, indices.end()))),
+            indices.end(),
+            [&vec](size_t a, size_t b) {
+                return std::abs(vec[a]) < std::abs(vec[b]);
+            }
+        );
+
+        // 合并两部分索引
+        closest_indices.insert(
+            closest_indices.end(),
+            partition_point,
+            partition_point + std::min(n - small_count, static_cast<size_t>(std::distance(partition_point, indices.end())))
+        );
+
+        // 设置随机数生成器
+        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+        std::default_random_engine generator(seed);
+        std::uniform_int_distribution<size_t> distribution(0, closest_indices.size() - 1);
+
+        return closest_indices[distribution(generator)];
+    }
 }
 
 

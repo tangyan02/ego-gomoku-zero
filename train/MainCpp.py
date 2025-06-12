@@ -85,8 +85,9 @@ if __name__ == "__main__":
         Logger.infoD(f"自我对弈完毕，用时 {end_time - start_time} s")
 
         extended_data = get_extended_data(training_data)
+        speed = round(len(extended_data) / (end_time - start_time), 1)
         Logger.infoD(f"完成扩展自我对弈数据，条数 " + str(len(extended_data)) + " , " + str(
-            round(len(extended_data) / (end_time - start_time), 1)) + " 条/s")
+            speed) + " 条/s")
 
         loss = train(extended_data, model, device, optimizer, batch_size, i_episode)
 
@@ -103,7 +104,9 @@ if __name__ == "__main__":
         episodeInfo = {
             "i_episode" : i_episode,
             "loss": loss,
-            "total_games_count" : total_games_count
+            "record_count" : len(extended_data),
+            "total_games_count" : total_games_count,
+            "speed" : speed
         }
         Logger.infoD(json.dumps(episodeInfo), "episode.log")
 
