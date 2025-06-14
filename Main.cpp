@@ -39,11 +39,17 @@ void selfPlay(int argc, char *argv[]) {
 int main(int argc, char *argv[]) {
     initShape();
     //    printShape();
+
+    #ifdef _WIN32
+    piskvork();
+    return 0;
+
+    #endif
+
     auto mode = ConfigReader::get("mode");
     if (mode == "train") {
         selfPlay(argc, argv);
         return 0;
     }
-    //    piskvork();
     return startTest(argc, argv);
 }

@@ -53,6 +53,7 @@ string getPrefix() {
 
 void brain_init()
 {
+    pipeOut("MESSAGE : STARTING...");
     const int MAXPATH = 250;
     auto prefix = getPrefix();
     auto subfix = string("/model/model_latest.onnx");
