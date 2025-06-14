@@ -611,8 +611,9 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
 //        range = 4;
 //    }
 //
-//    auto emptyPoints = game.getNearEmptyPoints(range);
-    vector<Point> emptyPoints = game.getAllEmptyPoints();
+    int range = 3;
+    auto emptyPoints = game.getNearEmptyPoints(range);
+    // vector<Point> emptyPoints = game.getAllEmptyPoints();
 
     //我方长5
     auto currentWinnerMoves = getWinningMoves(game.currentPlayer, game, emptyPoints);
@@ -633,10 +634,10 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     }
 
     //快速胜利
-    auto quickWinMove = getQuickWinMoves(game.currentPlayer, game, emptyPoints);
-    if (!quickWinMove.empty()) {
-        return make_tuple(true, quickWinMove, " quick win");
-    }
+    // auto quickWinMove = getQuickWinMoves(game.currentPlayer, game, emptyPoints);
+    // if (!quickWinMove.empty()) {
+    //     return make_tuple(true, quickWinMove, " quick win");
+    // }
 
     //我方VCF点
     auto myVCFMoves = game.getMyVCFMoves();
