@@ -241,7 +241,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         while (!game.isGameOver()) {
             Node node;
             //开始mcts预测
-            long startTime = getSystemTime();
+            long long startTime = getSystemTime();
             mcts.search(game, &node, numSimulations);
 
             cout << prefix << "search cost " << getSystemTime() - startTime << " ms, simi num " << numSimulations <<
