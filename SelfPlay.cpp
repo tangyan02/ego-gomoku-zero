@@ -59,8 +59,9 @@ Game randomGame(Game &game, const string &prefix) {
     std::uniform_real_distribution<double> dis(0.0, 1.0); // 生成 0 到 1 之间的均匀分布的随机数
     double randomNum = dis(gen); // 生成随机数
     // cout << randomNum << endl;
-    //    if (randomNum < 0.5) {
-    if (randomNum < 0) {
+
+    float randomRate = stof(ConfigReader::get("randomRate"));
+    if (randomNum > randomRate) {
         std::ifstream file("openings/openings.txt"); // 打开文件
         std::vector<std::string> lines; // 存储文件中的每一行
 
@@ -133,81 +134,8 @@ float getMoveValue(Game game, Point move, Model *model) {
     return -eva_value;
 }
 
-size_t selectRandomFromClosestToZero(const std::vector<float>& vec, size_t n) {
-    if (vec.empty()) {
-        throw std::invalid_argument("Input vector is empty");
-    }
-
-    // 创建索引向量
-    std::vector<size_t> indices(vec.size());
-    std::iota(indices.begin(), indices.end(), 0); // 填充0,1,2,...
-
-    // 分割出绝对值小于0.1的索引
-    auto partition_point = std::partition(
-        indices.begin(),
-        indices.end(),
-        [&vec](size_t i) { return std::abs(vec[i]) < 0.1f; }
-    );
-
-    // 获取绝对值小于0.1的元素数量
-    size_t small_count = std::distance(indices.begin(), partition_point);
-
-    if (small_count >= n) {
-        // 如果绝对值小于0.1的元素足够多，只在这些元素中随机选择
-        std::vector<size_t> small_indices(indices.begin(), partition_point);
-
-        // 设置随机数生成器
-        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-        std::default_random_engine generator(seed);
-        std::uniform_int_distribution<size_t> distribution(0, small_count - 1);
-
-        return small_indices[distribution(generator)];
-    } else {
-        // 如果不足，先保留所有绝对值小于0.1的元素，再补充其他最接近0的元素
-        std::vector<size_t> closest_indices(indices.begin(), partition_point);
-
-        // 对剩余元素按绝对值排序
-        std::partial_sort(
-            partition_point,
-            partition_point + std::min(n - small_count, static_cast<size_t>(std::distance(partition_point, indices.end()))),
-            indices.end(),
-            [&vec](size_t a, size_t b) {
-                return std::abs(vec[a]) < std::abs(vec[b]);
-            }
-        );
-
-        // 合并两部分索引
-        closest_indices.insert(
-            closest_indices.end(),
-            partition_point,
-            partition_point + std::min(n - small_count, static_cast<size_t>(std::distance(partition_point, indices.end())))
-        );
-
-        // 设置随机数生成器
-        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-        std::default_random_engine generator(seed);
-        std::uniform_int_distribution<size_t> distribution(0, closest_indices.size() - 1);
-
-        return closest_indices[distribution(generator)];
-    }
-}
-
-
 int getNextStep(vector<Point> &actions, vector<float> &action_probs, Game game, int stepCount,
                 Model *model, const std::string &prefix) {
-    if (stepCount <= stoi(ConfigReader::get("balanceStep"))) {
-        //平衡开局
-        vector<float> moveValues;
-        for (auto action: actions) {
-            float value = getMoveValue(game, action, model);
-            moveValues.emplace_back(value);
-        }
-
-        auto index = static_cast<int>(selectRandomFromClosestToZero(moveValues, actions.size()));
-        Point point = game.getPointFromIndex(index);
-        cout << prefix << "balance move:" << point.x << "," << point.y << " value:" << moveValues[index] << endl;
-        return index;
-    }
 
     // 按分布概率选择
     std::discrete_distribution<int> distribution(action_probs.begin(),
