@@ -1,0 +1,1 @@
+目前openings包含gomocup，2013~2024的开局
