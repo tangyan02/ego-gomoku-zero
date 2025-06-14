@@ -1,18 +1,26 @@
 #include "SelfPlay.h"
 
+#include "ConfigReader.h"
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <random>
+#include <cmath>
+#include <chrono>
+
 using namespace std;
 
 // 创建一个随机数生成器
 std::random_device rd;
 std::mt19937 gen(rd());
 
-void printGame(Game &game, int action, std::vector<float> &action_probs,
-               float temperature, const std::string &part, const string selectInfo, Model *model) {
-    game.printBoard(part);
+void printGame(Game &game, Point action, float rate, vector<float> probs,
+               float temperature, const std::string &prefix, const string selectInfo, Model *model) {
+    game.printBoard(prefix);
     std::string line;
     for (int i = 0; i < game.boardSize * game.boardSize; i++) {
         std::stringstream ss;
-        ss << std::fixed << std::setprecision(3) << action_probs[i];
+        ss << std::fixed << std::setprecision(3) << probs[i];
         line += ss.str() + " ";
         if ((i + 1) % game.boardSize == 0) {
             cout << line << endl;
@@ -23,43 +31,44 @@ void printGame(Game &game, int action, std::vector<float> &action_probs,
     float value = 1;
     if (model != nullptr) {
         auto state = game.getState();
-//        auto eval = model->evaluate_state(state);
-//        value = -eval.first;
+        //        auto eval = model->evaluate_state(state);
+        //        value = -eval.first;
     }
 
     std::string pic = (game.getOtherPlayer() == 1) ? "x" : "o";
-    cout << part << " " << pic << " action is " << game.getPointFromIndex(action).x << ","
-         << game.getPointFromIndex(action).y
-         << " on rate " << round(action_probs[action] * 1000) / 1000
-         << " temperature " << round(temperature * 100) / 100
-         //         << " value " << value
-         << selectInfo << endl;
+    cout << prefix << " " << pic << " action is " << action.x << ","
+            << action.y
+            << " on rate " << round(rate * 1000) / 1000
+            << " temperature " << round(temperature * 100) / 100
+            //         << " value " << value
+            << selectInfo << endl;
 }
 
 void addAction(Game &game,
-               int action,
-               std::vector<std::tuple<vector<vector<vector<float>>>, int, std::vector<float>>> &game_data,
+               Point action,
+               std::vector<std::tuple<vector<vector<vector<float> > >, int, std::vector<float> > > &game_data,
                std::vector<float> &action_probs
 ) {
     auto state = game.getState();
-    std::tuple<vector<vector<vector<float>>>, int, std::vector<float>> record(state, game.currentPlayer, action_probs);
-    game.makeMove(game.getPointFromIndex(action));
+    std::tuple record(state, game.currentPlayer, action_probs);
+    game.makeMove(action);
     game_data.push_back(record);
 }
 
-Game randomGame(Game &game, const std::string &part) {
+Game randomGame(Game &game, const string &prefix) {
     std::uniform_real_distribution<double> dis(0.0, 1.0); // 生成 0 到 1 之间的均匀分布的随机数
     double randomNum = dis(gen); // 生成随机数
-    cout << randomNum << endl;
-//    if (randomNum < 0.4) {
+    // cout << randomNum << endl;
+    //    if (randomNum < 0.5) {
     if (randomNum < 0) {
-        std::ifstream file("opennings/opennings.txt"); // 打开文件
+        std::ifstream file("openings/openings.txt"); // 打开文件
         std::vector<std::string> lines; // 存储文件中的每一行
 
         if (file.is_open()) {
             std::string line;
             while (std::getline(file, line)) {
-                if (!line.empty()) { // 检查行是否为空
+                if (!line.empty()) {
+                    // 检查行是否为空
                     lines.push_back(line); // 将非空行添加到 lines 向量中
                 }
             }
@@ -72,9 +81,9 @@ Game randomGame(Game &game, const std::string &part) {
         std::uniform_int_distribution<int> disInt(0, lines.size() - 1);
         int randomIndex = disInt(gen); // 生成随机数
 
-        std::cout << part << "Randomly selected index: " << randomIndex << std::endl;
+        std::cout << prefix << "Randomly selected index: " << randomIndex << std::endl;
         std::string randomLine = lines[randomIndex]; // 获取随机选择的行
-        std::cout << part << "Randomly selected coordinates: " << randomLine << std::endl;
+        std::cout << prefix << "Randomly selected coordinates: " << randomLine << std::endl;
 
         std::vector<Point> points; // 存储 Point 对象的数组
         // 将字符串分割为坐标点，并将它们转换为 Point 对象
@@ -94,7 +103,7 @@ Game randomGame(Game &game, const std::string &part) {
         for (const auto &item: points) {
             int x = item.x + game.boardSize / 2;
             int y = item.y + game.boardSize / 2;
-            cout << part << "make move " << x << "," << y << endl;
+            cout << prefix << "make move " << x << "," << y << endl;
             game.makeMove(Point(x, y));
         }
 
@@ -111,94 +120,159 @@ Game randomGame(Game &game, const std::string &part) {
         auto random_element = moves[random_index];
         game.makeMove(random_element);
 
-        cout << part << "random action is " << random_element.x << "," << random_element.y << " on game" << endl;
+        cout << prefix << "random action is " << random_element.x << "," << random_element.y << " on game" << endl;
     }
 
     return game;
 }
 
-std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::vector<float>>> selfPlay(int boardSize,
-                                                                                                        int numGames,
-                                                                                                        int numSimulations,
-                                                                                                        int mctsThreadSize,
-                                                                                                        float temperatureDefault,
-                                                                                                        float explorationFactor,
-                                                                                                        const std::string &part,
-                                                                                                        Model &model
-) {
+float getMoveValue(Game game, Point move, Model *model) {
+    game.makeMove(move);
+    auto state = game.getState();
+    auto [eva_value, probs] = model->evaluate_state(state);
+    return -eva_value;
+}
 
-    MonteCarloTree mcts = MonteCarloTree(&model, explorationFactor);
-    std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::vector<float>>> training_data;
+size_t selectRandomFromClosestToZero(const std::vector<float>& vec, size_t n) {
+    if (vec.empty()) {
+        throw std::invalid_argument("Input vector is empty");
+    }
+
+    // 创建索引向量
+    std::vector<size_t> indices(vec.size());
+    std::iota(indices.begin(), indices.end(), 0); // 填充0,1,2,...
+
+    // 分割出绝对值小于0.1的索引
+    auto partition_point = std::partition(
+        indices.begin(),
+        indices.end(),
+        [&vec](size_t i) { return std::abs(vec[i]) < 0.1f; }
+    );
+
+    // 获取绝对值小于0.1的元素数量
+    size_t small_count = std::distance(indices.begin(), partition_point);
+
+    if (small_count >= n) {
+        // 如果绝对值小于0.1的元素足够多，只在这些元素中随机选择
+        std::vector<size_t> small_indices(indices.begin(), partition_point);
+
+        // 设置随机数生成器
+        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+        std::default_random_engine generator(seed);
+        std::uniform_int_distribution<size_t> distribution(0, small_count - 1);
+
+        return small_indices[distribution(generator)];
+    } else {
+        // 如果不足，先保留所有绝对值小于0.1的元素，再补充其他最接近0的元素
+        std::vector<size_t> closest_indices(indices.begin(), partition_point);
+
+        // 对剩余元素按绝对值排序
+        std::partial_sort(
+            partition_point,
+            partition_point + std::min(n - small_count, static_cast<size_t>(std::distance(partition_point, indices.end()))),
+            indices.end(),
+            [&vec](size_t a, size_t b) {
+                return std::abs(vec[a]) < std::abs(vec[b]);
+            }
+        );
+
+        // 合并两部分索引
+        closest_indices.insert(
+            closest_indices.end(),
+            partition_point,
+            partition_point + std::min(n - small_count, static_cast<size_t>(std::distance(partition_point, indices.end())))
+        );
+
+        // 设置随机数生成器
+        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+        std::default_random_engine generator(seed);
+        std::uniform_int_distribution<size_t> distribution(0, closest_indices.size() - 1);
+
+        return closest_indices[distribution(generator)];
+    }
+}
+
+
+int getNextStep(vector<Point> &actions, vector<float> &action_probs, Game game, int stepCount,
+                Model *model, const std::string &prefix) {
+    if (stepCount <= stoi(ConfigReader::get("balanceStep"))) {
+        //平衡开局
+        vector<float> moveValues;
+        for (auto action: actions) {
+            float value = getMoveValue(game, action, model);
+            moveValues.emplace_back(value);
+        }
+
+        auto index = static_cast<int>(selectRandomFromClosestToZero(moveValues, actions.size()));
+        Point point = game.getPointFromIndex(index);
+        cout << prefix << "balance move:" << point.x << "," << point.y << " value:" << moveValues[index] << endl;
+        return index;
+    }
+
+    // 按分布概率选择
+    std::discrete_distribution<int> distribution(action_probs.begin(),
+                                                 action_probs.end());
+    return distribution(gen);
+}
+
+std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std::vector<float> > > selfPlay(
+    int boardSize,
+    int numGames,
+    int numSimulations,
+    float temperatureDefault,
+    float explorationFactor,
+    int shard,
+    Model &model
+) {
+    MonteCarloTree mcts = MonteCarloTree(&model, explorationFactor, true);
+    std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std::vector<float> > > training_data;
 
     for (int i = 0; i < numGames; i++) {
-        Game game(boardSize);
-        std::vector<std::tuple<vector<vector<vector<float>>>, int, std::vector<float>>> game_data;
+        string prefix = "[" + to_string(shard) + "-" + std::to_string(i) + "]";
 
-        game = randomGame(game, part);
+        cout << "============= " << prefix << "============" << endl;
+
+        Game game(boardSize);
+        std::vector<std::tuple<vector<vector<vector<float> > >, int, std::vector<float> > > game_data;
+
+        game = randomGame(game, prefix);
 
         int step = 0;
-        Node *node = new Node();
         while (!game.isGameOver()) {
-            //剪枝
-            mcts.search(game, node, 1);
-            if (node->children.size() > 1) {
-                game.vctTimeOut = 8000;
-                pruning(node, game, part);
-            }
-
+            Node node;
             //开始mcts预测
-            long startTime = getSystemTime();
-            int simiNum = numSimulations - node->visits;
-            int threadNum = mctsThreadSize;
-            mcts.search(game, node, simiNum, threadNum);
-            if (simiNum > 0) {
-                cout << part << "search cost " << getSystemTime() - startTime << " ms, simi num " << simiNum << ", "
-                     << "per simi " << (getSystemTime() - startTime) / simiNum << " ms" << endl;
-            }
+            long long startTime = getSystemTime();
+            mcts.search(game, &node, numSimulations);
 
-            std::vector<int> actions;
-            std::vector<float> action_probs;
-            std::tie(actions, action_probs) = mcts.get_action_probabilities(game);
+            cout << prefix << "search cost " << getSystemTime() - startTime << " ms, simi num " << numSimulations <<
+                    ", "
+                    << "per simi " << (getSystemTime() - startTime) / numSimulations << " ms" << endl;
 
             //计算温度
-            float temperature =
-                    temperatureDefault * (game.boardSize * game.boardSize - step * 8) /
-                    (game.boardSize * game.boardSize);
+            float temperature = temperatureDefault;
 
-            temperature /= 3;
-            if (temperature < 0.1) {
-                temperature = 0.1;
+            if (step > stoi(ConfigReader::get("temperatureDownBeginStep"))) {
+                temperature = temperature - static_cast<float>(step) * stof(ConfigReader::get("decreasePerStep"));
             }
 
-            std::vector<float> action_probs_temperature = mcts.apply_temperature(action_probs, temperature);
+            auto [actions, action_probs] = mcts.get_action_probabilities(temperature);
 
-            // 归一化概率分布
-            std::vector<float> action_probs_normalized;
-            float sum = std::accumulate(action_probs_temperature.begin(), action_probs_temperature.end(), 0.0f);
-            for (const auto &prob: action_probs_temperature) {
-                action_probs_normalized.push_back(prob / sum);
+            int index = getNextStep(actions, action_probs, game, step, &model, prefix);
+            auto action = actions[index];
+            auto rate = action_probs[index];
+
+            // 构造矩阵
+            vector<float> probs_matrix(game.boardSize * game.boardSize, 0);
+
+            if (!actions[0].isNull()) {
+                for (int k = 0; k < actions.size(); k++) {
+                    auto p = actions[k];
+                    probs_matrix[game.getActionIndex(p)] = action_probs[k];
+                }
             }
-
-            // 随机选择
-            std::discrete_distribution<int> distribution(action_probs_normalized.begin(),
-                                                         action_probs_normalized.end());
-            int action = actions[distribution(gen)];
-
-            addAction(game, action, game_data, action_probs);
-            printGame(game, action, action_probs_normalized, temperature, part, node->selectInfo, &model);
+            addAction(game, action, game_data, probs_matrix);
+            printGame(game, action, rate, probs_matrix, temperature, prefix, node.selectInfo, &model);
             step++;
-
-            //更新node
-            for (const auto &item: node->children) {
-                if (item.first != action) {
-                    item.second->release();
-                }
-            }
-            for (const auto item: node->children) {
-                if (item.first == action) {
-                    node = item.second;
-                }
-            }
         }
 
         bool win = game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer());
@@ -211,27 +285,29 @@ std::vector<std::tuple<vector<vector<vector<float>>>, std::vector<float>, std::v
             training_data.emplace_back(state, mcts_probs, std::vector<float>{value});
         }
 
-        cout << part << "winner is " << winner << endl;
+        cout << prefix << "winner is " << winner << endl;
     }
     return training_data;
 }
 
 void recordSelfPlay(
-        int boardSize,
-        int numGames,
-        int numSimulations,
-        int mctsThreadSize,
-        float temperatureDefault,
-        float explorationFactor,
-        const std::string &part,
-        Model *model) {
+    int boardSize,
+    int numGames,
+    int numSimulations,
+    float temperatureDefault,
+    float explorationFactor,
+    int shard) {
+    string modelPath = ConfigReader::get("modelPath");
+    string coreType = ConfigReader::get("coreType");
+    Model *model = new Model();
+    model->init(modelPath, coreType);
+
     // 创建文件流对象
-    std::ofstream file("record/data" + part + ".txt");
+    std::ofstream file("record/data_" + to_string(shard) + ".txt");
 
     if (file.is_open()) {
-
-        auto data = selfPlay(boardSize, numGames, numSimulations, mctsThreadSize, temperatureDefault,
-                             explorationFactor, "[" + part + "] ", *model);
+        auto data = selfPlay(boardSize, numGames, numSimulations, temperatureDefault,
+                             explorationFactor, shard, *model);
         file << data.size() << endl;
         std::cout << "data count " << data.size() << endl;
         for (auto &item: data) {

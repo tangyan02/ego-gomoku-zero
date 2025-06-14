@@ -26,7 +26,7 @@ public:
     Model();
     ~Model();
 
-    void init(std::string modelPath, int modelBatchSize);
+    void init(std::string modelPath, string coreType);
 
     future<std::pair<float, std::vector<float>>> enqueueData(std::vector<std::vector<std::vector<float>>> data);
 

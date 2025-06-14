@@ -13,7 +13,6 @@
 #include <iostream>
 #include "Utils.h"
 #include "Shape.h"
-#include "Pruner.h"
 
 const char* infotext = "name=\"Ego-Zero\", author=\"TangYan\", version=\"1.0\", country=\"China\", email=\"tangyan1412@foxmail.com\"";
 
@@ -57,6 +56,7 @@ void brain_init()
     const int MAXPATH = 250;
     auto prefix = getPrefix();
     auto subfix = string("/model/model_latest.onnx");
+
     auto fullPath = prefix + subfix;
 
     setbuf(stdout, NULL);
@@ -66,7 +66,7 @@ void brain_init()
     }
     boardSize = width;
     model = new Model();
-    model->init(fullPath, 1);
+    model->init(fullPath, "cpu");
 
     pipeOut("MESSAGE : LOADED");
 
@@ -97,7 +97,7 @@ void tree_down(int x, int y) {
     Node* select = nullptr;
     for (auto item : node->children) {
         int visit = item.second->visits;
-        if (game->getActionIndex(Point(x, y)) == item.first) {
+        if (Point(x, y) == item.first) {
             //pipeOut("MESSAGE selected�� ");
             select = item.second;
         }
@@ -184,7 +184,7 @@ bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum, int 
     int total = node->visits;
 	if (passTime / (float)thisTimeOut > 0.25) {
         //安全比例，减少误差
-        double beta = 1.2;
+        double beta = 1.5;
 
         //最大值
         int max = -1;
@@ -252,7 +252,7 @@ void brain_turn()
     startTime = getSystemTime();
     int simiNum = 0;
     while (true) {
-		mcts.search(*game, node, searchThreadCount, searchThreadCount);
+		mcts.search(*game, node, 1);
         auto passTime = getSystemTime() - startTime;
         simiNum += 1;
         if (passTime > thisTimeOut) {
@@ -270,13 +270,13 @@ void brain_turn()
 
     pipeOut("MESSAGE children size %d", node->children.size());
     int max = -1;
-    int action = -1;
+    Point action;
 
 
     if (node->children.size() == 0) {
         auto selectAction = selectActions(*game);
         if (get<0>(selectAction)) {
-            action = game->getActionIndex(get<1>(selectAction)[0]);
+            action = get<1>(selectAction)[0];
             max = 1;
         }
     }
@@ -306,7 +306,7 @@ void brain_turn()
         }
     }
 
-    auto p = game->getPointFromIndex(action);
+    auto p = action;
 
     pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %.2f score %.2f last simi %d info %s", p.x, p.y, max, total, (float)max / total, score, total - simiNum, info.c_str());
     do_mymove(p.x, p.y);

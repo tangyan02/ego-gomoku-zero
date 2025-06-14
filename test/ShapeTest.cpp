@@ -1,10 +1,7 @@
 
-
-#include "ShapeTest.h"
-
-
-bool testGetKeysInGame() {
-    cout << "testGetKeysInGame" << endl;
+TEST_CASE("testGetKeysInGame")
+{
+    // cout << "testGetKeysInGame" << endl;
     Game game(15);
 
     game.makeMove(Point(0, 1));
@@ -18,16 +15,12 @@ bool testGetKeysInGame() {
 
     auto action = Point(0, 5);
     game.board[action.x][action.y] = 3;
-    game.printBoard();
+    // game.printBoard();
     game.board[action.x][action.y] = 0;
 
-//    for (int k = 0; k < 4; k++) {
-//        auto result = getKeysInGame(game, game.currentPlayer, action, k);
-//        printKeys(result);
-//
-//    }
-
-    return true;
+    //    for (int k = 0; k < 4; k++) {
+    //        auto result = getKeysInGame(game, game.currentPlayer, action, k);
+    //        printKeys(result);
+    //
+    //    }
 }
-
-

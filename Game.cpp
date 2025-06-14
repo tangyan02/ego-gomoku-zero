@@ -89,10 +89,7 @@ std::vector<Point> Game::getNearEmptyPoints(int range) {
     return nearbyPoints;
 }
 
-std::vector<Point> Game::getEmptyPoints() {
-    if (!historyMoves.empty()) {
-        return getNearEmptyPoints();
-    }
+std::vector<Point> Game::getAllEmptyPoints() {
     std::vector<Point> emptyPoints;
     for (int row = 0; row < boardSize; row++) {
         for (int col = 0; col < boardSize; col++) {
@@ -101,8 +98,14 @@ std::vector<Point> Game::getEmptyPoints() {
             }
         }
     }
-
     return emptyPoints;
+}
+
+std::vector<Point> Game::getEmptyPoints() {
+    if (!historyMoves.empty()) {
+        return getNearEmptyPoints();
+    }
+    return getAllEmptyPoints();
 }
 
 
@@ -135,32 +138,6 @@ vector<vector<vector<float>>> Game::getState() {
             data[3][item.x][item.y] += 1;
         }
     }
-
-    //棋型点
-//    auto list = {ACTIVE_FOUR, ACTIVE_THREE, ACTIVE_TWO, SLEEPY_FOUR, SLEEPY_THREE, SLEEPY_TWO};
-//    auto players = {1, 2};
-//    auto moves = getNearEmptyPoints(4);
-//    Game game = *this;
-//    int p = 4;
-//    for (const auto &shape: list) {
-//        for (const auto &player: players) {
-//            for (const auto &move: moves) {
-//                Point action = move;
-//                int count = 0;
-//                for (int direct = 0; direct < 4; direct++) {
-//                    if (checkPointDirectShape(game, player, action, direct, shape)) {
-//                        count++;
-//                    }
-//                }
-//                if (count > 0) {
-//                    int x = action.x;
-//                    int y = action.y;
-//                    data[p][x][y] += count;
-//                }
-//            }
-//            p += 1;
-//        }
-//    }
 
     return data;
 }

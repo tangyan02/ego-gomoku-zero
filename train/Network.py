@@ -53,16 +53,6 @@ class PolicyValueNetwork(nn.Module):
             ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels)
         )
 
@@ -103,7 +93,7 @@ class PolicyValueNetwork(nn.Module):
         return x_val, x_act
 
 
-def get_network(device, lr):
+def get_model(device, lr):
     network = PolicyValueNetwork()
     network.to(device)  # 将网络移动到设备
 
@@ -121,8 +111,8 @@ def get_network(device, lr):
     return network, optimizer
 
 
-def save_network(network, optimizer, subfix=""):
-    path = f"model/checkpoint{subfix}.pth"
+def save_model(network, optimizer):
+    path = f"model/checkpoint.pth"
     torch.save({
         'model_state_dict': network.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
@@ -134,6 +124,7 @@ def save_network(network, optimizer, subfix=""):
     network.eval()
     example = torch.randn(1, network.input_channels, 20, 20, requires_grad=True,
                           device=next(network.parameters()).device)
+
     torch.onnx.export(network,
                       (example),
                       'model/model_latest.onnx',
@@ -142,18 +133,4 @@ def save_network(network, optimizer, subfix=""):
                       opset_version=17,
                       verbose=False)
 
-    example = torch.randn(1, network.input_channels, 20, 20, requires_grad=True,
-                          device=next(network.parameters()).device)
-    torch.onnx.export(network,
-                      (example),
-                      'model/model_latest_single_batch.onnx',
-                      input_names=['input'],
-                      output_names=['value', "act"],
-                      opset_version=17,
-                      verbose=False)
     network.train()
-#
-# lr = 1e-3
-# device = getDevice()
-# network, optimizer = get_network(device, lr)
-# save_network(network,optimizer)

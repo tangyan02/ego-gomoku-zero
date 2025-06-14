@@ -7,3 +7,6 @@
 /.vs
 /model
 /record
+/out/build/x64-Release/.cmake/api/v1
+/out/build/x64-Release/.vs
+/out/build/x64-Release
