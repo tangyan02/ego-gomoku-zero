@@ -3,7 +3,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import optim
+from torch.optim import AdamW
 
 
 # 定义一个Residual block
@@ -93,19 +93,19 @@ class PolicyValueNetwork(nn.Module):
         return x_val, x_act
 
 
-def get_model(device, lr):
+def get_model(device, lr, wd):
     network = PolicyValueNetwork()
     network.to(device)  # 将网络移动到设备
 
     # 定义优化器
-    optimizer = optim.Adam(network.parameters(), lr)
+    optimizer = AdamW(network.parameters(), lr=lr, weight_decay=wd)
 
     if os.path.exists(f"model/checkpoint.pth"):
         checkpoint = torch.load("model/checkpoint.pth", device)
         network.load_state_dict(checkpoint['model_state_dict'])
 
         # 重新定义优化器，确保优化器的状态在正确的设备上
-        optimizer = optim.Adam(network.parameters(), lr)
+        optimizer = AdamW(network.parameters(), lr=lr, weight_decay=wd)
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     return network, optimizer

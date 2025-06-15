@@ -60,6 +60,7 @@ if __name__ == "__main__":
     board_size = int(ConfigReader.get('boardSize'))
     num_processes = int(ConfigReader.get('numProcesses'))
     lr = float(ConfigReader.get('lr'))
+    wd = float(ConfigReader.get('wd'))
     episode = int(ConfigReader.get('episode'))
     batch_size = int(ConfigReader.get('batchSize'))
     numGames = int(ConfigReader.get('numGames'))
@@ -69,7 +70,7 @@ if __name__ == "__main__":
 
     # 模型初始化
     device = getDevice()
-    model, optimizer = get_model(device, lr)
+    model, optimizer = get_model(device, lr, wd)
 
     save_model(model, optimizer)
 
