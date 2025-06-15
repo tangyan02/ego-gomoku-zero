@@ -146,6 +146,36 @@ getSleepyTwoMoves(int player, Game &game, std::vector<Point> &basedMoves) {
     return getShapeMoves(player, game, basedMoves, SLEEPY_TWO);
 }
 
+std::vector<Point>
+getQuickWinMoves(int player, Game &game, vector<Point> &myBasedMoves) {
+    //对方没有长5，我方有双4的情况
+    auto doubleFourMoves = getTwoShapeMoves(player, game, myBasedMoves, SLEEPY_FOUR, SLEEPY_FOUR);
+    if (!doubleFourMoves.empty()) {
+        return doubleFourMoves;
+    }
+
+    //对方没有长4，我方有34或者33的情况
+    auto rangeMove2 = game.getNearEmptyPoints(2);
+    auto oppActiveFourMoves = getActiveFourMoves(3 - player, game, rangeMove2);
+    auto oppSleepyFourMoves = getSleepyFourMoves(3 - player, game, rangeMove2);
+    if (!oppActiveFourMoves.empty() || !oppSleepyFourMoves.empty()) {
+        return {};
+    }
+
+    //由于对方防守形成不了长4，因此我方下一步不会被动防守，可利用另一个活3来取胜。
+    auto threeFourMoves = getTwoShapeMoves(player, game, myBasedMoves, SLEEPY_FOUR, ACTIVE_THREE);
+    if (!threeFourMoves.empty()) {
+        return threeFourMoves;
+    }
+
+    auto doubleThreeMoves = getTwoShapeMoves(player, game, myBasedMoves, ACTIVE_THREE, ACTIVE_THREE);
+    if (!doubleThreeMoves.empty()) {
+        return doubleThreeMoves;
+    }
+
+    return {};
+}
+
 vector<Point> getVCFDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
     //如果对手有VCF点，考虑对手的进攻点，和我防防守点形成进攻点
     auto otherVCFMoves = game.getOppVCFMoves();
@@ -607,6 +637,12 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     auto activeFourMoves = getActiveFourMoves(game.currentPlayer, game, emptyPoints);
     if (!activeFourMoves.empty()) {
         return make_tuple(true, activeFourMoves, " active 4");
+    }
+
+    //快速胜利
+    auto quickWinMove = getQuickWinMoves(game.currentPlayer, game, emptyPoints);
+    if (!quickWinMove.empty()) {
+        return make_tuple(true, quickWinMove, " quick win");
     }
 
     //我方VCF点
