@@ -2,6 +2,7 @@
 #include "GameTest.cpp"
 #include "AnalyzerTest.cpp"
 #include "ShapeTest.cpp"
+#include "MCTSTest.cpp"
 
 int startTest(int argc, char *argv[]) {
     // 运行 doctest 测试

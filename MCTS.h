@@ -53,6 +53,12 @@ public:
 
     std::vector<float> apply_temperature(std::vector<float> action_probabilities, float temperature);
 
+    static void add_dirichlet_noise(
+        std::vector<float> &priors, // 原始概率
+        double epsilon, // 混合系数
+        double alpha, // Dirichlet参数
+        std::mt19937 &rng
+    );
 private:
     Node *root;
     Model *model;
@@ -61,12 +67,6 @@ private:
 
     static std::vector<double> sample_dirichlet(int size, double alpha, std::mt19937 &rng);
 
-    static void add_dirichlet_noise(
-        std::vector<float> &priors, // 原始概率
-        double epsilon, // 混合系数
-        double alpha, // Dirichlet参数
-        std::mt19937 &rng
-    );
 };
 
 #endif //EGO_GOMOKU_ZERO_MCTS_H
