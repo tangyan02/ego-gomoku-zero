@@ -35,13 +35,13 @@ Node *Node::selectChild(double exploration_factor) {
     return selected;
 }
 
-void Node::expand(Game &game, vector<Point> &moves, const vector<float> &prior_probs) {
+void Node::expand(Game &game, vector<Point> &moves, const vector<float> &probs_metrix) {
     //特殊处理跳过的情况
     vector<float> probs_arr;
     if (moves.size() > 1) {
         for (auto &move: moves) {
             int moveIndex = game.getActionIndex(move);
-            probs_arr.emplace_back(prior_probs[moveIndex]);
+            probs_arr.emplace_back(probs_metrix[moveIndex]);
         }
     } else {
         probs_arr.emplace_back(1);
@@ -102,18 +102,20 @@ void MonteCarloTree::simulate(Game game) {
         node->selectInfo = selectInfo;
 
         auto state = game.getState();
-        auto [eva_value, probs] = model->evaluate_state(state);
+        auto [eva_value, probs_metrix] = model->evaluate_state(state);
         value = eva_value;
         if (win) {
             value = 1;
+            probs_metrix = vector<float>(game.boardSize * game.boardSize, 0);
+            probs_metrix[game.getActionIndex(moves[0])] = 1;
+        } else {
+            if (useNoice && node == root) {
+                std::random_device rd;
+                std::mt19937 rng(rd());
+                add_dirichlet_noise(probs_metrix, 0.25, 0.03, rng);
+            }
         }
-
-        if (useNoice && node == root) {
-            std::random_device rd;
-            std::mt19937 rng(rd());
-            add_dirichlet_noise(probs, 0.25, 0.03, rng);
-        }
-        node->expand(game, moves, probs);
+        node->expand(game, moves, probs_metrix);
     }
 
     backpropagate(node, -value);
