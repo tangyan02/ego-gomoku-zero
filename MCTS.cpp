@@ -106,8 +106,6 @@ void MonteCarloTree::simulate(Game game) {
         value = eva_value;
         if (win) {
             value = 1;
-            probs_metrix = vector<float>(game.boardSize * game.boardSize, 0);
-            probs_metrix[game.getActionIndex(moves[0])] = 1;
         } else {
             if (useNoice && node == root) {
                 std::random_device rd;
