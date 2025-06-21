@@ -12,17 +12,30 @@
 #include <iomanip>
 #include <cstdlib>
 #include <ctime>
+#include <atomic>
 
-void printGame(Game &game, int action, std::vector<float> &action_probs, float temperature);
+class Context
+{
+public:
+    std::atomic<int> counter = atomic(0);
+    int max;
+
+    explicit Context(int max)
+    {
+        this->max = max;
+    }
+};
+
+void printGame(Game& game, int action, std::vector<float>& action_probs, float temperature);
 
 void recordSelfPlay(
-        int boardSize,
-        int numGames,
-        int numSimulation,
-        float temperatureDefault,
-        float explorationFactor,
-        int shard);
+    int boardSize,
+    Context *context,
+    int numSimulation,
+    float temperatureDefault,
+    float explorationFactor,
+    int shard);
 
-Game randomGame(Game &game);
+Game randomGame(Game& game);
 
 #endif //EGO_GOMOKU_ZERO_SELFPLAY_H

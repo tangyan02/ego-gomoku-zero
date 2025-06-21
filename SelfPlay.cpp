@@ -145,7 +145,7 @@ int getNextStep(vector<Point> &actions, vector<float> &action_probs, Game game, 
 
 std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std::vector<float> > > selfPlay(
     int boardSize,
-    int numGames,
+    Context* context,
     int numSimulations,
     float temperatureDefault,
     float explorationFactor,
@@ -155,8 +155,12 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
     MonteCarloTree mcts = MonteCarloTree(&model, explorationFactor, true);
     std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std::vector<float> > > training_data;
 
-    for (int i = 0; i < numGames; i++) {
-        string prefix = "[" + to_string(shard) + "-" + std::to_string(i) + "]";
+    while (true){
+        int gameNum = context->counter.fetch_add(1);
+        if (gameNum >= context->max) {
+            break;
+        }
+        string prefix = "[" + to_string(shard) + "-" + std::to_string(gameNum) + "]";
 
         cout << "============= " << prefix << "============" << endl;
 
@@ -220,7 +224,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
 
 void recordSelfPlay(
     int boardSize,
-    int numGames,
+    Context* context,
     int numSimulations,
     float temperatureDefault,
     float explorationFactor,
@@ -234,7 +238,7 @@ void recordSelfPlay(
     std::ofstream file("record/data_" + to_string(shard) + ".txt");
 
     if (file.is_open()) {
-        auto data = selfPlay(boardSize, numGames, numSimulations, temperatureDefault,
+        auto data = selfPlay(boardSize, context, numSimulations, temperatureDefault,
                              explorationFactor, shard, *model);
         file << data.size() << endl;
         std::cout << "data count " << data.size() << endl;
