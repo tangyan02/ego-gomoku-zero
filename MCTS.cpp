@@ -231,17 +231,22 @@ pair<vector<Point>, vector<float> > MonteCarloTree::get_action_probabilities() {
     return make_pair(moves, action_probs);
 }
 
-std::vector<float> MonteCarloTree::apply_temperature(std::vector<float> action_probabilities, float temperature) {
-    if (temperature == 1)
-        return action_probabilities;
-    for (float &prob: action_probabilities) {
-        prob = std::pow(prob, 1 / temperature);
+Point MonteCarloTree::get_max_visit_move() {
+    Node* node = root;
+    vector<pair<Point, int>> action_visits;
+
+    Point maxVisitMove;
+    int maxVisit = -1;
+    for (auto& item : node->children)
+    {
+        auto visit = item.second->visits;
+        if (visit > maxVisit)
+        {
+            maxVisit = visit;
+            maxVisitMove = item.first;
+        }
     }
-    float sum = std::accumulate(action_probabilities.begin(), action_probabilities.end(), 0.0f);
-    for (float &prob: action_probabilities) {
-        prob /= sum;
-    }
-    return action_probabilities;
+    return maxVisitMove;
 }
 
 void Node::release() {

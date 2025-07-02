@@ -44,17 +44,6 @@ void printGame(Game &game, Point action, float rate, vector<float> probs,
             << selectInfo << endl;
 }
 
-void addAction(Game &game,
-               Point action,
-               std::vector<std::tuple<vector<vector<vector<float> > >, int, std::vector<float> > > &game_data,
-               std::vector<float> &action_probs
-) {
-    auto state = game.getState();
-    std::tuple record(state, game.currentPlayer, action_probs);
-    game.makeMove(action);
-    game_data.push_back(record);
-}
-
 Game randomGame(Game &game, const string &prefix) {
     std::uniform_real_distribution<double> dis(0.0, 1.0); // 生成 0 到 1 之间的均匀分布的随机数
     double randomNum = dis(gen); // 生成随机数
@@ -127,21 +116,33 @@ Game randomGame(Game &game, const string &prefix) {
     return game;
 }
 
-float getMoveValue(Game game, Point move, Model *model) {
-    game.makeMove(move);
-    auto state = game.getState();
-    auto [eva_value, probs] = model->evaluate_state(state);
-    return -eva_value;
+tuple<float, Point, float> getNextMove(int step, float temperatureDefault,vector<float>& move_probs,
+                                       vector<Point>& moves, MonteCarloTree& mcts)
+{
+    //按温度决策
+    float temperature;
+    Point move;
+    float rate;
+
+    if (step < stoi(ConfigReader::get("temperatureDownBeginStep")))
+    {
+        //前n步，温度>0
+        temperature = temperatureDefault;
+        std::discrete_distribution<int> distribution(move_probs.begin(), move_probs.end());
+        int index = distribution(gen);
+        move = moves[index];
+        rate = move_probs[index];
+    }
+    else
+    {
+        //温度为0
+        temperature = 0;
+        move = mcts.get_max_visit_move();
+        rate = 1;
+    }
+    return tuple(temperature, move, rate);
 }
 
-int getNextStep(vector<Point> &actions, vector<float> &action_probs, Game game, int stepCount,
-                Model *model, const std::string &prefix) {
-
-    // 按分布概率选择
-    std::discrete_distribution<int> distribution(action_probs.begin(),
-                                                 action_probs.end());
-    return distribution(gen);
-}
 
 std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std::vector<float> > > selfPlay(
     int boardSize,
@@ -180,30 +181,29 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
                     ", "
                     << "per simi " << (getSystemTime() - startTime) / numSimulations << " ms" << endl;
 
-            //计算温度
-            float temperature = temperatureDefault;
 
-            if (step > stoi(ConfigReader::get("temperatureDownBeginStep"))) {
-                temperature = temperature - static_cast<float>(step) * stof(ConfigReader::get("decreasePerStep"));
-            }
+            auto [moves, move_probs] = mcts.get_action_probabilities();
 
-            auto [actions, action_probs] = mcts.get_action_probabilities(temperature);
-
-            int index = getNextStep(actions, action_probs, game, step, &model, prefix);
-            auto action = actions[index];
-            auto rate = action_probs[index];
+            //决策下一步
+            auto [temperature, move, rate] = getNextMove(step, temperatureDefault, move_probs, moves, mcts);
 
             // 构造矩阵
             vector<float> probs_matrix(game.boardSize * game.boardSize, 0);
-
-            if (!actions[0].isNull()) {
-                for (int k = 0; k < actions.size(); k++) {
-                    auto p = actions[k];
-                    probs_matrix[game.getActionIndex(p)] = action_probs[k];
+            if (!moves[0].isNull()) {
+                for (int k = 0; k < moves.size(); k++) {
+                    auto p = moves[k];
+                    probs_matrix[game.getActionIndex(p)] = move_probs[k];
                 }
             }
-            addAction(game, action, game_data, probs_matrix);
-            printGame(game, action, rate, probs_matrix, temperature, prefix, node.selectInfo, &model);
+
+            //记录局面
+            auto state = game.getState();
+            std::tuple record(state, game.currentPlayer, probs_matrix);
+            game.makeMove(move);
+            game_data.push_back(record);
+
+            //打印局面
+            printGame(game, move, rate, probs_matrix, temperature, prefix, node.selectInfo, &model);
             step++;
         }
 

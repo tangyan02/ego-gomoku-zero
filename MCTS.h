@@ -49,9 +49,10 @@ public:
     void backpropagate(Node *node, float value);
 
     pair<vector<Point>, vector<float> > get_action_probabilities(float temperature);
+
     pair<vector<Point>, vector<float>> get_action_probabilities();
 
-    std::vector<float> apply_temperature(std::vector<float> action_probabilities, float temperature);
+    Point get_max_visit_move();
 
     static void add_dirichlet_noise(
         std::vector<float> &priors, // 原始概率
