@@ -264,6 +264,11 @@ void brain_turn()
             break;
         }
 
+        auto [win, moves, selectInfo] = selectActions(*game);
+        if (win) {
+            break;
+        }
+
         if (checkNeedBreak(passTime, thisTimeOut, simiNum, searchThreadCount)) {
             break;
         }
