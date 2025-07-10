@@ -15,6 +15,7 @@ cppPath = ConfigReader.get("cppPath")
 visitCount = 0
 
 # 启动C++子进程
+print(cppPath)
 proc = subprocess.Popen(
     [cppPath],
     stdin=subprocess.PIPE,
@@ -30,7 +31,7 @@ def callInCpp(text):
 
 
 def handle_predict():
-    line = callInCpp("PREDICT 1")
+    line = callInCpp("PREDICT 2")
     probs_arr = line.strip().split(" ")
     probs = []
     for str in probs_arr:
@@ -89,8 +90,10 @@ def handle_winner():
     winner = int(arr[0])
     return winner, black, white
 
+
 def handle_rollback():
     callInCpp("ROLLBACK")
+
 
 if __name__ == '__main__':
     os.environ["SDL_RENDER_DRIVER"] = "opengl"
@@ -114,7 +117,6 @@ if __name__ == '__main__':
                 gameUi.rollback = False
                 break
 
-
             if gameUi.next_move is not None:
                 if board[gameUi.next_move[0]][gameUi.next_move[1]] == 0:
                     handle_move(gameUi.next_move[0], gameUi.next_move[1])
@@ -123,9 +125,10 @@ if __name__ == '__main__':
                 break
 
             probs = None
-            if hint[handle_current_player()]:
-                visitCount += 1
-                probs = handle_predict()
+            if visitCount < 10000:
+                if hint[handle_current_player()]:
+                    visitCount += 1
+                    probs = handle_predict()
 
             if gameUi.auto:
                 max_move = max(probs, key=lambda x: x[2])
