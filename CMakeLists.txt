@@ -76,6 +76,7 @@ add_executable(ego-gomoku-zero SelfPlay.cpp Game.h Game.cpp MCTS.h MCTS.cpp Self
         Analyzer.cpp Analyzer.h Piskvork.cpp Pisqpipe.h
         Pisqpipe.cpp Utils.cpp Utils.h Shape.cpp Shape.h
         Model.cpp Model.h ConfigReader.cpp ConfigReader.h
+        Bridge.cpp Bridge.h
 )
 set_property(TARGET ego-gomoku-zero PROPERTY CXX_STANDARD 17)
 

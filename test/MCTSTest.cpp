@@ -1,9 +1,9 @@
 #include "../MCTS.h"
 
-TEST_CASE("测试 add_dirichlet_noise 函数") {
 
 #if !defined(_WIN32) && (defined(__unix__) || defined(__unix) || (defined(__APPLE__) && defined(__MACH__)))
 
+TEST_CASE("测试 add_dirichlet_noise 函数") {
     SUBCASE("基本功能测试") {
         std::vector<float> priors = {0.2f, 0.3f, 0.5f};
         std::vector<float> original_priors = priors;
@@ -53,7 +53,6 @@ TEST_CASE("测试 add_dirichlet_noise 函数") {
 
         CHECK(priors.empty());
     }
+}
 
-}
 #endif // __unix__
-}

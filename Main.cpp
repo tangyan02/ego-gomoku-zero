@@ -6,6 +6,7 @@
 #include "Pisqpipe.h"
 #include "Shape.h"
 #include "Model.h"
+#include "Bridge.h"
 
 using namespace std;
 
@@ -52,5 +53,12 @@ int main(int argc, char *argv[]) {
         selfPlay(argc, argv);
         return 0;
     }
+
+    if (mode == "predict") {
+        Bridge bridge;
+        bridge.startGame();
+        return 0;
+    }
+
     return startTest(argc, argv);
 }
