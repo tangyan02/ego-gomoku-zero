@@ -1,5 +1,6 @@
 import os
 import subprocess
+from time import sleep
 
 import numpy as np
 
@@ -88,7 +89,7 @@ def handle_winner():
     line = callInCpp("WINNER_CHECK")
     arr = line.strip().split(" ")
     winner = int(arr[0])
-    return winner, black, white
+    return winner
 
 
 def handle_rollback():
@@ -102,9 +103,9 @@ if __name__ == '__main__':
     while True:
 
         if handle_end_check():
-            winner, black, white = handle_winner()
+            winner = handle_winner()
             gameUi.render(board, f"胜利玩家 {winner} ")
-            continue
+            sleep(10000)
 
         moves = handle_get_moves()
         if len(moves) == 1 and moves[0][0] == -1:
@@ -115,6 +116,7 @@ if __name__ == '__main__':
             if gameUi.rollback:
                 handle_rollback()
                 gameUi.rollback = False
+                visitCount = 0
                 break
 
             if gameUi.next_move is not None:
