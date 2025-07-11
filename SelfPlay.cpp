@@ -7,6 +7,8 @@
 #include <random>
 #include <cmath>
 #include <chrono>
+#include <future>
+#include "Analyzer.h"
 
 using namespace std;
 
@@ -175,14 +177,41 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             Node node;
             //开始mcts预测
             long long startTime = getSystemTime();
+
+            //并行模拟和VCT计算
+            std::atomic running(true);
+            // 用 std::packaged_task 包装带返回值的函数
+            std::packaged_task task(dfsVCTIter);
+            auto result = task.get_future();
+
+            // 启动子线程
+            thread t(std::move(task),game.currentPlayer, &game, std::ref(running));
+
             mcts.search(game, &node, numSimulations);
 
             cout << prefix << "search cost " << getSystemTime() - startTime << " ms, simi num " << numSimulations <<
                     ", "
                     << "per simi " << (getSystemTime() - startTime) / numSimulations << " ms" << endl;
 
+            running.store(false);
+            t.join();
 
-            auto [moves, move_probs] = mcts.get_action_probabilities();
+            auto [level, winMoves] = result.get();
+            cout << prefix << " vct level " << level << ", win move size: " << winMoves.size() << endl;
+
+
+            vector<Point> moves;
+            vector<float> move_probs;
+
+            if(!winMoves.empty()) {
+                float rate = 1.0f / static_cast<float>(winMoves.size());
+                for (auto winMove : winMoves){
+                    moves.emplace_back(winMove);
+                    move_probs.emplace_back(rate);
+                }
+            } else {
+                tie(moves, move_probs)= mcts.get_action_probabilities();
+            }
 
             //决策下一步
             auto [temperature, move, rate] = getNextMove(step, temperatureDefault, move_probs, moves, mcts);

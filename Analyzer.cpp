@@ -1,5 +1,7 @@
 
 #include "Analyzer.h"
+#include <atomic>
+#include <chrono>
 
 static int dx[8] = {0, 0, 1, -1, 1, 1, -1, -1};
 static int dy[8] = {1, -1, 0, 0, 1, -1, 1, -1};
@@ -383,34 +385,34 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     return std::make_pair(finalResult, winMoves);
 }
 
-std::pair<int, std::vector<Point>>
-dfsVCTIter(int checkPlayer, int currentPlayer, Game &game) {
-    long long timeout = game.vctTimeOut + getSystemTime();
-    int maxLevel = 16;
+
+std::pair<int, std::vector<Point>> dfsVCTIter(int currentPlayer, Game game, atomic<bool>& running) {
+    int maxLevel = 30;
     int level = 4;
-    int nodeLast = 0;
     for (; level <= maxLevel; level += 2) {
-        cout << level << endl;
-        auto result = dfsVCT(checkPlayer, currentPlayer, game,
+        // cout << level << endl;
+        auto result = dfsVCT(currentPlayer, currentPlayer, game, running,
                              Point(), Point(), Point(),
-                             false, 0, 0, 99, level, timeout);
+                             false, 0, 0, 99, level);
         if (result.first) {
             return make_pair(level, result.second);
         }
 //        cout << "level=" << to_string(level) << endl;
     }
+    // cout << "dfsVCTIter finish" << endl;
     return std::make_pair(level, std::vector<Point>());
 }
 
-std::pair<bool, std::vector<Point>>
-dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point lastLastMove, Point attackPoint,
-       bool fourMode, int level, int threeCount, int maxThreeCount, int maxLevel, long long timeOutTime) {
-    if (timeOutTime > 0) {
-        if (getSystemTime() > timeOutTime) {
-            return std::make_pair(false, std::vector<Point>());
-        }
-    }
+std::pair<int, std::vector<Point>> dfsVCTIter(int currentPlayer, Game* game, atomic<bool>& running) {
+    return dfsVCTIter(currentPlayer, *game, running);
+}
 
+std::pair<bool, std::vector<Point>>
+dfsVCT(int checkPlayer, int currentPlayer, Game &game, atomic<bool>& running, Point lastMove, Point lastLastMove, Point attackPoint,
+       bool fourMode, int level, int threeCount, int maxThreeCount, int maxLevel) {
+    if (!running.load()) {
+        return make_pair(false, std::vector<Point>());
+    }
 //    cout << "level " << level << endl;
     if (level > maxLevel) {
 //        cout << "超出层数" << endl;
@@ -581,8 +583,8 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
     for (const auto &item: moves) {
         game.board[item.x][item.y] = currentPlayer;
         auto nextAttackMove = attack && attackMove ? item : attackPoint;
-        auto dfsResult = dfsVCT(checkPlayer, 3 - currentPlayer, game, item, lastMove, nextAttackMove,
-                                fourMode, level + 1, threeCount, maxThreeCount, maxLevel, timeOutTime);
+        auto dfsResult = dfsVCT(checkPlayer, 3 - currentPlayer, game,running,
+            item, lastMove, nextAttackMove,fourMode, level + 1, threeCount, maxThreeCount, maxLevel);
 
         if (attack) {
             if (dfsResult.first) {
