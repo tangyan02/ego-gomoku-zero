@@ -1,5 +1,6 @@
 import os
 import subprocess
+from time import sleep
 
 import numpy as np
 
@@ -15,6 +16,7 @@ cppPath = ConfigReader.get("cppPath")
 visitCount = 0
 
 # 启动C++子进程
+print(cppPath)
 proc = subprocess.Popen(
     [cppPath],
     stdin=subprocess.PIPE,
@@ -30,7 +32,7 @@ def callInCpp(text):
 
 
 def handle_predict():
-    line = callInCpp("PREDICT 1")
+    line = callInCpp("PREDICT 2")
     probs_arr = line.strip().split(" ")
     probs = []
     for str in probs_arr:
@@ -87,10 +89,12 @@ def handle_winner():
     line = callInCpp("WINNER_CHECK")
     arr = line.strip().split(" ")
     winner = int(arr[0])
-    return winner, black, white
+    return winner
+
 
 def handle_rollback():
     callInCpp("ROLLBACK")
+
 
 if __name__ == '__main__':
     os.environ["SDL_RENDER_DRIVER"] = "opengl"
@@ -99,9 +103,9 @@ if __name__ == '__main__':
     while True:
 
         if handle_end_check():
-            winner, black, white = handle_winner()
+            winner = handle_winner()
             gameUi.render(board, f"胜利玩家 {winner} ")
-            continue
+            sleep(10000)
 
         moves = handle_get_moves()
         if len(moves) == 1 and moves[0][0] == -1:
@@ -112,8 +116,8 @@ if __name__ == '__main__':
             if gameUi.rollback:
                 handle_rollback()
                 gameUi.rollback = False
+                visitCount = 0
                 break
-
 
             if gameUi.next_move is not None:
                 if board[gameUi.next_move[0]][gameUi.next_move[1]] == 0:
@@ -123,9 +127,10 @@ if __name__ == '__main__':
                 break
 
             probs = None
-            if hint[handle_current_player()]:
-                visitCount += 1
-                probs = handle_predict()
+            if visitCount < 10000:
+                if hint[handle_current_player()]:
+                    visitCount += 1
+                    probs = handle_predict()
 
             if gameUi.auto:
                 max_move = max(probs, key=lambda x: x[2])

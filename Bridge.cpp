@@ -158,7 +158,7 @@ void Bridge::rollback(string& args)
     if (history.size()>1)
     {
         history.pop_back();
-        game = &(this->history[history.size()-2]);
+        game = &(this->history[history.size()-1]);
         delete node;
         node = new Node();
     }
