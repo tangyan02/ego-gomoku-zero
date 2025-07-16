@@ -119,29 +119,40 @@ Game randomGame(Game &game, const string &prefix) {
 }
 
 tuple<float, Point, float> getNextMove(int step, float temperatureDefault,vector<float>& move_probs,
-                                       vector<Point>& moves, MonteCarloTree& mcts)
+                                       vector<Point>& moves, MonteCarloTree& mcts, vector<Point>& winMoves)
 {
     //按温度决策
     float temperature;
     Point move;
     float rate;
 
-    if (step < stoi(ConfigReader::get("temperatureDownBeginStep")))
+    //有必胜点
+    if (!winMoves.empty())
     {
-        //前n步，温度>0
-        temperature = temperatureDefault;
-        std::discrete_distribution<int> distribution(move_probs.begin(), move_probs.end());
-        int index = distribution(gen);
-        move = moves[index];
-        rate = move_probs[index];
+        std::uniform_int_distribution<int> disInt(0, winMoves.size() - 1);
+        int index = disInt(gen);
+        move = winMoves[index];
+        rate = 1;
+        temperature = 0;
+        return tuple(temperature, move, rate);
     }
-    else
+
+    //大于n步，温度为0
+    if (step >= stoi(ConfigReader::get("temperatureDownBeginStep")))
     {
         //温度为0
         temperature = 0;
         move = mcts.get_max_visit_move();
         rate = 1;
+        return tuple(temperature, move, rate);
     }
+
+    //前n步，温度为1
+    temperature = temperatureDefault;
+    std::discrete_distribution<int> distribution(move_probs.begin(), move_probs.end());
+    int index = distribution(gen);
+    move = moves[index];
+    rate = move_probs[index];
     return tuple(temperature, move, rate);
 }
 
@@ -203,18 +214,10 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             vector<Point> moves;
             vector<float> move_probs;
 
-            if(!winMoves.empty()) {
-                float rate = 1.0f / static_cast<float>(winMoves.size());
-                for (auto winMove : winMoves){
-                    moves.emplace_back(winMove);
-                    move_probs.emplace_back(rate);
-                }
-            } else {
-                tie(moves, move_probs)= mcts.get_action_probabilities();
-            }
+            tie(moves, move_probs)= mcts.get_action_probabilities();
 
             //决策下一步
-            auto [temperature, move, rate] = getNextMove(step, temperatureDefault, move_probs, moves, mcts);
+            auto [temperature, move, rate] = getNextMove(step, temperatureDefault, move_probs, moves, mcts, winMoves);
 
             // 构造矩阵
             vector<float> probs_matrix(game.boardSize * game.boardSize, 0);
