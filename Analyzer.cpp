@@ -388,7 +388,7 @@ dfsVCF(int checkPlayer, int currentPlayer, Game &game, Point lastMove, Point las
 
 std::pair<int, std::vector<Point>> dfsVCTIter(int currentPlayer, Game game, atomic<bool>& running) {
     int maxLevel = 30;
-    int level = 4;
+    int level = 2;
     for (; level <= maxLevel; level += 2) {
         // cout << level << endl;
         auto result = dfsVCT(currentPlayer, currentPlayer, game, running,
