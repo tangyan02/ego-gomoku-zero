@@ -617,6 +617,12 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
         emptyPoints = game.getAllEmptyPoints();
     } else {
         int range = 2;
+        // if (game.historyMoves.size() <= 6) {
+        //     range = 3;
+        // }
+        // if (game.historyMoves.size() <= 3) {
+        //     range = 4;
+        // }
         emptyPoints = game.getNearEmptyPoints(range);
     }
 
