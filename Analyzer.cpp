@@ -611,19 +611,18 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, atomic<bool>& running, Po
  * 返回两个值，第一个值代表返回值是否是必胜点
  */
 tuple<bool, vector<Point>, string> selectActions(Game &game) {
-//    int range = 2;
-//    if (game.historyMoves.size() <= 6) {
-//        range = 3;
-//    }
-//    if (game.historyMoves.size() <= 3) {
-//        range = 4;
-//    }
-//
+
     vector<Point> emptyPoints;
     if(game.lastAction == Point()) {
         emptyPoints = game.getAllEmptyPoints();
     } else {
-        int range = 3;
+        int range = 2;
+        if (game.historyMoves.size() <= 6) {
+            range = 3;
+        }
+        if (game.historyMoves.size() <= 3) {
+            range = 4;
+        }
         emptyPoints = game.getNearEmptyPoints(range);
     }
 
