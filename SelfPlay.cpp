@@ -119,23 +119,12 @@ Game randomGame(Game &game, const string &prefix) {
 }
 
 tuple<float, Point, float> getNextMove(int step, float temperatureDefault,vector<float>& move_probs,
-                                       vector<Point>& moves, MonteCarloTree& mcts, vector<Point>& winMoves)
+                                       vector<Point>& moves, MonteCarloTree& mcts)
 {
     //按温度决策
     float temperature;
     Point move;
     float rate;
-
-    //有必胜点
-    if (!winMoves.empty())
-    {
-        std::uniform_int_distribution<int> disInt(0, winMoves.size() - 1);
-        int index = disInt(gen);
-        move = winMoves[index];
-        rate = 1;
-        temperature = 0;
-        return tuple(temperature, move, rate);
-    }
 
     //大于n步，温度为0
     if (step >= stoi(ConfigReader::get("temperatureDownBeginStep")))
@@ -156,6 +145,52 @@ tuple<float, Point, float> getNextMove(int step, float temperatureDefault,vector
     return tuple(temperature, move, rate);
 }
 
+
+void tryVctCut(int numSimulations, MonteCarloTree& mcts, string& prefix, Game& game, vector<Point> &winMoves, Node &winRootNode)
+{
+    if (mcts.root->children.size() == 1)
+    {
+        return;
+    }
+    //如果有胜利点，则剪枝
+    if (!winMoves.empty())
+    {
+        mcts.search(game, &winRootNode, 1);
+
+        vector<Point> excludePoints;
+        for (const auto& item : winRootNode.children)
+        {
+            bool exclude = true;
+            for (auto winMove : winMoves)
+            {
+                if (winMove == item.first)
+                {
+                    exclude = false;
+                }
+            }
+            if (exclude)
+            {
+                excludePoints.emplace_back(item.first);
+            }
+        }
+
+        for (auto excludePoint : excludePoints)
+        {
+            winRootNode.children[excludePoint]->release();
+            winRootNode.children.erase(excludePoint);
+        }
+
+        //多个胜利点，则再搜一次
+        if (winMoves.size() > 1)
+        {
+            long long startTime = getSystemTime();
+            mcts.search(game, &winRootNode, numSimulations - 1);
+            cout << prefix << " finish second search." << " cost " << getSystemTime() - startTime << " ms, simi num " <<
+                numSimulations <<
+                ", " << "per simi " << (getSystemTime() - startTime) / numSimulations << " ms" << endl;
+        }
+    }
+}
 
 std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std::vector<float> > > selfPlay(
     int boardSize,
@@ -198,9 +233,16 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             // 启动子线程
             thread t(std::move(task),game.currentPlayer, &game, std::ref(running));
 
-            mcts.search(game, &node, numSimulations);
+            int realNumSimulations = 1;
+            mcts.search(game, &node, 1);
+            //如果子节点选择大于1，才继续模拟
+            if (mcts.root->children.size() > 1)
+            {
+                mcts.search(game, &node, numSimulations - 1);
+                realNumSimulations = numSimulations;
+            }
 
-            cout << prefix << "search cost " << getSystemTime() - startTime << " ms, simi num " << numSimulations <<
+            cout << prefix << " search cost " << getSystemTime() - startTime << " ms, simi num " << realNumSimulations <<
                     ", "
                     << "per simi " << (getSystemTime() - startTime) / numSimulations << " ms" << endl;
 
@@ -214,10 +256,14 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             vector<Point> moves;
             vector<float> move_probs;
 
+            //有vct的时候剪枝
+            Node winRootNode;
+            tryVctCut(numSimulations, mcts, prefix, game, winMoves, winRootNode);
+
             tie(moves, move_probs)= mcts.get_action_probabilities();
 
             //决策下一步
-            auto [temperature, move, rate] = getNextMove(step, temperatureDefault, move_probs, moves, mcts, winMoves);
+            auto [temperature, move, rate] = getNextMove(step, temperatureDefault, move_probs, moves, mcts);
 
             // 构造矩阵
             vector<float> probs_matrix(game.boardSize * game.boardSize, 0);

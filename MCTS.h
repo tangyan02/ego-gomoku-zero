@@ -60,8 +60,9 @@ public:
         double alpha, // Dirichlet参数
         std::mt19937 &rng
     );
-private:
+
     Node *root;
+private:
     Model *model;
     float exploration_factor;
     bool useNoice = false;
