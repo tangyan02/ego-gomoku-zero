@@ -250,6 +250,14 @@ void brain_turn()
     //thisTimeOut -= vctCost;
     pipeOut("MESSAGE time limit updated %d", thisTimeOut);
     
+    auto vcfMoves = game->getMyVCFMoves();
+    if (!vcfMoves.empty()) {
+        auto p = vcfMoves[0];
+        pipeOut("MESSAGE : action %d,%d vcf!", p.x, p.y);
+        do_mymove(p.x, p.y);
+        return;
+    }
+
     startTime = getSystemTime();
     int simiNum = 0;
     while (true) {
