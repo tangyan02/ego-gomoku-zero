@@ -43,8 +43,8 @@ int main(int argc, char *argv[]) {
     //    printShape();
 
     #ifdef _WIN32
-//    piskvork();
-//    return 0;
+    piskvork();
+    return 0;
 
     #endif
 
