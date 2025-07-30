@@ -146,11 +146,30 @@ tuple<float, Point, float> getNextMove(int step, float temperatureDefault,vector
 }
 
 
-void tryVctCut(int numSimulations, MonteCarloTree& mcts, string& prefix, Game& game, vector<Point> &winMoves, Node &winRootNode)
+void tryVctCut(int numSimulations, MonteCarloTree& mcts, string& prefix, Game& game, vector<Point>& winMoves,
+               Node& winRootNode)
 {
-    if (mcts.root->children.size() == 1)
+    for (auto winMove : winMoves)
     {
-        return;
+        if (mcts.root->children.find(winMove) == mcts.root->children.end())
+        {
+            cout << " win moves not in children " << endl;
+            cout << " win moves ";
+            for (auto move : winMoves)
+            {
+                cout << move.x << "," << move.y << " ";
+            }
+            cout << endl;
+
+
+            cout << " children moves ";
+            for (auto move : mcts.root->children)
+            {
+                cout << move.first.x << "," << move.first.y << " ";
+            }
+            cout << endl;
+            exit(0);
+        }
     }
     //如果有胜利点，则剪枝
     if (!winMoves.empty())
@@ -181,6 +200,7 @@ void tryVctCut(int numSimulations, MonteCarloTree& mcts, string& prefix, Game& g
         }
 
         //多个胜利点，则再搜一次
+        mcts.search(game, &winRootNode, 1);
         if (winMoves.size() > 1)
         {
             long long startTime = getSystemTime();
@@ -240,6 +260,10 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             {
                 mcts.search(game, &node, numSimulations - 1);
                 realNumSimulations = numSimulations;
+            } else
+            {
+                mcts.search(game, &node, 1);
+                realNumSimulations = 2;
             }
 
             cout << prefix << " search cost " << getSystemTime() - startTime << " ms, simi num " << realNumSimulations <<
