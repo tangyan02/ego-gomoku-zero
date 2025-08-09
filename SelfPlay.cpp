@@ -149,6 +149,11 @@ tuple<float, Point, float> getNextMove(int step, float temperatureDefault,vector
 void tryVctCut(int numSimulations, MonteCarloTree& mcts, string& prefix, Game& game, vector<Point>& winMoves,
                Node& winRootNode)
 {
+    auto [win,moves,info] = selectActions(game);
+    if (win)
+    {
+        return;
+    }
     for (auto winMove : winMoves)
     {
         if (mcts.root->children.find(winMove) == mcts.root->children.end())
