@@ -651,10 +651,10 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     // }
 
     //我方VCF点
-    // auto myVCFMoves = game.getMyVCFMoves();
-    // if (!myVCFMoves.empty()) {
-    //     return make_tuple(true, myVCFMoves, " VCF!");
-    // }
+    auto myVCFMoves = game.getMyVCFMoves();
+    if (!myVCFMoves.empty()) {
+        return make_tuple(true, myVCFMoves, " VCF!");
+    }
 
     //防御活4点
     auto threeDefenceMoves = getThreeDefenceMoves(game.currentPlayer, game, emptyPoints);
