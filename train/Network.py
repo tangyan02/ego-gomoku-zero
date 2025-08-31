@@ -6,19 +6,29 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 
 
-# 定义一个Residual block
-class ResidualBlock(nn.Module):
-    def __init__(self, channels):
-        super(ResidualBlock, self).__init__()
+class StandardBottleneck(nn.Module):
+    expansion = 4
 
-        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(channels)
+    def __init__(self, in_channels, out_channels, stride=1, norm_layer=nn.BatchNorm2d):
+        super().__init__()
+        mid = out_channels // self.expansion
+        self.conv1 = nn.Conv2d(in_channels, mid, kernel_size=1, bias=False)
+        self.bn1 = norm_layer(mid)
+        self.conv2 = nn.Conv2d(mid, mid, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn2 = norm_layer(mid)
+        self.conv3 = nn.Conv2d(mid, out_channels, kernel_size=1, bias=False)
+        self.bn3 = norm_layer(out_channels)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(channels)
+
+        self.downsample = None
+        if stride != 1 or in_channels != out_channels:
+            self.downsample = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                norm_layer(out_channels),
+            )
 
     def forward(self, x):
-        residual = x
+        identity = x
 
         out = self.conv1(x)
         out = self.bn1(out)
@@ -26,10 +36,16 @@ class ResidualBlock(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
-
-        out += residual
         out = self.relu(out)
 
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
         return out
 
 
@@ -37,23 +53,23 @@ class PolicyValueNetwork(nn.Module):
     def __init__(self):
         self.board_size = 20
         self.input_channels = 4
-        self.residual_channels = 128
+        self.residual_channels = 256
         super(PolicyValueNetwork, self).__init__()
 
         # common layers
         self.conv1 = nn.Conv2d(self.input_channels, self.residual_channels, kernel_size=(3, 3), padding=1)
 
         self.residual_blocks = nn.Sequential(
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels)
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels)
         )
 
         # action policy layers
