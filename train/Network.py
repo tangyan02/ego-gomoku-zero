@@ -69,6 +69,16 @@ class PolicyValueNetwork(nn.Module):
             StandardBottleneck(self.residual_channels, self.residual_channels),
             StandardBottleneck(self.residual_channels, self.residual_channels),
             StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
+            StandardBottleneck(self.residual_channels, self.residual_channels),
             StandardBottleneck(self.residual_channels, self.residual_channels)
         )
 
