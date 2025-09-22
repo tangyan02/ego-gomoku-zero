@@ -3,6 +3,8 @@
 #include <atomic>
 #include <chrono>
 
+#include "ConfigReader.h"
+
 static int dx[8] = {0, 0, 1, -1, 1, 1, -1, -1};
 static int dy[8] = {1, -1, 0, 0, 1, -1, 1, -1};
 
@@ -403,7 +405,14 @@ std::pair<int, std::vector<Point>> dfsVCTIter(int currentPlayer, Game game, atom
     return std::make_pair(level, std::vector<Point>());
 }
 
-std::pair<int, std::vector<Point>> dfsVCTIter(int currentPlayer, Game* game, atomic<bool>& running) {
+std::pair<int, std::vector<Point>> dfsVCTIter(int currentPlayer, Game* game, atomic<bool>& running)
+{
+    if (ConfigReader::get("useVct") != "true")
+    {
+        int level = 0;
+        vector<Point> moves;
+        return tie(level, moves);
+    }
     return dfsVCTIter(currentPlayer, *game, running);
 }
 

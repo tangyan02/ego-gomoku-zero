@@ -278,16 +278,20 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             running.store(false);
             t.join();
 
-            auto [level, winMoves] = result.get();
-            cout << prefix << " vct level " << level << ", win move size: " << winMoves.size() << endl;
-
+            vector<Point> winMoves;
+            int level = 0;
+            tie(level, winMoves) = result.get();
+            if(level > 0)
+            {
+                cout << prefix << " vct level " << level << ", win move size: " << winMoves.size() << endl;
+            }
 
             vector<Point> moves;
             vector<float> move_probs;
 
-            //有vct的时候剪枝
             Node winRootNode;
             tryVctCut(numSimulations, mcts, prefix, game, winMoves, winRootNode);
+
 
             tie(moves, move_probs)= mcts.get_action_probabilities();
 
