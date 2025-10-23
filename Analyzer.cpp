@@ -416,7 +416,7 @@ std::pair<int, std::vector<Point>> dfsVCTIter(int currentPlayer, Game* game, ato
     {
         int level = 0;
         vector<Point> moves;
-        return tie(level, moves);
+        return pair(level, moves);
     }
     return dfsVCTIter(currentPlayer, *game, running);
 }
