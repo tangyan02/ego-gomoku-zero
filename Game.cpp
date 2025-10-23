@@ -111,7 +111,7 @@ std::vector<Point> Game::getEmptyPoints() {
 
 vector<vector<vector<float>>> Game::getState() {
 
-    vector<vector<vector<float>>> data(4, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
+    vector<vector<vector<float>>> data(8, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
@@ -136,6 +136,37 @@ vector<vector<vector<float>>> Game::getState() {
     if (!oppVCFMoves.empty()) {
         for (const auto &item: oppVCFMoves) {
             data[3][item.x][item.y] += 1;
+        }
+    }
+
+    //活3点
+    auto baseMoves = getNearEmptyPoints();
+    auto activeThreeMoves = getActiveThreeMoves(currentPlayer, *this, baseMoves);
+    if (!activeThreeMoves.empty()) {
+        for (const auto &item: oppVCFMoves) {
+            data[4][item.x][item.y] += 1;
+        }
+    }
+
+    auto activeThreeMovesOther = getActiveThreeMoves(getOtherPlayer(), *this, baseMoves);
+    if (!activeThreeMovesOther.empty()) {
+        for (const auto &item: oppVCFMoves) {
+            data[5][item.x][item.y] += 1;
+        }
+    }
+
+    //双活3点
+    auto doubleActiveThreeMoves = getDoubleActiveThreeMoves(currentPlayer, *this, baseMoves);
+    if (!doubleActiveThreeMoves.empty()) {
+        for (const auto &item: oppVCFMoves) {
+            data[6][item.x][item.y] += 1;
+        }
+    }
+
+    auto doubleActiveThreeMovesOther = getDoubleActiveThreeMoves(getOtherPlayer(), *this, baseMoves);
+    if (!doubleActiveThreeMovesOther.empty()) {
+        for (const auto &item: oppVCFMoves) {
+            data[7][item.x][item.y] += 1;
         }
     }
 

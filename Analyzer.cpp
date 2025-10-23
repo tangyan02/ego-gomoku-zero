@@ -67,6 +67,7 @@ std::vector<Point> getNearByEmptyPoints(Point action, Game &game, int range) {
     return empty_points;
 }
 
+
 vector<Point> getShapeMoves(int player, Game &game, std::vector<Point> &basedMoves, Shape shape) {
     std::vector<Point> result;
     for (const auto &point: basedMoves) {
@@ -133,6 +134,10 @@ std::vector<Point>
 getActiveThreeMoves(int player, Game &game, std::vector<Point> &basedMoves) {
     return getShapeMoves(player, game, basedMoves, ACTIVE_THREE);
 
+}
+
+vector<Point> getDoubleActiveThreeMoves(int player, Game& game, vector<Point>& basedMoves) {
+    return getTwoShapeMoves(player, game, basedMoves, ACTIVE_THREE, ACTIVE_THREE);
 }
 
 std::vector<Point>

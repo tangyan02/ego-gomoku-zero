@@ -19,6 +19,8 @@ vector<Point> getSleepyFourMoves(int player, Game& game, vector<Point>& basedMov
 
 vector<Point> getActiveThreeMoves(int player, Game& game, vector<Point>& basedMoves);
 
+vector<Point> getDoubleActiveThreeMoves(int player, Game& game, vector<Point>& basedMoves);
+
 vector<Point> getSleepyThreeMoves(int player, Game& game, vector<Point>& basedMoves);
 
 vector<Point> getActiveTwoMoves(int player, Game& game, vector<Point>& basedMoves);
