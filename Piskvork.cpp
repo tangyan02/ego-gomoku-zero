@@ -186,6 +186,7 @@ bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum, int 
 	if (passTime / (float)thisTimeOut > 0.25) {
         //安全比例，减少误差
         double beta = 1.5;
+        Point maxP;
 
         //最大值
         int max = -1;
@@ -193,15 +194,18 @@ bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum, int 
             int visit = item.second->visits;
             if (visit > max) {
                 max = visit;
+                maxP = item.first;
             }
         }
 
         //第二大值
         int secondMax = -1;
+        Point secondP;
         for (auto item : node->children) {
             int visit = item.second->visits;
             if (visit > secondMax && visit != max) {
                 secondMax = visit;
+                secondP = item.first;
             }
         }
 
@@ -209,7 +213,7 @@ bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum, int 
         int estimateVisit = total - simiNum + ((int)((double)simiNum * searchThreadCount / (double)passTime * (double)thisTimeOut));
 
         if ((secondMax + (estimateVisit - total)) * beta < max && max > 10) {
-            pipeOut("MESSAGE prebreak at max %d, secondMax %d, total %d, simiNum %d, estimateVisit %d", max, secondMax, total, simiNum, estimateVisit);
+            pipeOut("MESSAGE prebreak at max %d (%d,%d), secondMax %d (%d,%d), total %d, simiNum %d, estimateVisit %d", max, maxP.x, maxP.y, secondMax, secondP.x, secondP.y, total, simiNum, estimateVisit);
             return true;
         }
         if (simiNum>1 && (((double)passTime / (double)simiNum) + passTime > (double)thisTimeOut)) {
