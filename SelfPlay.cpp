@@ -242,7 +242,6 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         std::vector<std::tuple<vector<vector<vector<float> > >, int, std::vector<float> > > game_data;
 
         game = randomGame(game, prefix);
-        game.beginStep = game.historyMoves.size();
 
         int step = 0;
         while (!game.isGameOver()) {

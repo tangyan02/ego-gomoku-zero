@@ -57,7 +57,6 @@ public:
     int boardSize;
     int currentPlayer;
     int vctTimeOut = 0;
-    int beginStep = 0;
 
     bool myVcfDone = false;
     bool oppVcfDone = false;
