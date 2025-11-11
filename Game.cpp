@@ -111,7 +111,7 @@ std::vector<Point> Game::getEmptyPoints() {
 
 vector<vector<vector<float>>> Game::getState() {
 
-    vector<vector<vector<float>>> data(20, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
+    vector<vector<vector<float>>> data(2, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
 
     //当前局面
     for (int row = 0; row < boardSize; row++) {
@@ -122,28 +122,6 @@ vector<vector<vector<float>>> Game::getState() {
                 data[1][row][col] = 1;
             }
         }
-    }
-
-    //VCF点
-    auto myVCFMoves = getMyVCFMoves();
-    if (!myVCFMoves.empty()) {
-        for (const auto &item: myVCFMoves) {
-            data[2][item.x][item.y] += 1;
-        }
-    }
-
-    auto oppVCFMoves = getOppVCFMoves();
-    if (!oppVCFMoves.empty()) {
-        for (const auto &item: oppVCFMoves) {
-            data[3][item.x][item.y] += 1;
-        }
-    }
-
-    //双方历史落子8步
-    int k = 4;
-    for (int i = static_cast<int>(historyMoves.size()) - 1; i >= this->beginStep && k < 20; i--, k++)
-    {
-        data[k][historyMoves[i].x][historyMoves[i].y] = 1;
     }
 
     return data;
