@@ -237,6 +237,7 @@ void brain_turn()
         firstCost = info_timeout_match - info_time_left;
         thisTimeOut -= firstCost;
         firstCost = 0;
+        game->beginStep = game->historyMoves.size();
     }
 
     int vctTimeOut = thisTimeOut / 5;
