@@ -1,5 +1,8 @@
 import json
+import os
 import random
+import shutil
+import subprocess
 import time
 from collections import deque
 
@@ -71,6 +74,79 @@ def update_count(k, filepath="model/count.txt"):
     return count
 
 
+def save_checkpoint(episode):
+    """保存带编号的检查点 ONNX 模型"""
+    src = "model/model_latest.onnx"
+    dst = f"model/checkpoint_ep{episode}.onnx"
+    if os.path.exists(src):
+        shutil.copy2(src, dst)
+        Logger.infoD(f"检查点已保存: {dst}")
+    return dst
+
+
+def find_latest_checkpoint(current_episode, eval_interval):
+    """找到上一个检查点模型"""
+    prev_ep = current_episode - eval_interval
+    while prev_ep > 0:
+        path = f"model/checkpoint_ep{prev_ep}.onnx"
+        if os.path.exists(path):
+            return path, prev_ep
+        prev_ep -= eval_interval
+    return None, 0
+
+
+def run_evaluate(cpp_path, model_path1, model_path2, eval_games, eval_simulation):
+    """调用 C++ evaluate 模式对弈，解析输出结果"""
+    # 写临时配置
+    conf_path = "eval_application.conf"
+    with open(conf_path, 'w') as f:
+        f.write(f"mode=evaluate\n")
+        f.write(f"coreType={ConfigReader.get('coreType')}\n")
+        f.write(f"boardSize={ConfigReader.get('boardSize')}\n")
+        f.write(f"explorationFactor={ConfigReader.get('explorationFactor')}\n")
+        f.write(f"evalModelPath1={model_path1}\n")
+        f.write(f"evalModelPath2={model_path2}\n")
+        f.write(f"evalGames={eval_games}\n")
+        f.write(f"evalSimulation={eval_simulation}\n")
+
+    # 拷贝到 C++ 可执行文件目录
+    cpp_dir = os.path.dirname(os.path.abspath(cpp_path))
+    shutil.copy2(conf_path, os.path.join(cpp_dir, "application.conf"))
+
+    # 运行 evaluate
+    process = subprocess.Popen([cpp_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    output_lines = []
+    for line in process.stdout:
+        decoded = line.decode()
+        print(decoded, end='')
+        output_lines.append(decoded)
+    process.wait()
+
+    # 恢复训练模式配置
+    shutil.copy2("application.conf", os.path.join(cpp_dir, "application.conf"))
+
+    # 解析结果
+    result = {"wins": 0, "losses": 0, "draws": 0, "win_rate": 0.0, "elo_diff": 0.0}
+    for line in output_lines:
+        if "Win rate:" in line:
+            result["win_rate"] = float(line.split("Win rate:")[1].strip().replace("%", "")) / 100
+        elif "Elo diff:" in line:
+            elo_str = line.split("Elo diff:")[1].strip()
+            result["elo_diff"] = float(elo_str)
+        elif "Wins:" in line and "Losses:" in line:
+            parts = line.split("|")
+            for part in parts:
+                part = part.strip()
+                if part.startswith("Wins:"):
+                    result["wins"] = int(part.split(":")[1].strip())
+                elif part.startswith("Losses:"):
+                    result["losses"] = int(part.split(":")[1].strip())
+                elif part.startswith("Draws:"):
+                    result["draws"] = int(part.split(":")[1].strip())
+
+    return result
+
+
 if __name__ == "__main__":
 
     dirPreBuild()
@@ -86,7 +162,11 @@ if __name__ == "__main__":
     numGames = int(ConfigReader.get('numGames'))
     cppPath = ConfigReader.get("cppPath")
     train_epochs = int(ConfigReader.get('trainEpochs') if 'trainEpochs' in ConfigReader.config else 3)
-    replay_buffer_size = int(ConfigReader.get('replayBufferSize') if 'replayBufferSize' in ConfigReader.config else 500000)
+    replay_buffer_size = int(
+        ConfigReader.get('replayBufferSize') if 'replayBufferSize' in ConfigReader.config else 500000)
+    eval_interval = int(ConfigReader.get('evalInterval') if 'evalInterval' in ConfigReader.config else 50)
+    eval_games = int(ConfigReader.get('evalGames') if 'evalGames' in ConfigReader.config else 40)
+    eval_simulation = int(ConfigReader.get('evalSimulation') if 'evalSimulation' in ConfigReader.config else 100)
 
     total_games_count = update_count(0)
 
@@ -95,6 +175,12 @@ if __name__ == "__main__":
     model, optimizer = get_model(device, lr, wd)
 
     save_model(model, optimizer)
+
+    # 保存初始检查点作为基线
+    save_checkpoint(0)
+
+    # Elo 追踪
+    elo_history = []
 
     # 经验回放池
     replay_buffer = ReplayBuffer(max_size=replay_buffer_size)
@@ -135,6 +221,35 @@ if __name__ == "__main__":
 
         save_model(model, optimizer)
         Logger.infoD(f"最新模型已保存 episode:{i_episode}")
+
+        # Elo 评估
+        if i_episode % eval_interval == 0:
+            save_checkpoint(i_episode)
+            baseline_path, baseline_ep = find_latest_checkpoint(i_episode, eval_interval)
+            if baseline_path:
+                Logger.infoD(f"开始 Elo 评估: ep{i_episode} vs ep{baseline_ep}")
+                eval_result = run_evaluate(
+                    cppPath,
+                    f"model/checkpoint_ep{i_episode}.onnx",
+                    baseline_path,
+                    eval_games,
+                    eval_simulation
+                )
+                elo_history.append({
+                    "episode": i_episode,
+                    "vs_episode": baseline_ep,
+                    "elo_diff": eval_result["elo_diff"],
+                    "win_rate": eval_result["win_rate"],
+                    "wins": eval_result["wins"],
+                    "losses": eval_result["losses"],
+                    "draws": eval_result["draws"]
+                })
+                Logger.infoD(
+                    f"Elo 评估完成: ep{i_episode} vs ep{baseline_ep} → "
+                    f"胜率 {eval_result['win_rate'] * 100:.1f}%, Elo {eval_result['elo_diff']:+.0f}",
+                    "elo.log"
+                )
+                Logger.infoD(json.dumps(elo_history[-1]), "elo.log")
 
         Logger.infoD(f"episode {i_episode} 完成")
 

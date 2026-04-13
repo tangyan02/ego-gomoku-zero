@@ -7,6 +7,7 @@
 #include "Shape.h"
 #include "Model.h"
 #include "Bridge.h"
+#include "Evaluate.h"
 #include <memory>
 
 using namespace std;
@@ -58,6 +59,11 @@ int main(int argc, char *argv[]) {
     if (mode == "predict") {
         Bridge bridge;
         bridge.startGame();
+        return 0;
+    }
+
+    if (mode == "evaluate") {
+        runEvaluate();
         return 0;
     }
 
