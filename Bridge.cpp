@@ -19,15 +19,23 @@ Bridge::Bridge() {
     string modelPath = ConfigReader::get("modelPath");
     string coreType = ConfigReader::get("coreType");
 
-    model = new Model();
+    model = std::make_unique<Model>();
     model->init(modelPath, coreType);
 
     game = new Game(boardSize);
-    mcts = new MonteCarloTree(model, explorationFactor);
+    mcts = std::make_unique<MonteCarloTree>(model.get(), explorationFactor);
 
     node = new Node();
 
     addGameToHistroy(*game);
+}
+
+Bridge::~Bridge() {
+    if (node) {
+        node->release();
+        delete node;
+    }
+    delete game;
 }
 
 void Bridge::startGame() {

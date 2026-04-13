@@ -12,9 +12,8 @@
 
 using namespace std;
 
-// 创建一个随机数生成器
-std::random_device rd;
-std::mt19937 gen(rd());
+// 线程局部随机数生成器，避免多线程竞态
+static thread_local std::mt19937 gen(std::random_device{}());
 
 void printGame(Game &game, Point action, float rate, vector<float> probs,
                float temperature, const std::string &prefix, const string selectInfo, Model *model) {
@@ -342,7 +341,7 @@ void recordSelfPlay(
     int shard) {
     string modelPath = ConfigReader::get("modelPath");
     string coreType = ConfigReader::get("coreType");
-    Model *model = new Model();
+    auto model = std::make_unique<Model>();
     model->init(modelPath, coreType);
 
     // 创建文件流对象

@@ -31,6 +31,10 @@ public:
     future<std::pair<float, std::vector<float>>> enqueueData(std::vector<std::vector<std::vector<float>>> data);
 
     std::pair<float, std::vector<float>> evaluate_state(std::vector<std::vector<std::vector<float>>> &data);
+
+    // 高性能版本：直接接受连续内存，避免嵌套 vector 开销
+    std::pair<float, std::vector<float>> evaluate_state(const float* data, int channels, int height, int width);
+
     std::vector<std::pair<float, std::vector<float>>> evaluate_state_batch(const vector<std::vector<std::vector<std::vector<float>>>>& batchData);
 
 private:

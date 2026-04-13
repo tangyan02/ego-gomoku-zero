@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <atomic>
+#include <memory>
 
 class Context
 {

@@ -37,6 +37,7 @@ bool Point::isNull() {
 Game::Game(int boardSize) {
     currentPlayer = 1;
     this->boardSize = boardSize;
+    this->emptyCount = boardSize * boardSize;
     for (int i = 0; i < boardSize; i++)
         for (int j = 0; j < boardSize; j++)
             board[i][j] = 0;
@@ -111,20 +112,59 @@ std::vector<Point> Game::getEmptyPoints() {
 
 vector<vector<vector<float>>> Game::getState() {
 
-    vector<vector<vector<float>>> data(2, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
+    vector<vector<vector<float>>> data(INPUT_CHANNELS, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
 
+    int otherPlayer = getOtherPlayer();
     //当前局面
     for (int row = 0; row < boardSize; row++) {
         for (int col = 0; col < boardSize; col++) {
             if (board[row][col] == currentPlayer) {
                 data[0][row][col] = 1;
-            } else if (board[row][col] == getOtherPlayer()) {
+            } else if (board[row][col] == otherPlayer) {
                 data[1][row][col] = 1;
             }
         }
     }
 
+    // 通道2: 最近一步落子位置
+    if (lastAction.x >= 0 && lastAction.y >= 0) {
+        data[2][lastAction.x][lastAction.y] = 1;
+    }
+
+    // 通道3: 最近两步落子位置
+    if (lastLastAction.x >= 0 && lastLastAction.y >= 0) {
+        data[3][lastLastAction.x][lastLastAction.y] = 1;
+    }
+
     return data;
+}
+
+void Game::getState(float* buffer, int channels) const {
+    const int planeSize = boardSize * boardSize;
+    memset(buffer, 0, channels * planeSize * sizeof(float));
+
+    int otherPlayer = 3 - currentPlayer;
+    for (int row = 0; row < boardSize; row++) {
+        for (int col = 0; col < boardSize; col++) {
+            int cell = board[row][col];
+            int idx = row * boardSize + col;
+            if (cell == currentPlayer) {
+                buffer[idx] = 1.0f;
+            } else if (cell == otherPlayer) {
+                buffer[planeSize + idx] = 1.0f;
+            }
+        }
+    }
+
+    // 通道2: 最近一步落子位置
+    if (lastAction.x >= 0 && lastAction.y >= 0) {
+        buffer[2 * planeSize + lastAction.x * boardSize + lastAction.y] = 1.0f;
+    }
+
+    // 通道3: 最近两步落子位置
+    if (lastLastAction.x >= 0 && lastLastAction.y >= 0) {
+        buffer[3 * planeSize + lastLastAction.x * boardSize + lastLastAction.y] = 1.0f;
+    }
 }
 
 bool Game::isGameOver() {
@@ -133,7 +173,7 @@ bool Game::isGameOver() {
             return true;
         }
     }
-    return getEmptyPoints().empty();
+    return emptyCount == 0;
 }
 
 void Game::printBoard(const std::string &part) {
@@ -174,6 +214,7 @@ bool Game::makeMove(Point p) {
 
     board[row][col] = currentPlayer;
     currentPlayer = (currentPlayer == BLACK) ? WHITE : BLACK;
+    emptyCount--;
 
     lastLastAction.x = lastAction.x;
     lastLastAction.y = lastAction.y;

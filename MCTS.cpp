@@ -13,23 +13,17 @@ bool Node::isLeaf() {
 }
 
 Node *Node::selectChild(double exploration_factor) {
-    int total_visits = visits;
-    vector<double> ucb_values;
-    for (const auto &child: children) {
-        double q = 0;
-        if (child.second->visits > 0) {
-            q = child.second->value_sum / child.second->visits;
-        }
-        double ucb_value = q + exploration_factor * child.second->prior_prob *
-                           sqrt(total_visits) / (1 + child.second->visits);
-        child.second->ucb = ucb_value;
-    }
-    Node *selected;
+    double sqrt_total = sqrt(static_cast<double>(visits));
+    Node *selected = nullptr;
     double max_ucb = numeric_limits<double>::lowest();
-    for (const auto &child: children) {
-        if (child.second->ucb > max_ucb) {
-            max_ucb = child.second->ucb;
-            selected = child.second;
+    for (const auto &[point, child] : children) {
+        double q = child->visits > 0 ? child->value_sum / child->visits : 0.0;
+        double ucb_value = q + exploration_factor * child->prior_prob *
+                           sqrt_total / (1 + child->visits);
+        child->ucb = ucb_value;
+        if (ucb_value > max_ucb) {
+            max_ucb = ucb_value;
+            selected = child;
         }
     }
     return selected;
@@ -101,8 +95,11 @@ void MonteCarloTree::simulate(Game game) {
         auto [win, moves, selectInfo] = selectActions(game);
         node->selectInfo = selectInfo;
 
-        auto state = game.getState();
-        auto [eva_value, probs_metrix] = model->evaluate_state(state);
+        // 使用扁平化 getState，避免嵌套 vector 动态分配
+        const int channels = INPUT_CHANNELS;
+        float stateBuffer[channels * MAX_BOARD_SIZE * MAX_BOARD_SIZE];
+        game.getState(stateBuffer, channels);
+        auto [eva_value, probs_metrix] = model->evaluate_state(stateBuffer, channels, game.boardSize, game.boardSize);
         value = eva_value;
         if (win) {
             value = 1;

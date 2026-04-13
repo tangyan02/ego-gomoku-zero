@@ -9,6 +9,7 @@
 #include <string>
 #include <sstream>
 #include <stdexcept>
+#include <memory>
 
 
 class Bridge {
@@ -16,11 +17,12 @@ public:
     void startGame();
     void addGameToHistroy(Game game);
     Bridge();
+    ~Bridge();
 
 private:
     Game *game;
-    Model *model;
-    MonteCarloTree *mcts;
+    std::unique_ptr<Model> model;
+    std::unique_ptr<MonteCarloTree> mcts;
     Node *node;
 
     vector<Game> history;

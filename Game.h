@@ -41,6 +41,7 @@ struct PointEqual {
 
 const int MAX_BOARD_SIZE = 20;
 const int CONNECT = 5;
+const int INPUT_CHANNELS = 4;  // 通道: 己方棋子, 对方棋子, 最近一步, 最近两步
 
 #define NONE_P 0
 #define BLACK 1
@@ -56,6 +57,7 @@ public:
     Point lastLastAction;
     int boardSize;
     int currentPlayer;
+    int emptyCount = 0;  // 空位计数，用于 O(1) 的 isGameOver 判断
     int vctTimeOut = 0;
 
     bool myVcfDone = false;
@@ -82,6 +84,10 @@ public:
     vector<Point> getNearEmptyPoints(int range = 2);
 
     vector<vector<vector<float>>> getState();
+
+    // 高性能版本：直接写入预分配的连续内存，避免动态分配
+    // buffer 大小须 >= channels * boardSize * boardSize
+    void getState(float* buffer, int channels) const;
 
     bool isGameOver();
 

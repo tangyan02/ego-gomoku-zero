@@ -186,6 +186,38 @@ std::pair<float, std::vector<float>> Model::evaluate_state(vector<vector<vector<
     return evaluate_state_batch(batchData)[0];
 }
 
+std::pair<float, std::vector<float>> Model::evaluate_state(const float* data, int channels, int height, int width) {
+    int totalSize = channels * height * width;
+
+    // 数据已经是连续的，直接创建张量（const_cast 安全：ONNX Runtime 不会修改输入数据）
+    std::vector<int64_t> input_tensor_shape = {1, channels, height, width};
+    Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
+        memoryInfo, const_cast<float*>(data), totalSize,
+        input_tensor_shape.data(), input_tensor_shape.size());
+
+    std::vector<const char *> input_node_names = {"input"};
+    std::vector<Ort::Value> input_tensors;
+    input_tensors.push_back(std::move(input_tensor));
+
+    std::vector<const char *> output_node_names = {"value", "act"};
+
+    auto output_tensors = session->Run(Ort::RunOptions{nullptr}, input_node_names.data(), input_tensors.data(),
+                                       input_tensors.size(), output_node_names.data(), output_node_names.size());
+
+    float value = output_tensors[0].GetTensorMutableData<float>()[0];
+    float *act_data = output_tensors[1].GetTensorMutableData<float>();
+
+    std::vector<int64_t> act_shape = output_tensors[1].GetTensorTypeAndShapeInfo().GetShape();
+    int act_size = std::accumulate(act_shape.begin() + 1, act_shape.end(), 1, std::multiplies<int64_t>());
+
+    std::vector<float> prior_prob(act_size);
+    for (int i = 0; i < act_size; i++) {
+        prior_prob[i] = exp(act_data[i]);
+    }
+
+    return {value, prior_prob};
+}
+
 std::future<std::pair<float, std::vector<float>>>
 Model::enqueueData(std::vector<std::vector<std::vector<float>>> data) {
     std::promise<std::pair<float, std::vector<float>>> promise;

@@ -7,6 +7,7 @@
 #include "Shape.h"
 #include "Model.h"
 #include "Bridge.h"
+#include <memory>
 
 using namespace std;
 
@@ -20,12 +21,12 @@ void selfPlay(int argc, char *argv[]) {
 
     std::vector<std::thread> threads; // 存储线程的容器
 
-    Context* context = new Context(numGames);
+    auto context = std::make_unique<Context>(numGames);
     // 创建n个线程并将函数作为入口点
     for (int i = 0; i < numProcesses; ++i) {
         threads.emplace_back(recordSelfPlay,
                              boardSize,
-                             context,
+                             context.get(),
                              numSimulation,
                              temperatureDefault,
                              explorationFactor,
