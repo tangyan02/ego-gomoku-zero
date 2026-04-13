@@ -17,31 +17,11 @@ static thread_local std::mt19937 gen(std::random_device{}());
 
 void printGame(Game &game, Point action, float rate, vector<float> probs,
                float temperature, const std::string &prefix, const string selectInfo, Model *model) {
-    game.printBoard(prefix);
-    std::string line;
-    for (int i = 0; i < game.boardSize * game.boardSize; i++) {
-        std::stringstream ss;
-        ss << std::fixed << std::setprecision(3) << probs[i];
-        line += ss.str() + " ";
-        if ((i + 1) % game.boardSize == 0) {
-            cout << line << endl;
-            line = "";
-        }
-    }
-
-    float value = 1;
-    if (model != nullptr) {
-        auto state = game.getState();
-        //        auto eval = model->evaluate_state(state);
-        //        value = -eval.first;
-    }
-
     std::string pic = (game.getOtherPlayer() == 1) ? "x" : "o";
-    cout << prefix << " " << pic << " action is " << action.x << ","
+    cout << prefix << " " << pic << " " << action.x << ","
             << action.y
-            << " on rate " << round(rate * 1000) / 1000
-            << " temperature " << round(temperature * 100) / 100
-            //         << " value " << value
+            << " rate=" << round(rate * 1000) / 1000
+            << " T=" << round(temperature * 100) / 100
             << selectInfo << endl;
 }
 
@@ -287,10 +267,6 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
                 mcts.search(game, &node, 1);
                 realNumSimulations = 2;
             }
-
-            cout << prefix << " search cost " << getSystemTime() - startTime << " ms, simi num " << realNumSimulations <<
-                    ", "
-                    << "per simi " << (getSystemTime() - startTime) / numSimulations << " ms" << endl;
 
             running.store(false);
             t.join();
