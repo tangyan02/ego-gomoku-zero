@@ -45,49 +45,54 @@ void printGame(Game &game, Point action, float rate, vector<float> probs,
             << selectInfo << endl;
 }
 
-Game randomGame(Game &game, const string &prefix) {
-    std::uniform_real_distribution<double> dis(0.0, 1.0); // 生成 0 到 1 之间的均匀分布的随机数
-    double randomNum = dis(gen); // 生成随机数
-    // cout << randomNum << endl;
-
-    float randomRate = stof(ConfigReader::get("randomRate"));
-    if (randomNum > randomRate) {
-        std::ifstream file("openings/openings.txt"); // 打开文件
-        std::vector<std::string> lines; // 存储文件中的每一行
-
+// 缓存开局库，只读一次文件
+static std::vector<std::string>& getCachedOpenings() {
+    static std::vector<std::string> lines;
+    static bool loaded = false;
+    if (!loaded) {
+        std::ifstream file("openings/openings.txt");
         if (file.is_open()) {
             std::string line;
             while (std::getline(file, line)) {
                 if (!line.empty()) {
-                    // 检查行是否为空
-                    lines.push_back(line); // 将非空行添加到 lines 向量中
+                    lines.push_back(line);
                 }
             }
-            file.close(); // 关闭文件
-        } else {
-            std::cout << "Failed to open the file." << std::endl;
-            return 1;
+            file.close();
+        }
+        loaded = true;
+    }
+    return lines;
+}
+
+Game randomGame(Game &game, const string &prefix) {
+    std::uniform_real_distribution<double> dis(0.0, 1.0);
+    double randomNum = dis(gen);
+
+    static float randomRate = stof(ConfigReader::get("randomRate"));
+    if (randomNum > randomRate) {
+        auto& lines = getCachedOpenings();
+        if (lines.empty()) {
+            std::cout << "Failed to load openings." << std::endl;
+            return game;
         }
 
         std::uniform_int_distribution<int> disInt(0, lines.size() - 1);
-        int randomIndex = disInt(gen); // 生成随机数
+        int randomIndex = disInt(gen);
 
         std::cout << prefix << "Randomly selected index: " << randomIndex << std::endl;
-        std::string randomLine = lines[randomIndex]; // 获取随机选择的行
+        std::string randomLine = lines[randomIndex];
         std::cout << prefix << "Randomly selected coordinates: " << randomLine << std::endl;
 
-        std::vector<Point> points; // 存储 Point 对象的数组
-        // 将字符串分割为坐标点，并将它们转换为 Point 对象
+        std::vector<Point> points;
         std::stringstream ss(randomLine);
         std::string token;
 
         while (std::getline(ss, token, ',')) {
             Point point;
             point.x = std::stoi(token);
-
             std::getline(ss, token, ',');
             point.y = std::stoi(token);
-
             points.push_back(point);
         }
 
@@ -100,14 +105,11 @@ Game randomGame(Game &game, const string &prefix) {
 
         return game;
     } else {
-        //开局随机去下完后，价值接近0的点
         auto moves = game.getEmptyPoints();
 
-        std::uniform_int_distribution<> dis(0, moves.size() - 1);
-        // 生成一个随机索引
-        int random_index = dis(gen);
+        std::uniform_int_distribution<> disRand(0, moves.size() - 1);
+        int random_index = disRand(gen);
 
-        // 使用随机索引从数组中获取一个元素
         auto random_element = moves[random_index];
         game.makeMove(random_element);
 
@@ -117,7 +119,8 @@ Game randomGame(Game &game, const string &prefix) {
     return game;
 }
 
-tuple<float, Point, float> getNextMove(int step, float temperatureDefault,vector<float>& move_probs,
+tuple<float, Point, float> getNextMove(int step, float temperatureDefault, int tempDownStep,
+                                       vector<float>& move_probs,
                                        vector<Point>& moves, MonteCarloTree& mcts)
 {
     //按温度决策
@@ -125,8 +128,13 @@ tuple<float, Point, float> getNextMove(int step, float temperatureDefault,vector
     Point move;
     float rate;
 
-    //大于n步，温度为0
-    if (step >= stoi(ConfigReader::get("temperatureDownBeginStep")))
+    // 三段式温度策略：
+    // 步骤 0 ~ tempDownStep:        temperature = temperatureDefault (充分探索)
+    // 步骤 tempDownStep+1 ~ +10:    temperature = 0.3 (有限探索)
+    // 步骤 tempDownStep+11+:        temperature = 0 (贪心)
+    int exploreEndStep = tempDownStep + 10;
+
+    if (step >= exploreEndStep)
     {
         //温度为0
         temperature = 0;
@@ -135,12 +143,21 @@ tuple<float, Point, float> getNextMove(int step, float temperatureDefault,vector
         return tuple(temperature, move, rate);
     }
 
-    //前n步，温度为1
-    temperature = temperatureDefault;
-    std::discrete_distribution<int> distribution(move_probs.begin(), move_probs.end());
+    if (step >= tempDownStep)
+    {
+        //中间阶段，温度0.3
+        temperature = 0.3f;
+    } else {
+        //前期，温度为默认值
+        temperature = temperatureDefault;
+    }
+
+    // 使用温度采样
+    auto [tempMoves, tempProbs] = mcts.get_action_probabilities(temperature);
+    std::discrete_distribution<int> distribution(tempProbs.begin(), tempProbs.end());
     int index = distribution(gen);
-    move = moves[index];
-    rate = move_probs[index];
+    move = tempMoves[index];
+    rate = tempProbs[index];
     return tuple(temperature, move, rate);
 }
 
@@ -227,6 +244,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
 ) {
     MonteCarloTree mcts = MonteCarloTree(&model, explorationFactor, true);
     std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std::vector<float> > > training_data;
+    int tempDownStep = stoi(ConfigReader::get("temperatureDownBeginStep"));
 
     while (true){
         int gameNum = context->counter.fetch_add(1);
@@ -295,7 +313,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             tie(moves, move_probs)= mcts.get_action_probabilities();
 
             //决策下一步
-            auto [temperature, move, rate] = getNextMove(step, temperatureDefault, move_probs, moves, mcts);
+            auto [temperature, move, rate] = getNextMove(step, temperatureDefault, tempDownStep, move_probs, moves, mcts);
 
             // 构造矩阵
             vector<float> probs_matrix(game.boardSize * game.boardSize, 0);

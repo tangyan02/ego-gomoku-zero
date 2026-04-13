@@ -105,8 +105,6 @@ void MonteCarloTree::simulate(Game game) {
             value = 1;
         } else {
             if (useNoice && node == root) {
-                std::random_device rd;
-                std::mt19937 rng(rd());
                 add_dirichlet_noise(probs_metrix, 0.25, 0.03, rng);
             }
         }

@@ -66,6 +66,7 @@ private:
     Model *model;
     float exploration_factor;
     bool useNoice = false;
+    std::mt19937 rng{std::random_device{}()};  // 类成员 RNG，避免每次 simulate 重建
 
     static std::vector<double> sample_dirichlet(int size, double alpha, std::mt19937 &rng);
 
