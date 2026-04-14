@@ -97,8 +97,19 @@ def find_latest_checkpoint(current_episode, eval_interval):
 
 def run_evaluate(cpp_path, model_path1, model_path2, eval_games, eval_simulation):
     """调用 C++ evaluate 模式对弈，解析输出结果"""
-    # 写临时配置
-    conf_path = "eval_application.conf"
+    # 模型路径转绝对路径
+    model_path1 = os.path.abspath(model_path1)
+    model_path2 = os.path.abspath(model_path2)
+
+    # 写临时配置到 C++ 可执行文件目录
+    cpp_dir = os.path.dirname(os.path.abspath(cpp_path))
+    conf_path = os.path.join(cpp_dir, "application.conf")
+
+    # 备份原配置
+    backup_conf = conf_path + ".bak"
+    if os.path.exists(conf_path):
+        shutil.copy2(conf_path, backup_conf)
+
     with open(conf_path, 'w') as f:
         f.write(f"mode=evaluate\n")
         f.write(f"coreType={ConfigReader.get('coreType')}\n")
@@ -108,10 +119,6 @@ def run_evaluate(cpp_path, model_path1, model_path2, eval_games, eval_simulation
         f.write(f"evalModelPath2={model_path2}\n")
         f.write(f"evalGames={eval_games}\n")
         f.write(f"evalSimulation={eval_simulation}\n")
-
-    # 拷贝到 C++ 可执行文件目录
-    cpp_dir = os.path.dirname(os.path.abspath(cpp_path))
-    shutil.copy2(conf_path, os.path.join(cpp_dir, "application.conf"))
 
     # 运行 evaluate
     process = subprocess.Popen([cpp_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -123,7 +130,9 @@ def run_evaluate(cpp_path, model_path1, model_path2, eval_games, eval_simulation
     process.wait()
 
     # 恢复训练模式配置
-    shutil.copy2("application.conf", os.path.join(cpp_dir, "application.conf"))
+    if os.path.exists(backup_conf):
+        shutil.copy2(backup_conf, conf_path)
+        os.remove(backup_conf)
 
     # 解析结果
     result = {"wins": 0, "losses": 0, "draws": 0, "win_rate": 0.0, "elo_diff": 0.0}
