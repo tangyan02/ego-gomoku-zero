@@ -9,18 +9,25 @@ std::wstring ConvertStringToWString(const std::string& str) {
 }
 #endif //_WIN32
 
-Model::Model() : memoryInfo(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)), stop(false) {
+Model::Model() : memoryInfo(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)),
+                 env(nullptr), session(nullptr), sessionOptions(nullptr), stop(false), modelBatchSize(1) {
 }
 
 Model::~Model() {
-    {
-        std::unique_lock<std::mutex> lock(queueMutex);
-        stop = true;
-    }
-    condition.notify_all();
+    // 只在 batchThread 实际启动时做线程同步清理
     if (batchThread.joinable()) {
+        {
+            std::unique_lock<std::mutex> lock(queueMutex);
+            stop = true;
+        }
+        condition.notify_all();
         batchThread.join();
     }
+
+    // 安全释放 ONNX 资源（按依赖顺序：session → options → env）
+    delete session;
+    delete sessionOptions;
+    delete env;
 }
 
 void Model::init(string modelPath, string coreType) {
