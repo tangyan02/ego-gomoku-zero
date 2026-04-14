@@ -240,6 +240,11 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
 
         game = randomGame(game, prefix);
 
+        // 开局落子顺序不反映真实战术意图，清掉最近落子记录
+        // 避免通道2/3（最近一步/两步）在MCTS第一步收到误导信息
+        game.lastAction = Point();
+        game.lastLastAction = Point();
+
         int step = 0;
         while (!game.isGameOver()) {
             Node node;
