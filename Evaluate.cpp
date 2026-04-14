@@ -9,8 +9,66 @@
 #include <cmath>
 #include <vector>
 #include <memory>
+#include <fstream>
+#include <sstream>
+#include <random>
 
 using namespace std;
+
+static std::mt19937 evalRng(std::random_device{}());
+
+/**
+ * 加载 openings 文件（只读一次）
+ */
+static std::vector<std::string>& getOpenings() {
+    static std::vector<std::string> lines;
+    static bool loaded = false;
+    if (!loaded) {
+        // 尝试多个可能的路径
+        vector<string> paths = {"openings/openings.txt", "../train/openings/openings.txt", "../openings/openings.txt"};
+        for (auto& path : paths) {
+            std::ifstream file(path);
+            if (file.is_open()) {
+                std::string line;
+                while (std::getline(file, line)) {
+                    if (!line.empty()) {
+                        lines.push_back(line);
+                    }
+                }
+                file.close();
+                cout << "[Evaluate] Loaded " << lines.size() << " openings from " << path << endl;
+                break;
+            }
+        }
+        if (lines.empty()) {
+            cout << "[Evaluate] WARNING: No openings file found, using empty board" << endl;
+        }
+        loaded = true;
+    }
+    return lines;
+}
+
+/**
+ * 对 game 应用一个随机开局
+ */
+static void applyRandomOpening(Game& game) {
+    auto& openings = getOpenings();
+    if (openings.empty()) return;
+
+    std::uniform_int_distribution<int> dist(0, openings.size() - 1);
+    int idx = dist(evalRng);
+    const std::string& line = openings[idx];
+
+    std::stringstream ss(line);
+    std::string token;
+    while (std::getline(ss, token, ',')) {
+        int x = std::stoi(token);
+        std::getline(ss, token, ',');
+        int y = std::stoi(token);
+        // openings 使用相对中心的坐标
+        game.makeMove(Point(x + game.boardSize / 2, y + game.boardSize / 2));
+    }
+}
 
 /**
  * 单局对弈：模型A执黑，模型B执白
@@ -24,6 +82,7 @@ static int playOneGame(
     float explorationFactor
 ) {
     Game game(boardSize);
+    applyRandomOpening(game);  // 使用随机开局
     MonteCarloTree mctsBlack(modelBlack, explorationFactor);
     MonteCarloTree mctsWhite(modelWhite, explorationFactor);
 
