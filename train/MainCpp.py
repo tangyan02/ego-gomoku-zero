@@ -74,24 +74,26 @@ def update_count(k, filepath="model/count.txt"):
     return count
 
 
-def save_checkpoint(episode):
-    """保存带编号的检查点 ONNX 模型"""
+def save_checkpoint(total_games):
+    """保存带对局计数编号的检查点 ONNX 模型"""
     src = "model/model_latest.onnx"
-    dst = f"model/checkpoint_ep{episode}.onnx"
-    if os.path.exists(src):
+    dst = f"model/checkpoint_g{total_games}.onnx"
+    if os.path.exists(src) and not os.path.exists(dst):
         shutil.copy2(src, dst)
         Logger.infoD(f"检查点已保存: {dst}")
+    elif os.path.exists(dst):
+        Logger.infoD(f"检查点已存在，跳过: {dst}")
     return dst
 
 
-def find_latest_checkpoint(current_episode, eval_interval):
+def find_latest_checkpoint(current_games, eval_games_interval):
     """找到上一个检查点模型"""
-    prev_ep = current_episode - eval_interval
-    while prev_ep >= 0:
-        path = f"model/checkpoint_ep{prev_ep}.onnx"
+    prev_games = current_games - eval_games_interval
+    while prev_games >= 0:
+        path = f"model/checkpoint_g{prev_games}.onnx"
         if os.path.exists(path):
-            return path, prev_ep
-        prev_ep -= eval_interval
+            return path, prev_games
+        prev_games -= eval_games_interval
     return None, 0
 
 
@@ -173,7 +175,7 @@ if __name__ == "__main__":
     train_epochs = int(ConfigReader.get('trainEpochs') if 'trainEpochs' in ConfigReader.config else 3)
     replay_buffer_size = int(
         ConfigReader.get('replayBufferSize') if 'replayBufferSize' in ConfigReader.config else 500000)
-    eval_interval = int(ConfigReader.get('evalInterval') if 'evalInterval' in ConfigReader.config else 50)
+    eval_interval = int(ConfigReader.get('evalInterval') if 'evalInterval' in ConfigReader.config else 5000)
     eval_games = int(ConfigReader.get('evalGames') if 'evalGames' in ConfigReader.config else 40)
     eval_simulation = int(ConfigReader.get('evalSimulation') if 'evalSimulation' in ConfigReader.config else 100)
 
@@ -185,11 +187,12 @@ if __name__ == "__main__":
 
     save_model(model, optimizer)
 
-    # 保存初始检查点作为基线
-    save_checkpoint(0)
+    # 保存初始检查点作为基线（仅首次训练时）
+    save_checkpoint(total_games_count)
 
     # Elo 追踪
     elo_history = []
+    last_eval_games = (total_games_count // eval_interval) * eval_interval  # 上一次评估的对局数
 
     # 经验回放池
     replay_buffer = ReplayBuffer(max_size=replay_buffer_size)
@@ -231,22 +234,25 @@ if __name__ == "__main__":
         save_model(model, optimizer)
         Logger.infoD(f"最新模型已保存 episode:{i_episode}")
 
-        # Elo 评估
-        if i_episode % eval_interval == 0:
-            save_checkpoint(i_episode)
-            baseline_path, baseline_ep = find_latest_checkpoint(i_episode, eval_interval)
+        # Elo 评估（基于全局对局计数）
+        current_eval_point = (total_games_count // eval_interval) * eval_interval
+        if current_eval_point > last_eval_games and current_eval_point > 0:
+            last_eval_games = current_eval_point
+            save_checkpoint(current_eval_point)
+            baseline_path, baseline_games = find_latest_checkpoint(current_eval_point, eval_interval)
             if baseline_path:
-                Logger.infoD(f"开始 Elo 评估: ep{i_episode} vs ep{baseline_ep}")
+                current_path = f"model/checkpoint_g{current_eval_point}.onnx"
+                Logger.infoD(f"开始 Elo 评估: g{current_eval_point} vs g{baseline_games}")
                 eval_result = run_evaluate(
                     cppPath,
-                    f"model/checkpoint_ep{i_episode}.onnx",
+                    current_path,
                     baseline_path,
                     eval_games,
                     eval_simulation
                 )
                 elo_history.append({
-                    "episode": i_episode,
-                    "vs_episode": baseline_ep,
+                    "total_games": current_eval_point,
+                    "vs_games": baseline_games,
                     "elo_diff": eval_result["elo_diff"],
                     "win_rate": eval_result["win_rate"],
                     "wins": eval_result["wins"],
@@ -254,7 +260,7 @@ if __name__ == "__main__":
                     "draws": eval_result["draws"]
                 })
                 Logger.infoD(
-                    f"Elo 评估完成: ep{i_episode} vs ep{baseline_ep} → "
+                    f"Elo 评估完成: g{current_eval_point} vs g{baseline_games} → "
                     f"胜率 {eval_result['win_rate'] * 100:.1f}%, Elo {eval_result['elo_diff']:+.0f}",
                     "elo.log"
                 )
