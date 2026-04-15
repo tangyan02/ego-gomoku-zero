@@ -87,7 +87,7 @@ def save_checkpoint(episode):
 def find_latest_checkpoint(current_episode, eval_interval):
     """找到上一个检查点模型"""
     prev_ep = current_episode - eval_interval
-    while prev_ep > 0:
+    while prev_ep >= 0:
         path = f"model/checkpoint_ep{prev_ep}.onnx"
         if os.path.exists(path):
             return path, prev_ep
