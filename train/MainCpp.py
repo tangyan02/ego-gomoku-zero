@@ -234,6 +234,9 @@ if __name__ == "__main__":
         save_model(model, optimizer)
         Logger.infoD(f"最新模型已保存 episode:{i_episode}")
 
+        # 先更新计数，再检查是否触发评估
+        total_games_count = update_count(numGames)
+
         # Elo 评估（基于全局对局计数）
         current_eval_point = (total_games_count // eval_interval) * eval_interval
         if current_eval_point > last_eval_games and current_eval_point > 0:
@@ -267,9 +270,6 @@ if __name__ == "__main__":
                 Logger.infoD(json.dumps(elo_history[-1]), "elo.log")
 
         Logger.infoD(f"episode {i_episode} 完成")
-
-        # 更新计数
-        total_games_count = update_count(numGames)
 
         # 记录迭代信息
         episodeInfo = {
