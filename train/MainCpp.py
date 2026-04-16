@@ -148,12 +148,12 @@ def run_evaluate(cpp_path, model_path1, model_path2, eval_games, eval_simulation
             parts = line.split("|")
             for part in parts:
                 part = part.strip()
-                if part.startswith("Wins:"):
-                    result["wins"] = int(part.split(":")[1].strip())
-                elif part.startswith("Losses:"):
-                    result["losses"] = int(part.split(":")[1].strip())
-                elif part.startswith("Draws:"):
-                    result["draws"] = int(part.split(":")[1].strip())
+                if "Wins:" in part:
+                    result["wins"] = int(part.split("Wins:")[1].strip())
+                elif "Losses:" in part:
+                    result["losses"] = int(part.split("Losses:")[1].strip())
+                elif "Draws:" in part:
+                    result["draws"] = int(part.split("Draws:")[1].strip())
 
     return result
 
