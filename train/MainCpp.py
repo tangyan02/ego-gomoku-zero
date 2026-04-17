@@ -122,8 +122,11 @@ def run_evaluate(cpp_path, model_path1, model_path2, eval_games, eval_simulation
         f.write(f"evalGames={eval_games}\n")
         f.write(f"evalSimulation={eval_simulation}\n")
 
-    # 运行 evaluate
-    process = subprocess.Popen([cpp_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    # 运行 evaluate（在 C++ 目录下执行，确保读到 evaluate 配置）
+    env = os.environ.copy()
+    env['DYLD_LIBRARY_PATH'] = os.path.join(os.path.dirname(os.path.abspath(cpp_path)), '..', 'onnxruntime', 'lib')
+    process = subprocess.Popen([os.path.abspath(cpp_path)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               cwd=cpp_dir, env=env)
     output_lines = []
     for line in process.stdout:
         decoded = line.decode()
