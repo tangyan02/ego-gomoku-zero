@@ -75,8 +75,10 @@ def update_count(k, filepath="model/count.txt"):
 
 
 def save_checkpoint(total_games):
-    """保存带对局计数编号的检查点 ONNX 模型"""
-    src = "model/model_latest.onnx"
+    """保存带对局计数编号的检查点 ONNX 模型（从 best 模型保存）"""
+    src = "model/model_best.onnx"
+    if not os.path.exists(src):
+        src = "model/model_latest.onnx"  # 兼容首次启动
     dst = f"model/checkpoint_g{total_games}.onnx"
     if os.path.exists(src) and not os.path.exists(dst):
         shutil.copy2(src, dst)
@@ -181,6 +183,11 @@ if __name__ == "__main__":
     eval_interval = int(ConfigReader.get('evalInterval') if 'evalInterval' in ConfigReader.config else 5000)
     eval_games = int(ConfigReader.get('evalGames') if 'evalGames' in ConfigReader.config else 40)
     eval_simulation = int(ConfigReader.get('evalSimulation') if 'evalSimulation' in ConfigReader.config else 100)
+    arena_interval = int(ConfigReader.get('arenaInterval') if 'arenaInterval' in ConfigReader.config else 5)
+    arena_games = int(ConfigReader.get('arenaGames') if 'arenaGames' in ConfigReader.config else 40)
+    arena_simulation = int(ConfigReader.get('arenaSimulation') if 'arenaSimulation' in ConfigReader.config else 100)
+    arena_threshold = float(ConfigReader.get('arenaWinRateThreshold') if 'arenaWinRateThreshold' in ConfigReader.config else 0.55)
+    arena_max_skip = int(ConfigReader.get('arenaMaxSkip') if 'arenaMaxSkip' in ConfigReader.config else 10)
 
     total_games_count = update_count(0)
 
@@ -189,6 +196,16 @@ if __name__ == "__main__":
     model, optimizer = get_model(device, lr, wd)
 
     save_model(model, optimizer)
+
+    # 初始化 best 模型：首次启动时复制 latest 为 best
+    best_path = "model/model_best.onnx"
+    latest_path = "model/model_latest.onnx"
+    if not os.path.exists(best_path):
+        shutil.copy2(latest_path, best_path)
+        Logger.infoD("首次启动：model_best.onnx 从 model_latest.onnx 复制而来")
+
+    # Arena 状态
+    arena_skip_count = 0  # 连续未通过 arena 的次数
 
     # 保存初始检查点作为基线（仅首次训练时）
     save_checkpoint(total_games_count)
@@ -239,6 +256,35 @@ if __name__ == "__main__":
 
         # 先更新计数，再检查是否触发评估
         total_games_count = update_count(numGames)
+
+        # Arena 门槛准入：每 arena_interval 轮对比 latest vs best
+        if i_episode % arena_interval == 0:
+            Logger.infoD(f"开始 Arena 评估: latest vs best (连续跳过: {arena_skip_count})")
+            arena_result = run_evaluate(
+                cppPath,
+                latest_path,
+                best_path,
+                arena_games,
+                arena_simulation
+            )
+            arena_win_rate = arena_result['win_rate']
+            force_accept = arena_skip_count >= arena_max_skip
+            accepted = arena_win_rate >= arena_threshold or force_accept
+
+            reason = "通过阈值" if arena_win_rate >= arena_threshold else ("强制接受(连续跳过达上限)" if force_accept else "未通过")
+            Logger.infoD(
+                f"Arena 结果: 胜率 {arena_win_rate * 100:.1f}% ({arena_result['wins']}-{arena_result['losses']}-{arena_result['draws']}), "
+                f"Elo {arena_result['elo_diff']:+.0f}, {reason}",
+                "arena.log"
+            )
+
+            if accepted:
+                shutil.copy2(latest_path, best_path)
+                Logger.infoD(f"✅ 新模型已升格为 best (胜率 {arena_win_rate * 100:.1f}%)", "arena.log")
+                arena_skip_count = 0
+            else:
+                arena_skip_count += 1
+                Logger.infoD(f"❌ 新模型被拒绝 (胜率 {arena_win_rate * 100:.1f}% < {arena_threshold * 100:.0f}%)", "arena.log")
 
         # Elo 评估（基于全局对局计数）
         current_eval_point = (total_games_count // eval_interval) * eval_interval
