@@ -11,6 +11,7 @@
 #include "SelfPlay.h"
 #include <direct.h>
 #include <iostream>
+#include <fstream>
 #include "Utils.h"
 #include "Shape.h"
 
@@ -56,9 +57,19 @@ void brain_init()
     pipeOut("MESSAGE : STARTING...");
     const int MAXPATH = 250;
     auto prefix = getPrefix();
-    auto subfix = string("/model/model_latest.onnx");
 
-    auto fullPath = prefix + subfix;
+    // 优先加载 model_best.onnx（通过 Arena 门槛的稳定模型），不存在则回退到 model_latest.onnx
+    auto bestPath = prefix + string("/model/model_best.onnx");
+    auto latestPath = prefix + string("/model/model_latest.onnx");
+    std::string fullPath;
+    std::ifstream bestFile(bestPath);
+    if (bestFile.good()) {
+        fullPath = bestPath;
+        pipeOut("MESSAGE : using model_best.onnx");
+    } else {
+        fullPath = latestPath;
+        pipeOut("MESSAGE : model_best.onnx not found, using model_latest.onnx");
+    }
 
     setbuf(stdout, NULL);
     if (width != 20 || height != 20) {
