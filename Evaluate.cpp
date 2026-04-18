@@ -19,33 +19,61 @@ static std::mt19937 evalRng(std::random_device{}());
 
 /**
  * 加载 openings 文件（只读一次）
+ * 评估时合并生成开局 + 手动开局，覆盖更广
  */
 static std::vector<std::string>& getOpenings() {
     static std::vector<std::string> lines;
     static bool loaded = false;
     if (!loaded) {
-        // 尝试多个可能的路径
-        vector<string> paths = {"openings/openings.txt", "../train/openings/openings.txt", "../openings/openings.txt"};
-        for (auto& path : paths) {
-            std::ifstream file(path);
-            if (file.is_open()) {
-                std::string line;
-                while (std::getline(file, line)) {
-                    if (!line.empty()) {
-                        lines.push_back(line);
+        // 生成开局 + 手动开局的文件路径候选
+        vector<pair<string, vector<string>>> sources = {
+            {"generated", {"openings/openings.txt", "../train/openings/openings.txt", "../openings/openings.txt"}},
+            {"manual",    {"openings/openings_manual.txt", "../train/openings/openings_manual.txt", "../openings/openings_manual.txt"}},
+        };
+        for (auto& [label, paths] : sources) {
+            for (auto& path : paths) {
+                std::ifstream file(path);
+                if (file.is_open()) {
+                    int count = 0;
+                    std::string line;
+                    while (std::getline(file, line)) {
+                        if (!line.empty()) {
+                            lines.push_back(line);
+                            count++;
+                        }
                     }
+                    file.close();
+                    cout << "[Evaluate] Loaded " << count << " " << label << " openings from " << path << endl;
+                    break;
                 }
-                file.close();
-                cout << "[Evaluate] Loaded " << lines.size() << " openings from " << path << endl;
-                break;
             }
         }
         if (lines.empty()) {
             cout << "[Evaluate] WARNING: No openings file found, using empty board" << endl;
+        } else {
+            cout << "[Evaluate] Total openings for evaluation: " << lines.size() << endl;
         }
         loaded = true;
     }
     return lines;
+}
+
+/**
+ * 对 game 应用指定序号的开局
+ */
+static void applyOpening(Game& game, int index) {
+    auto& openings = getOpenings();
+    if (index < 0 || index >= (int)openings.size()) return;
+
+    const std::string& line = openings[index];
+    std::stringstream ss(line);
+    std::string token;
+    while (std::getline(ss, token, ',')) {
+        int x = std::stoi(token);
+        std::getline(ss, token, ',');
+        int y = std::stoi(token);
+        game.makeMove(Point(x + game.boardSize / 2, y + game.boardSize / 2));
+    }
 }
 
 /**
@@ -57,17 +85,7 @@ static void applyRandomOpening(Game& game) {
 
     std::uniform_int_distribution<int> dist(0, openings.size() - 1);
     int idx = dist(evalRng);
-    const std::string& line = openings[idx];
-
-    std::stringstream ss(line);
-    std::string token;
-    while (std::getline(ss, token, ',')) {
-        int x = std::stoi(token);
-        std::getline(ss, token, ',');
-        int y = std::stoi(token);
-        // openings 使用相对中心的坐标
-        game.makeMove(Point(x + game.boardSize / 2, y + game.boardSize / 2));
-    }
+    applyOpening(game, idx);
 }
 
 /**
@@ -113,6 +131,38 @@ static double winRateToElo(double winRate) {
     return 400.0 * log10(winRate / (1.0 - winRate));
 }
 
+/**
+ * 单局对弈：使用指定开局序号
+ */
+static int playOneGameWithOpening(
+    Model* modelBlack,
+    Model* modelWhite,
+    int boardSize,
+    int numSimulation,
+    float explorationFactor,
+    int openingIndex
+) {
+    Game game(boardSize);
+    applyOpening(game, openingIndex);
+    MonteCarloTree mctsBlack(modelBlack, explorationFactor);
+    MonteCarloTree mctsWhite(modelWhite, explorationFactor);
+
+    while (!game.isGameOver()) {
+        Node node;
+        MonteCarloTree& mcts = (game.currentPlayer == BLACK) ? mctsBlack : mctsWhite;
+
+        mcts.search(game, &node, numSimulation);
+        Point move = mcts.get_max_visit_move();
+        game.makeMove(move);
+        node.release();
+    }
+
+    if (game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer())) {
+        return game.getOtherPlayer();
+    }
+    return 0;
+}
+
 EvalResult evaluateModels(
     const string& modelPath1,
     const string& modelPath2,
@@ -130,44 +180,83 @@ EvalResult evaluateModels(
     model2->init(modelPath2, coreType);
 
     int wins1 = 0, wins2 = 0, draws = 0;
-    int halfGames = numGames / 2;
 
-    cout << "[Evaluate] " << modelPath1 << " vs " << modelPath2 << endl;
-    cout << "[Evaluate] " << numGames << " games (" << halfGames << " each side), "
-         << numSimulation << " simulations/move" << endl;
+    auto& openings = getOpenings();
+    bool useAllOpenings = (numGames == -1);
 
-    // 前半：模型1执黑，模型2执白
-    for (int i = 0; i < halfGames; i++) {
-        long long startTime = getSystemTime();
-        int result = playOneGame(model1.get(), model2.get(), boardSize, numSimulation, explorationFactor);
-        long long cost = getSystemTime() - startTime;
+    if (useAllOpenings && !openings.empty()) {
+        // 全开局模式：每个开局先后手各一局
+        int totalOpenings = openings.size();
+        int totalGamesExpected = totalOpenings * 2;
+        cout << "[Evaluate] " << modelPath1 << " vs " << modelPath2 << endl;
+        cout << "[Evaluate] All openings mode: " << totalOpenings << " openings x 2 sides = "
+             << totalGamesExpected << " games, " << numSimulation << " simulations/move" << endl;
 
-        if (result == BLACK) wins1++;
-        else if (result == WHITE) wins2++;
-        else draws++;
+        int gameCount = 0;
+        for (int i = 0; i < totalOpenings; i++) {
+            // M1 执黑
+            long long startTime = getSystemTime();
+            int result = playOneGameWithOpening(model1.get(), model2.get(), boardSize, numSimulation, explorationFactor, i);
+            long long cost = getSystemTime() - startTime;
+            if (result == BLACK) wins1++;
+            else if (result == WHITE) wins2++;
+            else draws++;
+            gameCount++;
+            cout << "[Evaluate] Game " << gameCount << "/" << totalGamesExpected
+                 << " Opening " << i << " (M1=Black): " << (result == BLACK ? "M1 WIN" : (result == WHITE ? "M2 WIN" : "DRAW"))
+                 << " (" << cost << "ms)" << endl;
 
-        cout << "[Evaluate] Game " << (i + 1) << "/" << numGames
-             << " (M1=Black): " << (result == BLACK ? "M1 WIN" : (result == WHITE ? "M2 WIN" : "DRAW"))
-             << " (" << cost << "ms)" << endl;
-    }
+            // M1 执白
+            startTime = getSystemTime();
+            result = playOneGameWithOpening(model2.get(), model1.get(), boardSize, numSimulation, explorationFactor, i);
+            cost = getSystemTime() - startTime;
+            if (result == WHITE) wins1++;
+            else if (result == BLACK) wins2++;
+            else draws++;
+            gameCount++;
+            cout << "[Evaluate] Game " << gameCount << "/" << totalGamesExpected
+                 << " Opening " << i << " (M1=White): " << (result == WHITE ? "M1 WIN" : (result == BLACK ? "M2 WIN" : "DRAW"))
+                 << " (" << cost << "ms)" << endl;
+        }
+    } else {
+        // 原有随机开局模式
+        int halfGames = numGames / 2;
+        cout << "[Evaluate] " << modelPath1 << " vs " << modelPath2 << endl;
+        cout << "[Evaluate] " << numGames << " games (" << halfGames << " each side), "
+             << numSimulation << " simulations/move" << endl;
 
-    // 后半：模型2执黑，模型1执白
-    for (int i = 0; i < halfGames; i++) {
-        long long startTime = getSystemTime();
-        int result = playOneGame(model2.get(), model1.get(), boardSize, numSimulation, explorationFactor);
-        long long cost = getSystemTime() - startTime;
+        // 前半：模型1执黑，模型2执白
+        for (int i = 0; i < halfGames; i++) {
+            long long startTime = getSystemTime();
+            int result = playOneGame(model1.get(), model2.get(), boardSize, numSimulation, explorationFactor);
+            long long cost = getSystemTime() - startTime;
 
-        if (result == WHITE) wins1++;  // 模型1执白获胜
-        else if (result == BLACK) wins2++;  // 模型2执黑获胜
-        else draws++;
+            if (result == BLACK) wins1++;
+            else if (result == WHITE) wins2++;
+            else draws++;
 
-        cout << "[Evaluate] Game " << (halfGames + i + 1) << "/" << numGames
-             << " (M1=White): " << (result == WHITE ? "M1 WIN" : (result == BLACK ? "M2 WIN" : "DRAW"))
-             << " (" << cost << "ms)" << endl;
+            cout << "[Evaluate] Game " << (i + 1) << "/" << numGames
+                 << " (M1=Black): " << (result == BLACK ? "M1 WIN" : (result == WHITE ? "M2 WIN" : "DRAW"))
+                 << " (" << cost << "ms)" << endl;
+        }
+
+        // 后半：模型2执黑，模型1执白
+        for (int i = 0; i < halfGames; i++) {
+            long long startTime = getSystemTime();
+            int result = playOneGame(model2.get(), model1.get(), boardSize, numSimulation, explorationFactor);
+            long long cost = getSystemTime() - startTime;
+
+            if (result == WHITE) wins1++;
+            else if (result == BLACK) wins2++;
+            else draws++;
+
+            cout << "[Evaluate] Game " << (halfGames + i + 1) << "/" << numGames
+                 << " (M1=White): " << (result == WHITE ? "M1 WIN" : (result == BLACK ? "M2 WIN" : "DRAW"))
+                 << " (" << cost << "ms)" << endl;
+        }
     }
 
     int totalGames = wins1 + wins2 + draws;
-    // 胜率计算：胜=1分，平=0.5分
     double score1 = wins1 + draws * 0.5;
     double winRate1 = score1 / totalGames;
     double eloDiff = winRateToElo(winRate1);

@@ -5,7 +5,7 @@
 
 using namespace std;
 
-Node::Node(Node *parent) : parent(parent), visits(0), value_sum(0), prior_prob(0), ucb(0) {
+Node::Node(Node *parent) : parent(parent), visits(0), value_sum(0), prior_prob(0), ucb(0), virtual_loss(0) {
 }
 
 bool Node::isLeaf() {
@@ -13,13 +13,18 @@ bool Node::isLeaf() {
 }
 
 Node *Node::selectChild(double exploration_factor) {
-    double sqrt_total = sqrt(static_cast<double>(visits));
+    // 父节点的 effective visits 包含 virtual_loss
+    double effective_parent_visits = static_cast<double>(visits) + static_cast<double>(virtual_loss);
+    double sqrt_total = sqrt(effective_parent_visits);
     Node *selected = nullptr;
     double max_ucb = numeric_limits<double>::lowest();
     for (const auto &[point, child] : children) {
-        double q = child->visits > 0 ? child->value_sum / child->visits : 0.0;
+        // effective_visits 和 effective_value：把 virtual loss 当成 (visits++, value_sum-=1) 的悲观估计
+        int effective_visits = child->visits + child->virtual_loss;
+        double effective_value = child->value_sum - static_cast<double>(child->virtual_loss);
+        double q = effective_visits > 0 ? effective_value / effective_visits : 0.0;
         double ucb_value = q + exploration_factor * child->prior_prob *
-                           sqrt_total / (1 + child->visits);
+                           sqrt_total / (1 + effective_visits);
         child->ucb = ucb_value;
         if (ucb_value > max_ucb) {
             max_ucb = ucb_value;
@@ -27,6 +32,14 @@ Node *Node::selectChild(double exploration_factor) {
         }
     }
     return selected;
+}
+
+void Node::addVirtualLoss() {
+    virtual_loss++;
+}
+
+void Node::removeVirtualLoss() {
+    virtual_loss--;
 }
 
 void Node::expand(Game &game, vector<Point> &moves, const vector<float> &probs_metrix) {
@@ -121,6 +134,139 @@ void MonteCarloTree::search(Game &game, Node *node, int num_simulations) {
     for (int i = 0; i < num_simulations; i++) {
         //        cout << "开始模拟，次数 " << i << endl;
         simulate(game);
+    }
+}
+
+// 走一条路径到叶子节点，沿途为每个访问的节点增加 virtual loss
+// 返回叶子信息：如果叶子已经是终局/赢局，immediate_value 有值；否则需要加入 batch 推理
+MonteCarloTree::LeafInfo MonteCarloTree::selectLeafWithVirtualLoss(Game game) {
+    // 处理 game over 特殊情况（游戏已结束）：直接返回，无需操作
+    if (game.isGameOver()) {
+        return LeafInfo{nullptr, game, 0.0f, false};
+    }
+
+    Node *node = root;
+    // 沿 PUCT 向下选择，直到叶子；沿途加 virtual loss
+    while (!node->isLeaf()) {
+        node->addVirtualLoss();
+        Node *child = node->selectChild(exploration_factor);
+        game.makeMove(child->move);
+        node = child;
+    }
+    node->addVirtualLoss();
+
+    // 判断叶子是否为终局：如果对方刚才的落子构成胜利，value = -1（当前玩家视角）
+    if (game.lastAction.x >= 0 && game.lastAction.y >= 0 &&
+        game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer())) {
+        return LeafInfo{node, game, -1.0f, false};
+    }
+
+    // 需要评估的叶子
+    return LeafInfo{node, game, 0.0f, true};
+}
+
+// 批量搜索：用 Virtual Loss + 批推理加速
+void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, int batch_size) {
+    root = node;
+
+    // 如果游戏已结束，直接返回
+    if (game.isGameOver()) {
+        return;
+    }
+
+    int simulations_done = 0;
+    const int channels = INPUT_CHANNELS;
+
+    while (simulations_done < num_simulations) {
+        int current_batch = std::min(batch_size, num_simulations - simulations_done);
+
+        std::vector<LeafInfo> leaves;
+        leaves.reserve(current_batch);
+
+        // 1. 并行走多条路径到叶子，沿途加 virtual loss
+        for (int i = 0; i < current_batch; i++) {
+            leaves.push_back(selectLeafWithVirtualLoss(game));
+        }
+
+        // 2. 收集需要网络评估的叶子，打包成 batch
+        std::vector<int> eval_indices;       // leaves 中需要评估的索引
+        std::vector<std::vector<float>> batch_states;  // 扁平化的 state
+        eval_indices.reserve(current_batch);
+
+        for (int i = 0; i < current_batch; i++) {
+            if (leaves[i].leaf != nullptr && leaves[i].needs_eval) {
+                eval_indices.push_back(i);
+                std::vector<float> state(channels * MAX_BOARD_SIZE * MAX_BOARD_SIZE);
+                leaves[i].game.getState(state.data(), channels);
+                batch_states.push_back(std::move(state));
+            }
+        }
+
+        // 3. 批量推理
+        std::vector<std::pair<float, std::vector<float>>> batch_results;
+        if (!batch_states.empty()) {
+            // 将扁平化 states 重新组织为 evaluate_state_batch 期望的格式
+            // [batch, channels, H, W]
+            std::vector<std::vector<std::vector<std::vector<float>>>> batch_data;
+            batch_data.reserve(batch_states.size());
+            for (size_t b = 0; b < batch_states.size(); b++) {
+                std::vector<std::vector<std::vector<float>>> data(
+                    channels, std::vector<std::vector<float>>(MAX_BOARD_SIZE,
+                        std::vector<float>(MAX_BOARD_SIZE, 0.0f)));
+                for (int c = 0; c < channels; c++) {
+                    for (int h = 0; h < MAX_BOARD_SIZE; h++) {
+                        for (int w = 0; w < MAX_BOARD_SIZE; w++) {
+                            data[c][h][w] = batch_states[b][c * MAX_BOARD_SIZE * MAX_BOARD_SIZE + h * MAX_BOARD_SIZE + w];
+                        }
+                    }
+                }
+                batch_data.push_back(std::move(data));
+            }
+            batch_results = model->evaluate_state_batch(batch_data);
+        }
+
+        // 4. 批量处理结果：移除 virtual loss + expand + backpropagate
+        int eval_ptr = 0;
+        for (int i = 0; i < current_batch; i++) {
+            Node *leaf = leaves[i].leaf;
+            if (leaf == nullptr) continue;  // 跳过已结束的游戏
+
+            float value;
+            if (leaves[i].needs_eval) {
+                // 从 batch 推理结果中取出
+                auto &[eva_value, probs_metrix] = batch_results[eval_ptr++];
+                value = eva_value;
+
+                // expand 叶子（使用 batch 推理得到的 prior）
+                auto [win, moves, selectInfo] = selectActions(leaves[i].game);
+                leaf->selectInfo = selectInfo;
+
+                if (win) {
+                    value = 1.0f;
+                } else {
+                    auto probs_copy = probs_metrix;
+                    if (useNoice && leaf == root) {
+                        add_dirichlet_noise(probs_copy, 0.25, 0.03, rng);
+                    }
+                    leaf->expand(leaves[i].game, moves, probs_copy);
+                }
+            } else {
+                // 终局叶子，直接用 immediate_value
+                value = leaves[i].immediate_value;
+            }
+
+            // backpropagate + 沿途移除 virtual loss
+            Node *cur = leaf;
+            float v = -value;  // 叶子对父节点的影响需要反号
+            while (cur != nullptr) {
+                cur->removeVirtualLoss();
+                cur->update(v);
+                cur = cur->parent;
+                v = -v;
+            }
+        }
+
+        simulations_done += current_batch;
     }
 }
 

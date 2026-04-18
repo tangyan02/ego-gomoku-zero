@@ -49,51 +49,46 @@ Game randomGame(Game &game, const string &prefix) {
     std::uniform_real_distribution<double> dis(0.0, 1.0);
     double randomNum = dis(gen);
 
-    static float randomRate = stof(ConfigReader::get("randomRate"));
-    if (randomNum > randomRate) {
-        auto& lines = getCachedOpenings();
-        if (lines.empty()) {
-            std::cout << "Failed to load openings." << std::endl;
-            return game;
-        }
-
-        std::uniform_int_distribution<int> disInt(0, lines.size() - 1);
-        int randomIndex = disInt(gen);
-
-        std::cout << prefix << "Randomly selected index: " << randomIndex << std::endl;
-        std::string randomLine = lines[randomIndex];
-        std::cout << prefix << "Randomly selected coordinates: " << randomLine << std::endl;
-
-        std::vector<Point> points;
-        std::stringstream ss(randomLine);
-        std::string token;
-
-        while (std::getline(ss, token, ',')) {
-            Point point;
-            point.x = std::stoi(token);
-            std::getline(ss, token, ',');
-            point.y = std::stoi(token);
-            points.push_back(point);
-        }
-
-        for (const auto &item: points) {
-            int x = item.x + game.boardSize / 2;
-            int y = item.y + game.boardSize / 2;
-            cout << prefix << "make move " << x << "," << y << endl;
-            game.makeMove(Point(x, y));
-        }
-
+    // 开局策略：
+    // 90% 概率：使用开局库
+    // 10% 概率：空棋盘直接开始（训练第一手选点能力）
+    if (randomNum < 0.1) {
+        // 空棋盘直接开始
+        cout << prefix << "empty board start" << endl;
         return game;
-    } else {
-        auto moves = game.getEmptyPoints();
+    }
 
-        std::uniform_int_distribution<> disRand(0, moves.size() - 1);
-        int random_index = disRand(gen);
+    // 使用开局库
+    auto& lines = getCachedOpenings();
+    if (lines.empty()) {
+        std::cout << prefix << "No openings loaded, empty board start" << std::endl;
+        return game;
+    }
 
-        auto random_element = moves[random_index];
-        game.makeMove(random_element);
+    std::uniform_int_distribution<int> disInt(0, lines.size() - 1);
+    int randomIndex = disInt(gen);
 
-        cout << prefix << "random action is " << random_element.x << "," << random_element.y << " on game" << endl;
+    std::cout << prefix << "Randomly selected index: " << randomIndex << std::endl;
+    std::string randomLine = lines[randomIndex];
+    std::cout << prefix << "Randomly selected coordinates: " << randomLine << std::endl;
+
+    std::vector<Point> points;
+    std::stringstream ss(randomLine);
+    std::string token;
+
+    while (std::getline(ss, token, ',')) {
+        Point point;
+        point.x = std::stoi(token);
+        std::getline(ss, token, ',');
+        point.y = std::stoi(token);
+        points.push_back(point);
+    }
+
+    for (const auto &item: points) {
+        int x = item.x + game.boardSize / 2;
+        int y = item.y + game.boardSize / 2;
+        cout << prefix << "make move " << x << "," << y << endl;
+        game.makeMove(Point(x, y));
     }
 
     return game;
@@ -246,26 +241,30 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         game.lastLastAction = Point();
 
         int step = 0;
+        // VCT 开关，读一次缓存
+        static bool useVct = (ConfigReader::get("useVct") == "true");
+
         while (!game.isGameOver()) {
             Node node;
             //开始mcts预测
             long long startTime = getSystemTime();
 
-            //并行模拟和VCT计算
+            // VCT 子线程：仅在 useVct=true 时启动，避免无谓的线程创建开销
             std::atomic running(true);
-            // 用 std::packaged_task 包装带返回值的函数
-            std::packaged_task task(dfsVCTIter);
+            std::packaged_task<std::pair<int, std::vector<Point>>(int, Game*, std::atomic<bool>&)> task(dfsVCTIter);
             auto result = task.get_future();
-
-            // 启动子线程
-            thread t(std::move(task),game.currentPlayer, &game, std::ref(running));
+            thread t;
+            if (useVct) {
+                t = thread(std::move(task), game.currentPlayer, &game, std::ref(running));
+            }
 
             int realNumSimulations = 1;
             mcts.search(game, &node, 1);
             //如果子节点选择大于1，才继续模拟
             if (mcts.root->children.size() > 1)
             {
-                mcts.search(game, &node, numSimulations - 1);
+                // 使用批推理版本：Virtual Loss + batch=8
+                mcts.searchBatched(game, &node, numSimulations - 1, 8);
                 realNumSimulations = numSimulations;
             } else
             {
@@ -273,15 +272,16 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
                 realNumSimulations = 2;
             }
 
-            running.store(false);
-            t.join();
-
             vector<Point> winMoves;
             int level = 0;
-            tie(level, winMoves) = result.get();
-            if(level > 0)
-            {
-                cout << prefix << " vct level " << level << ", win move size: " << winMoves.size() << endl;
+            if (useVct) {
+                running.store(false);
+                t.join();
+                tie(level, winMoves) = result.get();
+                if(level > 0)
+                {
+                    cout << prefix << " vct level " << level << ", win move size: " << winMoves.size() << endl;
+                }
             }
 
             vector<Point> moves;

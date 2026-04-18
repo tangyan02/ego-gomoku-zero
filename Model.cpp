@@ -131,8 +131,8 @@ Model::evaluate_state_batch(const std::vector<std::vector<std::vector<std::vecto
     int dim2 = batchData[0][0].size();
     int dim3 = batchData[0][0][0].size();
 
-    // 将批量数据转换为一维数组
-    std::vector<float> flattened_data(modelBatchSize * dim1 * dim2 * dim3);
+    // 将批量数据转换为一维数组（修复：使用实际 batch_size，而非 modelBatchSize）
+    std::vector<float> flattened_data(batch_size * dim1 * dim2 * dim3);
     int index = 0;
     for (const auto &data: batchData) {
         for (int i = 0; i < dim1; i++) {
@@ -145,8 +145,8 @@ Model::evaluate_state_batch(const std::vector<std::vector<std::vector<std::vecto
     }
 
 
-    // 创建输入张量
-    std::vector<int64_t> input_tensor_shape = {modelBatchSize, dim1, dim2, dim3};
+    // 创建输入张量（修复：使用实际 batch_size）
+    std::vector<int64_t> input_tensor_shape = {batch_size, dim1, dim2, dim3};
     Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memoryInfo, flattened_data.data(),
                                                               flattened_data.size(), input_tensor_shape.data(),
                                                               input_tensor_shape.size());

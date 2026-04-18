@@ -13,6 +13,7 @@ import Logger as Logger
 from Network import get_model, save_model
 from Train import train
 from Utils import getDevice, dirPreBuild
+from GenerateOpenings import generate_balanced_openings
 
 import sys
 
@@ -183,7 +184,7 @@ if __name__ == "__main__":
     eval_interval = int(ConfigReader.get('evalInterval') if 'evalInterval' in ConfigReader.config else 5000)
     eval_games = int(ConfigReader.get('evalGames') if 'evalGames' in ConfigReader.config else 40)
     eval_simulation = int(ConfigReader.get('evalSimulation') if 'evalSimulation' in ConfigReader.config else 100)
-    arena_interval = int(ConfigReader.get('arenaInterval') if 'arenaInterval' in ConfigReader.config else 5)
+    arena_interval = int(ConfigReader.get('arenaInterval') if 'arenaInterval' in ConfigReader.config else 500)
     arena_games = int(ConfigReader.get('arenaGames') if 'arenaGames' in ConfigReader.config else 40)
     arena_simulation = int(ConfigReader.get('arenaSimulation') if 'arenaSimulation' in ConfigReader.config else 100)
     arena_threshold = float(ConfigReader.get('arenaWinRateThreshold') if 'arenaWinRateThreshold' in ConfigReader.config else 0.55)
@@ -206,6 +207,7 @@ if __name__ == "__main__":
 
     # Arena 状态
     arena_skip_count = 0  # 连续未通过 arena 的次数
+    last_arena_games = (total_games_count // arena_interval) * arena_interval  # 上一次 arena 的对局数
 
     # 保存初始检查点作为基线（仅首次训练时）
     save_checkpoint(total_games_count)
@@ -214,9 +216,21 @@ if __name__ == "__main__":
     elo_history = []
     last_eval_games = (total_games_count // eval_interval) * eval_interval  # 上一次评估的对局数
 
+    # 开局库自动生成（每 2000 局刷新一次）
+    openings_refresh_interval = 2000
+    last_openings_refresh = (total_games_count // openings_refresh_interval) * openings_refresh_interval
+
     # 经验回放池
     replay_buffer = ReplayBuffer(max_size=replay_buffer_size)
     Logger.infoD(f"经验回放池已初始化，容量 {replay_buffer_size}")
+
+    # 启动时立即生成平衡开局（确保自对弈第一局就用生成开局）
+    Logger.infoD("启动时生成平衡开局库...")
+    generate_balanced_openings(
+        model_path=best_path,
+        output_path="openings/openings.txt",
+        num_openings=100,
+    )
 
     for i_episode in range(1, episode + 1):
 
@@ -238,8 +252,8 @@ if __name__ == "__main__":
         replay_buffer.add(extended_data)
         Logger.infoD(f"回放池大小: {len(replay_buffer)}")
 
-        # 从回放池中采样训练数据
-        sample_size = min(len(replay_buffer), max(len(extended_data) * 2, batch_size * 20))
+        # 从回放池中采样训练数据（固定 batch_size * 80 条，平衡数据利用率与训练耗时）
+        sample_size = min(len(replay_buffer), batch_size * 80)
         sampled_data = replay_buffer.sample(sample_size)
         Logger.infoD(f"本轮采样 {len(sampled_data)} 条数据进行训练")
 
@@ -257,14 +271,16 @@ if __name__ == "__main__":
         # 先更新计数，再检查是否触发评估
         total_games_count = update_count(numGames)
 
-        # Arena 门槛准入：每 arena_interval 轮对比 latest vs best
-        if i_episode % arena_interval == 0:
-            Logger.infoD(f"开始 Arena 评估: latest vs best (连续跳过: {arena_skip_count})")
+        # Arena 门槛准入：基于对局计数触发（每 arena_interval 局触发一次）
+        current_arena_point = (total_games_count // arena_interval) * arena_interval
+        if current_arena_point > last_arena_games and current_arena_point > 0:
+            last_arena_games = current_arena_point
+            Logger.infoD(f"开始 Arena 评估: latest(g{total_games_count}) vs best (连续跳过: {arena_skip_count}, 全开局模式)")
             arena_result = run_evaluate(
                 cppPath,
                 latest_path,
                 best_path,
-                arena_games,
+                -1,
                 arena_simulation
             )
             arena_win_rate = arena_result['win_rate']
@@ -273,14 +289,14 @@ if __name__ == "__main__":
 
             reason = "通过阈值" if arena_win_rate >= arena_threshold else ("强制接受(连续跳过达上限)" if force_accept else "未通过")
             Logger.infoD(
-                f"Arena 结果: 胜率 {arena_win_rate * 100:.1f}% ({arena_result['wins']}-{arena_result['losses']}-{arena_result['draws']}), "
+                f"Arena [g{total_games_count}] 结果: 胜率 {arena_win_rate * 100:.1f}% ({arena_result['wins']}-{arena_result['losses']}-{arena_result['draws']}), "
                 f"Elo {arena_result['elo_diff']:+.0f}, {reason}",
                 "arena.log"
             )
 
             if accepted:
                 shutil.copy2(latest_path, best_path)
-                Logger.infoD(f"✅ 新模型已升格为 best (胜率 {arena_win_rate * 100:.1f}%)", "arena.log")
+                Logger.infoD(f"✅ g{total_games_count} 已升格为 best (胜率 {arena_win_rate * 100:.1f}%)", "arena.log")
                 arena_skip_count = 0
             else:
                 arena_skip_count += 1
@@ -294,12 +310,12 @@ if __name__ == "__main__":
             baseline_path, baseline_games = find_latest_checkpoint(current_eval_point, eval_interval)
             if baseline_path:
                 current_path = f"model/checkpoint_g{current_eval_point}.onnx"
-                Logger.infoD(f"开始 Elo 评估: g{current_eval_point} vs g{baseline_games}")
+                Logger.infoD(f"开始 Elo 评估: g{current_eval_point} vs g{baseline_games} (全开局模式)")
                 eval_result = run_evaluate(
                     cppPath,
                     current_path,
                     baseline_path,
-                    eval_games,
+                    -1,
                     eval_simulation
                 )
                 elo_history.append({
@@ -317,6 +333,18 @@ if __name__ == "__main__":
                     "elo.log"
                 )
                 Logger.infoD(json.dumps(elo_history[-1]), "elo.log")
+
+        # 开局库自动刷新：每 openings_refresh_interval 局用 best 模型重新生成平衡开局
+        current_openings_point = (total_games_count // openings_refresh_interval) * openings_refresh_interval
+        if current_openings_point > last_openings_refresh and current_openings_point > 0:
+            last_openings_refresh = current_openings_point
+            Logger.infoD(f"开始刷新开局库（g{total_games_count}）...")
+            generate_balanced_openings(
+                model_path=best_path,
+                output_path="openings/openings.txt",
+                num_openings=100,
+                value_threshold=0.15,
+            )
 
         Logger.infoD(f"episode {i_episode} 完成")
 

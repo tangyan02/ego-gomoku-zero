@@ -17,7 +17,7 @@ struct EvalResult {
  * @param modelPath1 挑战者模型路径
  * @param modelPath2 基准模型路径
  * @param boardSize 棋盘大小
- * @param numGames 总对弈局数（自动分为各执黑白各一半）
+ * @param numGames 总对弈局数（自动分为各执黑白各一半）；-1 表示使用全部开局（每个开局先后手各一局）
  * @param numSimulation 每步MCTS模拟次数
  * @param explorationFactor PUCT探索系数
  * @param coreType 推理后端
