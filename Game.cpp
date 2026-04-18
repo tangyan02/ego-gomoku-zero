@@ -1,7 +1,25 @@
 #include "Game.h"
 #include "Analyzer.h"
+#include <random>
 
 using namespace std;
+
+// Zobrist hash 全局表
+ZobristTable zobristTable;
+
+void ZobristTable::init() {
+    if (initialized) return;
+    std::mt19937_64 rng(42);  // 固定种子保证确定性
+    for (int r = 0; r < MAX_BOARD_SIZE; r++) {
+        for (int c = 0; c < MAX_BOARD_SIZE; c++) {
+            for (int p = 0; p < 3; p++) {
+                pieces[r][c][p] = rng();
+            }
+        }
+    }
+    currentPlayerHash = rng();
+    initialized = true;
+}
 
 std::vector<Point> removeDuplicates(const std::vector<Point> &points) {
     std::array<std::array<bool, 20>, 20> pointExists = {{{false}}}; // 初始化为 false
@@ -41,6 +59,9 @@ Game::Game(int boardSize) {
     for (int i = 0; i < boardSize; i++)
         for (int j = 0; j < boardSize; j++)
             board[i][j] = 0;
+    // 初始化 Zobrist hash
+    zobristTable.init();
+    zobristHash = zobristTable.currentPlayerHash;  // 初始为黑方行棋
 }
 
 int Game::getOtherPlayer() {
@@ -211,6 +232,11 @@ bool Game::makeMove(Point p) {
         cout << "move false! " << row << "," << col << ". board value = " << board[row][col] << endl;
         return false;
     }
+
+    // Zobrist hash 增量更新：XOR 掉空位，XOR 上棋子，翻转当前玩家
+    zobristHash ^= zobristTable.pieces[row][col][0];            // 移除空位
+    zobristHash ^= zobristTable.pieces[row][col][currentPlayer]; // 放入棋子
+    zobristHash ^= zobristTable.currentPlayerHash;               // 翻转当前玩家
 
     board[row][col] = currentPlayer;
     currentPlayer = (currentPlayer == BLACK) ? WHITE : BLACK;

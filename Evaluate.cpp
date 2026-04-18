@@ -12,6 +12,9 @@
 #include <fstream>
 #include <sstream>
 #include <random>
+#include <thread>
+#include <mutex>
+#include <atomic>
 
 using namespace std;
 
@@ -25,10 +28,9 @@ static std::vector<std::string>& getOpenings() {
     static std::vector<std::string> lines;
     static bool loaded = false;
     if (!loaded) {
-        // 生成开局 + 手动开局的文件路径候选
+        // 生成开局的文件路径候选（评估只用生成开局）
         vector<pair<string, vector<string>>> sources = {
             {"generated", {"openings/openings.txt", "../train/openings/openings.txt", "../openings/openings.txt"}},
-            {"manual",    {"openings/openings_manual.txt", "../train/openings/openings_manual.txt", "../openings/openings_manual.txt"}},
         };
         for (auto& [label, paths] : sources) {
             for (auto& path : paths) {
@@ -185,39 +187,76 @@ EvalResult evaluateModels(
     bool useAllOpenings = (numGames == -1);
 
     if (useAllOpenings && !openings.empty()) {
-        // 全开局模式：每个开局先后手各一局
+        // 全开局模式：每个开局先后手各一局，2 线程并行
         int totalOpenings = openings.size();
         int totalGamesExpected = totalOpenings * 2;
         cout << "[Evaluate] " << modelPath1 << " vs " << modelPath2 << endl;
         cout << "[Evaluate] All openings mode: " << totalOpenings << " openings x 2 sides = "
-             << totalGamesExpected << " games, " << numSimulation << " simulations/move" << endl;
+             << totalGamesExpected << " games, " << numSimulation << " simulations/move (parallel)" << endl;
 
-        int gameCount = 0;
+        std::atomic<int> atomicWins1(0), atomicWins2(0), atomicDraws(0), atomicGameCount(0);
+        std::mutex coutMutex;
+
+        // 任务列表：(openingIndex, m1IsBlack)
+        struct EvalTask { int openingIdx; bool m1IsBlack; };
+        std::vector<EvalTask> tasks;
+        tasks.reserve(totalGamesExpected);
         for (int i = 0; i < totalOpenings; i++) {
-            // M1 执黑
-            long long startTime = getSystemTime();
-            int result = playOneGameWithOpening(model1.get(), model2.get(), boardSize, numSimulation, explorationFactor, i);
-            long long cost = getSystemTime() - startTime;
-            if (result == BLACK) wins1++;
-            else if (result == WHITE) wins2++;
-            else draws++;
-            gameCount++;
-            cout << "[Evaluate] Game " << gameCount << "/" << totalGamesExpected
-                 << " Opening " << i << " (M1=Black): " << (result == BLACK ? "M1 WIN" : (result == WHITE ? "M2 WIN" : "DRAW"))
-                 << " (" << cost << "ms)" << endl;
-
-            // M1 执白
-            startTime = getSystemTime();
-            result = playOneGameWithOpening(model2.get(), model1.get(), boardSize, numSimulation, explorationFactor, i);
-            cost = getSystemTime() - startTime;
-            if (result == WHITE) wins1++;
-            else if (result == BLACK) wins2++;
-            else draws++;
-            gameCount++;
-            cout << "[Evaluate] Game " << gameCount << "/" << totalGamesExpected
-                 << " Opening " << i << " (M1=White): " << (result == WHITE ? "M1 WIN" : (result == BLACK ? "M2 WIN" : "DRAW"))
-                 << " (" << cost << "ms)" << endl;
+            tasks.push_back({i, true});   // M1 执黑
+            tasks.push_back({i, false});  // M1 执白
         }
+
+        std::atomic<int> taskIdx(0);
+
+        auto worker = [&]() {
+            while (true) {
+                int idx = taskIdx.fetch_add(1);
+                if (idx >= (int)tasks.size()) break;
+
+                auto& t = tasks[idx];
+                long long startTime = getSystemTime();
+                int result;
+                if (t.m1IsBlack) {
+                    result = playOneGameWithOpening(model1.get(), model2.get(), boardSize, numSimulation, explorationFactor, t.openingIdx);
+                } else {
+                    result = playOneGameWithOpening(model2.get(), model1.get(), boardSize, numSimulation, explorationFactor, t.openingIdx);
+                }
+                long long cost = getSystemTime() - startTime;
+
+                // 统计结果
+                if (t.m1IsBlack) {
+                    if (result == BLACK) atomicWins1++;
+                    else if (result == WHITE) atomicWins2++;
+                    else atomicDraws++;
+                } else {
+                    if (result == WHITE) atomicWins1++;
+                    else if (result == BLACK) atomicWins2++;
+                    else atomicDraws++;
+                }
+
+                int count = atomicGameCount.fetch_add(1) + 1;
+                {
+                    std::lock_guard<std::mutex> lock(coutMutex);
+                    cout << "[Evaluate] Game " << count << "/" << totalGamesExpected
+                         << " Opening " << t.openingIdx
+                         << (t.m1IsBlack ? " (M1=Black): " : " (M1=White): ")
+                         << (t.m1IsBlack
+                             ? (result == BLACK ? "M1 WIN" : (result == WHITE ? "M2 WIN" : "DRAW"))
+                             : (result == WHITE ? "M1 WIN" : (result == BLACK ? "M2 WIN" : "DRAW")))
+                         << " (" << cost << "ms)" << endl;
+                }
+            }
+        };
+
+        // 启动 2 个线程
+        std::thread t1(worker);
+        std::thread t2(worker);
+        t1.join();
+        t2.join();
+
+        wins1 = atomicWins1.load();
+        wins2 = atomicWins2.load();
+        draws = atomicDraws.load();
     } else {
         // 原有随机开局模式
         int halfGames = numGames / 2;

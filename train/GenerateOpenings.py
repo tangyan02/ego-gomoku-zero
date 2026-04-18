@@ -16,8 +16,8 @@ def generate_balanced_openings(
     board_size: int = 20,
     num_openings: int = 200,
     num_moves_range: tuple = (3, 8),
-    value_threshold: float = 0.15,
-    max_attempts: int = 5000,
+    value_threshold: float = 0.4,
+    max_attempts: int = 15000,
     near_center_range: int = 6,
 ):
     """
@@ -75,30 +75,50 @@ def generate_balanced_openings(
         if not valid or len(moves) < num_moves_range[0]:
             continue
 
-        # 构造 state tensor [4, board_size, board_size]
-        # 当前玩家视角：下一步该谁走
+        # 双视角评估：当前玩家和对方各评一次，双方都认为接近 0 才算平衡
         current_player = 1 if len(moves) % 2 == 0 else 2
         other_player = 3 - current_player
-        state = np.zeros((1, 4, board_size, board_size), dtype=np.float32)
+
+        # 视角1：当前行棋方
+        state1 = np.zeros((1, 4, board_size, board_size), dtype=np.float32)
         for r in range(board_size):
             for c in range(board_size):
                 if board[r][c] == current_player:
-                    state[0, 0, r, c] = 1.0
+                    state1[0, 0, r, c] = 1.0
                 elif board[r][c] == other_player:
-                    state[0, 1, r, c] = 1.0
-        # 通道 2/3: 最近落子
+                    state1[0, 1, r, c] = 1.0
         if len(moves) >= 1:
             lr, lc = moves[-1]
-            state[0, 2, lr, lc] = 1.0
+            state1[0, 2, lr, lc] = 1.0
         if len(moves) >= 2:
             llr, llc = moves[-2]
-            state[0, 3, llr, llc] = 1.0
+            state1[0, 3, llr, llc] = 1.0
 
-        # 推理
-        value, _ = sess.run(None, {'input': state})
-        v = float(value[0][0])
+        # 视角2：对方视角（交换通道0和1）
+        state2 = np.zeros((1, 4, board_size, board_size), dtype=np.float32)
+        for r in range(board_size):
+            for c in range(board_size):
+                if board[r][c] == other_player:
+                    state2[0, 0, r, c] = 1.0
+                elif board[r][c] == current_player:
+                    state2[0, 1, r, c] = 1.0
+        if len(moves) >= 1:
+            state2[0, 2, lr, lc] = 1.0
+        if len(moves) >= 2:
+            state2[0, 3, llr, llc] = 1.0
 
-        if abs(v) < value_threshold:
+        # 双视角推理
+        value1, _ = sess.run(None, {'input': state1})
+        value2, _ = sess.run(None, {'input': state2})
+        v1 = float(value1[0][0])  # 当前行棋方视角
+        v2 = float(value2[0][0])  # 对方视角
+
+        # 平衡判定：双视角绝对值之和 < 阈值
+        # 如果真平衡，双方都接近 0，之和很小
+        # 如果一方觉得优（v1=0.3），另一方也觉得自己劣（v2=-0.3），和=0 但不平衡
+        # 所以用绝对值之和，要求双方各自都觉得接近均势
+        balance_score = abs(v1) + abs(v2)
+        if balance_score < value_threshold * 2:
             # 转为相对中心的坐标格式
             relative_moves = [(r - center, c - center) for r, c in moves]
             balanced.append(relative_moves)

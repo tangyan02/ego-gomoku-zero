@@ -43,6 +43,12 @@ public:
     void removeVirtualLoss();
 };
 
+// Transposition Table 缓存项：局面的评估结果
+struct TTEntry {
+    float value;
+    std::vector<float> priors;
+};
+
 class MonteCarloTree {
 public:
     MonteCarloTree(Model *model, float exploration_factor = 5, bool useNoice = false);
@@ -69,22 +75,25 @@ public:
         std::mt19937 &rng
     );
 
+    // Transposition Table：缓存局面评估结果，避免重复推理
+    std::unordered_map<uint64_t, TTEntry> transpositionTable;
+    void clearTranspositionTable() { transpositionTable.clear(); }
+
     Node *root;
 private:
-    // 走一条路径到叶子，沿途加 virtual loss；返回 (leaf, game_at_leaf, immediate_value, is_terminal)
-    // immediate_value: 如果叶子已是终局或已经被扩展过（路径撞到同一叶子），返回立即值；否则返回 NAN
+    // 走一条路径到叶子，沿途加 virtual loss
     struct LeafInfo {
         Node *leaf;
         Game game;
-        float immediate_value;  // NaN 表示需要网络评估；有值表示直接回传
-        bool needs_eval;        // true 表示需要加入 batch 推理队列
+        float immediate_value;
+        bool needs_eval;
     };
     LeafInfo selectLeafWithVirtualLoss(Game game);
 
     Model *model;
     float exploration_factor;
     bool useNoice = false;
-    std::mt19937 rng{std::random_device{}()};  // 类成员 RNG，避免每次 simulate 重建
+    std::mt19937 rng{std::random_device{}()};
 
     static std::vector<double> sample_dirichlet(int size, double alpha, std::mt19937 &rng);
 

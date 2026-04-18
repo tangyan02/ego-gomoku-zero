@@ -244,12 +244,17 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         // VCT 开关，读一次缓存
         static bool useVct = (ConfigReader::get("useVct") == "true");
 
+        // 每局清空 Transposition Table（不同局不能共享缓存）
+        mcts.clearTranspositionTable();
+
+        // Tree Reuse：整局共用一棵树，每步保留选中子树
+        Node* rootNode = new Node();
+
         while (!game.isGameOver()) {
-            Node node;
             //开始mcts预测
             long long startTime = getSystemTime();
 
-            // VCT 子线程：仅在 useVct=true 时启动，避免无谓的线程创建开销
+            // VCT 子线程：仅在 useVct=true 时启动
             std::atomic running(true);
             std::packaged_task<std::pair<int, std::vector<Point>>(int, Game*, std::atomic<bool>&)> task(dfsVCTIter);
             auto result = task.get_future();
@@ -258,17 +263,19 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
                 t = thread(std::move(task), game.currentPlayer, &game, std::ref(running));
             }
 
+            // 补齐模拟次数：子树已有 visits 算作已完成
+            int existingVisits = rootNode->visits;
+            int targetSimulations = max(numSimulations - existingVisits, 1);
+
             int realNumSimulations = 1;
-            mcts.search(game, &node, 1);
-            //如果子节点选择大于1，才继续模拟
+            mcts.search(game, rootNode, 1);
             if (mcts.root->children.size() > 1)
             {
-                // 使用批推理版本：Virtual Loss + batch=8
-                mcts.searchBatched(game, &node, numSimulations - 1, 8);
-                realNumSimulations = numSimulations;
+                mcts.searchBatched(game, rootNode, targetSimulations - 1, 16);
+                realNumSimulations = targetSimulations;
             } else
             {
-                mcts.search(game, &node, 1);
+                mcts.search(game, rootNode, 1);
                 realNumSimulations = 2;
             }
 
@@ -312,9 +319,34 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             game_data.push_back(record);
 
             //打印局面
-            printGame(game, move, rate, probs_matrix, temperature, prefix, node.selectInfo, &model);
+            printGame(game, move, rate, probs_matrix, temperature, prefix, rootNode->selectInfo, &model);
+
+            // Tree Reuse：保留选中子树，释放其他分支
+            Node* selectedChild = nullptr;
+            for (auto& item : rootNode->children) {
+                if (item.first == move) {
+                    selectedChild = item.second;
+                } else {
+                    item.second->release();
+                }
+            }
+            rootNode->children.clear();
+
+            if (selectedChild != nullptr) {
+                selectedChild->parent = nullptr;
+                delete rootNode;
+                rootNode = selectedChild;
+            } else {
+                delete rootNode;
+                rootNode = new Node();
+            }
+
             step++;
         }
+
+        // 局结束，释放整棵树
+        rootNode->release();
+        delete rootNode;
 
         bool win = game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer());
         int winner = 0;

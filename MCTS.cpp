@@ -16,13 +16,27 @@ Node *Node::selectChild(double exploration_factor) {
     // 父节点的 effective visits 包含 virtual_loss
     double effective_parent_visits = static_cast<double>(visits) + static_cast<double>(virtual_loss);
     double sqrt_total = sqrt(effective_parent_visits);
+
+    // FPU (First Play Urgency)：未访问子节点用父节点 Q 减去衰减值
+    // 防止在优势局面下过度探索未访问节点
+    double parent_q = visits > 0 ? value_sum / visits : 0.0;
+    // 计算已访问子节点的 prior 总和，用于 FPU 衰减
+    double visited_prior_sum = 0.0;
+    for (const auto &[point, child] : children) {
+        if (child->visits > 0) {
+            visited_prior_sum += child->prior_prob;
+        }
+    }
+    double fpu_value = parent_q - 0.2 * sqrt(visited_prior_sum);
+
     Node *selected = nullptr;
     double max_ucb = numeric_limits<double>::lowest();
     for (const auto &[point, child] : children) {
         // effective_visits 和 effective_value：把 virtual loss 当成 (visits++, value_sum-=1) 的悲观估计
         int effective_visits = child->visits + child->virtual_loss;
         double effective_value = child->value_sum - static_cast<double>(child->virtual_loss);
-        double q = effective_visits > 0 ? effective_value / effective_visits : 0.0;
+        // FPU：未访问节点用 fpu_value 代替 0
+        double q = effective_visits > 0 ? effective_value / effective_visits : fpu_value;
         double ucb_value = q + exploration_factor * child->prior_prob *
                            sqrt_total / (1 + effective_visits);
         child->ucb = ucb_value;
@@ -108,11 +122,27 @@ void MonteCarloTree::simulate(Game game) {
         auto [win, moves, selectInfo] = selectActions(game);
         node->selectInfo = selectInfo;
 
-        // 使用扁平化 getState，避免嵌套 vector 动态分配
-        const int channels = INPUT_CHANNELS;
-        float stateBuffer[channels * MAX_BOARD_SIZE * MAX_BOARD_SIZE];
-        game.getState(stateBuffer, channels);
-        auto [eva_value, probs_metrix] = model->evaluate_state(stateBuffer, channels, game.boardSize, game.boardSize);
+        float eva_value;
+        std::vector<float> probs_metrix;
+
+        // Transposition Table 查询
+        uint64_t hash = game.zobristHash;
+        auto ttIt = transpositionTable.find(hash);
+        if (ttIt != transpositionTable.end()) {
+            // 命中缓存
+            eva_value = ttIt->second.value;
+            probs_metrix = ttIt->second.priors;
+        } else {
+            // 未命中，推理并缓存
+            const int channels = INPUT_CHANNELS;
+            float stateBuffer[channels * MAX_BOARD_SIZE * MAX_BOARD_SIZE];
+            game.getState(stateBuffer, channels);
+            auto result = model->evaluate_state(stateBuffer, channels, game.boardSize, game.boardSize);
+            eva_value = result.first;
+            probs_metrix = result.second;
+            transpositionTable[hash] = TTEntry{eva_value, probs_metrix};
+        }
+
         value = eva_value;
         if (win) {
             value = 1;
@@ -188,21 +218,30 @@ void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, 
             leaves.push_back(selectLeafWithVirtualLoss(game));
         }
 
-        // 2. 收集需要网络评估的叶子，打包成 batch
-        std::vector<int> eval_indices;       // leaves 中需要评估的索引
-        std::vector<std::vector<float>> batch_states;  // 扁平化的 state
+        // 2. 收集需要网络评估的叶子：先查 TT，命中则直接标记为不需 eval
+        std::vector<int> eval_indices;       // leaves 中需要网络评估的索引
+        std::vector<int> tt_hit_indices;     // leaves 中 TT 命中的索引
+        std::vector<std::vector<float>> batch_states;
         eval_indices.reserve(current_batch);
 
         for (int i = 0; i < current_batch; i++) {
             if (leaves[i].leaf != nullptr && leaves[i].needs_eval) {
-                eval_indices.push_back(i);
-                std::vector<float> state(channels * MAX_BOARD_SIZE * MAX_BOARD_SIZE);
-                leaves[i].game.getState(state.data(), channels);
-                batch_states.push_back(std::move(state));
+                // 查 Transposition Table
+                uint64_t hash = leaves[i].game.zobristHash;
+                auto ttIt = transpositionTable.find(hash);
+                if (ttIt != transpositionTable.end()) {
+                    // TT 命中：记录索引，跳过网络推理
+                    tt_hit_indices.push_back(i);
+                } else {
+                    eval_indices.push_back(i);
+                    std::vector<float> state(channels * MAX_BOARD_SIZE * MAX_BOARD_SIZE);
+                    leaves[i].game.getState(state.data(), channels);
+                    batch_states.push_back(std::move(state));
+                }
             }
         }
 
-        // 3. 批量推理
+        // 3. 批量推理（仅 TT 未命中的部分）
         std::vector<std::pair<float, std::vector<float>>> batch_results;
         if (!batch_states.empty()) {
             // 将扁平化 states 重新组织为 evaluate_state_batch 期望的格式
@@ -225,39 +264,80 @@ void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, 
             batch_results = model->evaluate_state_batch(batch_data);
         }
 
-        // 4. 批量处理结果：移除 virtual loss + expand + backpropagate
-        int eval_ptr = 0;
-        for (int i = 0; i < current_batch; i++) {
-            Node *leaf = leaves[i].leaf;
-            if (leaf == nullptr) continue;  // 跳过已结束的游戏
+        // 4. 处理 TT 命中的叶子
+        for (int idx : tt_hit_indices) {
+            Node *leaf = leaves[idx].leaf;
+            uint64_t hash = leaves[idx].game.zobristHash;
+            auto &ttEntry = transpositionTable[hash];
 
-            float value;
-            if (leaves[i].needs_eval) {
-                // 从 batch 推理结果中取出
-                auto &[eva_value, probs_metrix] = batch_results[eval_ptr++];
-                value = eva_value;
-
-                // expand 叶子（使用 batch 推理得到的 prior）
-                auto [win, moves, selectInfo] = selectActions(leaves[i].game);
-                leaf->selectInfo = selectInfo;
-
-                if (win) {
-                    value = 1.0f;
-                } else {
-                    auto probs_copy = probs_metrix;
-                    if (useNoice && leaf == root) {
-                        add_dirichlet_noise(probs_copy, 0.25, 0.03, rng);
-                    }
-                    leaf->expand(leaves[i].game, moves, probs_copy);
-                }
+            auto [win, moves, selectInfo] = selectActions(leaves[idx].game);
+            leaf->selectInfo = selectInfo;
+            float value = ttEntry.value;
+            if (win) {
+                value = 1.0f;
             } else {
-                // 终局叶子，直接用 immediate_value
-                value = leaves[i].immediate_value;
+                auto probs_copy = ttEntry.priors;
+                if (useNoice && leaf == root) {
+                    add_dirichlet_noise(probs_copy, 0.25, 0.03, rng);
+                }
+                leaf->expand(leaves[idx].game, moves, probs_copy);
             }
 
-            // backpropagate + 沿途移除 virtual loss
+            // backpropagate + 移除 virtual loss
             Node *cur = leaf;
-            float v = -value;  // 叶子对父节点的影响需要反号
+            float v = -value;
+            while (cur != nullptr) {
+                cur->removeVirtualLoss();
+                cur->update(v);
+                cur = cur->parent;
+                v = -v;
+            }
+        }
+
+        // 5. 处理网络推理结果
+        int eval_ptr = 0;
+        for (int idx : eval_indices) {
+            Node *leaf = leaves[idx].leaf;
+
+            auto &[eva_value, probs_metrix] = batch_results[eval_ptr++];
+
+            // 写入 TT 缓存
+            uint64_t hash = leaves[idx].game.zobristHash;
+            transpositionTable[hash] = TTEntry{eva_value, probs_metrix};
+
+            auto [win, moves, selectInfo] = selectActions(leaves[idx].game);
+            leaf->selectInfo = selectInfo;
+            float value = eva_value;
+            if (win) {
+                value = 1.0f;
+            } else {
+                auto probs_copy = probs_metrix;
+                if (useNoice && leaf == root) {
+                    add_dirichlet_noise(probs_copy, 0.25, 0.03, rng);
+                }
+                leaf->expand(leaves[idx].game, moves, probs_copy);
+            }
+
+            // backpropagate + 移除 virtual loss
+            Node *cur = leaf;
+            float v = -value;
+            while (cur != nullptr) {
+                cur->removeVirtualLoss();
+                cur->update(v);
+                cur = cur->parent;
+                v = -v;
+            }
+        }
+
+        // 6. 处理终局叶子（needs_eval=false 且非 TT 命中的）
+        for (int i = 0; i < current_batch; i++) {
+            Node *leaf = leaves[i].leaf;
+            if (leaf == nullptr) continue;
+            if (leaves[i].needs_eval) continue;  // 已在上面处理
+
+            float value = leaves[i].immediate_value;
+            Node *cur = leaf;
+            float v = -value;
             while (cur != nullptr) {
                 cur->removeVirtualLoss();
                 cur->update(v);
