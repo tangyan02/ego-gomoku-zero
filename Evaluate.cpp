@@ -28,10 +28,12 @@ static std::vector<std::string>& getOpenings() {
     static std::vector<std::string> lines;
     static bool loaded = false;
     if (!loaded) {
-        // 生成开局的文件路径候选（评估只用生成开局）
+        // 评估开局：生成评估开局取前 50 个 + 手动开局取前 50 个
         vector<pair<string, vector<string>>> sources = {
-            {"generated", {"openings/openings.txt", "../train/openings/openings.txt", "../openings/openings.txt"}},
+            {"generated_eval", {"openings/openings_eval.txt", "../train/openings/openings_eval.txt", "../openings/openings_eval.txt"}},
+            {"manual",         {"openings/openings_manual.txt", "../train/openings/openings_manual.txt", "../openings/openings_manual.txt"}},
         };
+        int maxPerSource = 50;
         for (auto& [label, paths] : sources) {
             for (auto& path : paths) {
                 std::ifstream file(path);
@@ -39,7 +41,7 @@ static std::vector<std::string>& getOpenings() {
                     int count = 0;
                     std::string line;
                     while (std::getline(file, line)) {
-                        if (!line.empty()) {
+                        if (!line.empty() && count < maxPerSource) {
                             lines.push_back(line);
                             count++;
                         }

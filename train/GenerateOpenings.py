@@ -12,9 +12,11 @@ import Logger
 
 def generate_balanced_openings(
     model_path: str,
-    output_path: str = "openings/openings.txt",
+    train_output_path: str = "openings/openings_train.txt",
+    eval_output_path: str = "openings/openings_eval.txt",
     board_size: int = 20,
-    num_openings: int = 200,
+    num_train_openings: int = 300,
+    num_eval_openings: int = 50,
     num_moves_range: tuple = (3, 8),
     value_threshold: float = 0.4,
     max_attempts: int = 15000,
@@ -25,14 +27,18 @@ def generate_balanced_openings(
     
     Args:
         model_path: ONNX 模型路径（通常是 model_best.onnx）
-        output_path: 输出开局文件路径
+        train_output_path: 自对弈用开局文件
+        eval_output_path: 评估用开局文件（与训练不重叠）
         board_size: 棋盘大小
-        num_openings: 目标生成开局数量
+        num_train_openings: 自对弈开局数量
+        num_eval_openings: 评估开局数量
         num_moves_range: 每个开局的步数范围 (min, max)
         value_threshold: value 判定为平衡的阈值 (|value| < threshold)
         max_attempts: 最大尝试次数
         near_center_range: 开局落子范围（距中心的距离）
     """
+    num_openings = num_train_openings + num_eval_openings
+
     if not os.path.exists(model_path):
         Logger.infoD(f"[Openings] 模型不存在: {model_path}，跳过开局生成")
         return False
@@ -127,24 +133,24 @@ def generate_balanced_openings(
         Logger.infoD(f"[Openings] 生成失败：{max_attempts} 次尝试中没有找到平衡开局")
         return False
 
-    # 写入文件
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    # 分割为训练集和评估集（不重叠）
+    random.shuffle(balanced)
+    train_openings = balanced[:num_train_openings]
+    eval_openings = balanced[num_train_openings:num_train_openings + num_eval_openings]
 
-    # 备份原文件
-    if os.path.exists(output_path):
-        backup_path = output_path + ".bak"
-        import shutil
-        shutil.copy2(output_path, backup_path)
+    def write_openings(path, openings):
+        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else '.', exist_ok=True)
+        with open(path, 'w') as f:
+            for moves in openings:
+                parts = [f"{r},{c}" for r, c in moves]
+                f.write(",".join(parts) + "\n")
 
-    with open(output_path, 'w') as f:
-        for moves in balanced:
-            parts = []
-            for r, c in moves:
-                parts.append(f"{r},{c}")
-            f.write(",".join(parts) + "\n")
+    write_openings(train_output_path, train_openings)
+    write_openings(eval_output_path, eval_openings)
 
     Logger.infoD(
-        f"[Openings] 生成 {len(balanced)} 个平衡开局（尝试 {attempts} 次，通过率 {len(balanced)/attempts*100:.1f}%），"
+        f"[Openings] 生成 {len(train_openings)} 训练 + {len(eval_openings)} 评估开局"
+        f"（尝试 {attempts} 次，通过率 {len(balanced)/attempts*100:.1f}%），"
         f"阈值 |value|<{value_threshold}",
         "openings.log"
     )
@@ -155,6 +161,4 @@ if __name__ == "__main__":
     # 独立运行测试
     generate_balanced_openings(
         model_path="model/model_best.onnx",
-        output_path="openings/openings.txt",
-        num_openings=200,
     )

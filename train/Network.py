@@ -6,9 +6,23 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 
 
-# 定义一个Residual block
+# Squeeze-and-Excitation 通道注意力
+class SEBlock(nn.Module):
+    def __init__(self, channels, reduction=8):
+        super(SEBlock, self).__init__()
+        self.fc1 = nn.Linear(channels, channels // reduction)
+        self.fc2 = nn.Linear(channels // reduction, channels)
+
+    def forward(self, x):
+        w = F.adaptive_avg_pool2d(x, 1).flatten(1)
+        w = F.relu(self.fc1(w))
+        w = torch.sigmoid(self.fc2(w))
+        return x * w.unsqueeze(-1).unsqueeze(-1)
+
+
+# 定义一个Residual block（可选 SE 注意力）
 class ResidualBlock(nn.Module):
-    def __init__(self, channels):
+    def __init__(self, channels, use_se=False):
         super(ResidualBlock, self).__init__()
 
         self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=False)
@@ -16,6 +30,7 @@ class ResidualBlock(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(channels)
+        self.se = SEBlock(channels) if use_se else None
 
     def forward(self, x):
         residual = x
@@ -26,6 +41,8 @@ class ResidualBlock(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
+        if self.se is not None:
+            out = self.se(out)
 
         out += residual
         out = self.relu(out)
@@ -53,23 +70,22 @@ class PolicyValueNetwork(nn.Module):
             ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),
             ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels)
+            ResidualBlock(self.residual_channels, use_se=True),
+            ResidualBlock(self.residual_channels, use_se=True),
         )
 
-        # action policy layers
+        # action policy layers（加隐藏层提升表达力）
         self.act_channels = 8
         self.act_conv1 = nn.Conv2d(self.residual_channels, self.act_channels, kernel_size=(1, 1), bias=False)
         self.act_bn1 = nn.BatchNorm2d(self.act_channels)
-        self.act_fc1 = nn.Linear(self.act_channels * self.board_size * self.board_size,
-                                 self.board_size * self.board_size)
-        # state value layers
-        self.val_channels = 8
-        self.val_fc1_dim = 128
+        self.act_fc1 = nn.Linear(self.act_channels * self.board_size * self.board_size, 256)
+        self.act_fc2 = nn.Linear(256, self.board_size * self.board_size)
+
+        # state value layers（GAP 缩小，抗过拟合）
+        self.val_channels = 32
         self.val_conv1 = nn.Conv2d(self.residual_channels, self.val_channels, kernel_size=(1, 1), bias=False)
         self.val_bn1 = nn.BatchNorm2d(self.val_channels)
-        self.val_fc1 = nn.Linear(self.val_channels * self.board_size * self.board_size, self.val_fc1_dim)
-        self.val_fc2 = nn.Linear(self.val_fc1_dim, 1)
+        self.val_fc1 = nn.Linear(self.val_channels, 1)  # GAP 后直接 FC
 
     def forward(self, state_input):
         if state_input.dim() == 3:
@@ -84,15 +100,15 @@ class PolicyValueNetwork(nn.Module):
         x_act = self.act_bn1(x_act)
         x_act = F.relu(x_act)
         x_act = x_act.view(-1, self.act_channels * self.board_size * self.board_size)
-        x_act = F.log_softmax(self.act_fc1(x_act), dim=1)
+        x_act = F.relu(self.act_fc1(x_act))
+        x_act = F.log_softmax(self.act_fc2(x_act), dim=1)
 
-        # state value layers
+        # state value layers (GAP)
         x_val = self.val_conv1(x)
         x_val = self.val_bn1(x_val)
         x_val = F.relu(x_val)
-        x_val = x_val.view(-1, self.val_channels * self.board_size * self.board_size)
-        x_val = F.relu(self.val_fc1(x_val))
-        x_val = torch.tanh(self.val_fc2(x_val))
+        x_val = F.adaptive_avg_pool2d(x_val, 1).flatten(1)  # [batch, 32]
+        x_val = torch.tanh(self.val_fc1(x_val))
 
         return x_val, x_act
 

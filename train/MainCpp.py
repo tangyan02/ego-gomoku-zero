@@ -228,8 +228,6 @@ if __name__ == "__main__":
     Logger.infoD("启动时生成平衡开局库...")
     generate_balanced_openings(
         model_path=best_path,
-        output_path="openings/openings.txt",
-        num_openings=100,
     )
 
     for i_episode in range(1, episode + 1):
@@ -298,6 +296,10 @@ if __name__ == "__main__":
                 shutil.copy2(latest_path, best_path)
                 Logger.infoD(f"✅ g{total_games_count} 已升格为 best (胜率 {arena_win_rate * 100:.1f}%)", "arena.log")
                 arena_skip_count = 0
+                # 保存 pth 快照，方便回退
+                pth_snapshot = f"model/checkpoint_g{total_games_count}.pth"
+                shutil.copy2("model/checkpoint.pth", pth_snapshot)
+                Logger.infoD(f"已保存权重快照: {pth_snapshot}")
             else:
                 arena_skip_count += 1
                 Logger.infoD(f"❌ 新模型被拒绝 (胜率 {arena_win_rate * 100:.1f}% < {arena_threshold * 100:.0f}%)", "arena.log")
@@ -341,9 +343,6 @@ if __name__ == "__main__":
             Logger.infoD(f"开始刷新开局库（g{total_games_count}）...")
             generate_balanced_openings(
                 model_path=best_path,
-                output_path="openings/openings.txt",
-                num_openings=100,
-                value_threshold=0.15,
             )
 
         Logger.infoD(f"episode {i_episode} 完成")

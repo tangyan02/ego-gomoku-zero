@@ -30,7 +30,7 @@ static std::vector<std::string>& getCachedOpenings() {
     static std::vector<std::string> lines;
     static bool loaded = false;
     if (!loaded) {
-        std::ifstream file("openings/openings.txt");
+        std::ifstream file("openings/openings_train.txt");
         if (file.is_open()) {
             std::string line;
             while (std::getline(file, line)) {
