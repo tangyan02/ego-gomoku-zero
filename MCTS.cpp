@@ -1,6 +1,7 @@
 #include "MCTS.h"
 
 #include <random>
+#include <numeric>
 //#include <__random/random_device.h>
 
 using namespace std;

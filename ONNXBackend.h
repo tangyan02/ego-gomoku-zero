@@ -7,6 +7,7 @@
 #ifdef _WIN32
 #include <codecvt>
 #include <locale>
+#include <queue>
 #endif
 
 #include <onnxruntime_cxx_api.h>
