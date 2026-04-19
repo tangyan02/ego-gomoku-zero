@@ -76,7 +76,7 @@ def update_count(k, filepath="model/count.txt"):
 
 
 def save_checkpoint(total_games):
-    """保存带对局计数编号的检查点 ONNX 模型（从 best 模型保存）"""
+    """保存带对局计数编号的检查点模型（从 best 模型保存）"""
     src = "model/model_best.onnx"
     if not os.path.exists(src):
         src = "model/model_latest.onnx"  # 兼容首次启动
@@ -84,6 +84,12 @@ def save_checkpoint(total_games):
     if os.path.exists(src) and not os.path.exists(dst):
         shutil.copy2(src, dst)
         Logger.infoD(f"检查点已保存: {dst}")
+        # 同时复制 .pt 文件（libtorch 后端需要）
+        src_pt = src.replace('.onnx', '.pt')
+        dst_pt = dst.replace('.onnx', '.pt')
+        if os.path.exists(src_pt):
+            shutil.copy2(src_pt, dst_pt)
+            Logger.infoD(f"检查点已保存: {dst_pt}")
     elif os.path.exists(dst):
         Logger.infoD(f"检查点已存在，跳过: {dst}")
     return dst
@@ -178,6 +184,7 @@ if __name__ == "__main__":
     batch_size = int(ConfigReader.get('batchSize'))
     numGames = int(ConfigReader.get('numGames'))
     cppPath = ConfigReader.get("cppPath")
+    cppPathEval = ConfigReader.get("cppPathEval") if 'cppPathEval' in ConfigReader.config else cppPath
     train_epochs = int(ConfigReader.get('trainEpochs') if 'trainEpochs' in ConfigReader.config else 3)
     replay_buffer_size = int(
         ConfigReader.get('replayBufferSize') if 'replayBufferSize' in ConfigReader.config else 500000)
@@ -275,7 +282,7 @@ if __name__ == "__main__":
             last_arena_games = current_arena_point
             Logger.infoD(f"开始 Arena 评估: latest(g{total_games_count}) vs best (连续跳过: {arena_skip_count}, 全开局模式)")
             arena_result = run_evaluate(
-                cppPath,
+                cppPathEval,
                 latest_path,
                 best_path,
                 -1,
@@ -294,6 +301,11 @@ if __name__ == "__main__":
 
             if accepted:
                 shutil.copy2(latest_path, best_path)
+                # 同时复制 .pt 文件（libtorch 后端需要）
+                latest_pt = latest_path.replace('.onnx', '.pt')
+                best_pt = best_path.replace('.onnx', '.pt')
+                if os.path.exists(latest_pt):
+                    shutil.copy2(latest_pt, best_pt)
                 Logger.infoD(f"✅ g{total_games_count} 已升格为 best (胜率 {arena_win_rate * 100:.1f}%)", "arena.log")
                 arena_skip_count = 0
                 # 保存 pth 快照，方便回退
@@ -314,7 +326,7 @@ if __name__ == "__main__":
                 current_path = f"model/checkpoint_g{current_eval_point}.onnx"
                 Logger.infoD(f"开始 Elo 评估: g{current_eval_point} vs g{baseline_games} (全开局模式)")
                 eval_result = run_evaluate(
-                    cppPath,
+                    cppPathEval,
                     current_path,
                     baseline_path,
                     -1,

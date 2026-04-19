@@ -8,6 +8,9 @@ else ()
     string(APPEND CMAKE_C_FLAGS " -Wall -Wextra")
 endif ()
 
+# ========== 推理后端选项 ==========
+option(USE_LIBTORCH "Build with libtorch+MPS backend (macOS only)" OFF)
+
 #onnxruntime providers
 option(onnxruntime_USE_CUDA "Build with CUDA support" OFF)
 option(onnxruntime_USE_TENSORRT "Build with TensorRT support" OFF)
@@ -17,23 +20,21 @@ include(FetchContent)
 
 set(CMAKE_CXX_STANDARD 17)
 
-if(NOT DEFINED ENV{ONNXRUNTIME_ROOTDIR})
-    message(FATAL_ERROR "ONNXRUNTIME_ROOTDIR environment variable is not set.")
+# ========== ONNX Runtime（默认后端） ==========
+if(NOT USE_LIBTORCH)
+    if(NOT DEFINED ENV{ONNXRUNTIME_ROOTDIR})
+        message(FATAL_ERROR "ONNXRUNTIME_ROOTDIR environment variable is not set.")
+    endif()
+
+    set(ONNXRUNTIME_ROOTDIR $ENV{ONNXRUNTIME_ROOTDIR})
+    message(STATUS "ONNXRUNTIME_ROOTDIR: ${ONNXRUNTIME_ROOTDIR}")
+
+    include_directories("${ONNXRUNTIME_ROOTDIR}/include"
+            "${ONNXRUNTIME_ROOTDIR}/include/onnxruntime"
+            "${ONNXRUNTIME_ROOTDIR}/include/onnxruntime/core/session")
+
+    link_directories("${ONNXRUNTIME_ROOTDIR}/lib")
 endif()
-
-set(ONNXRUNTIME_ROOTDIR $ENV{ONNXRUNTIME_ROOTDIR})
-
-message(STATUS "ONNXRUNTIME_ROOTDIR: ${ONNXRUNTIME_ROOTDIR}")
-
-# The ORT package has a different include directory structure to a local install via cmake.
-# We added the path for the pre-built package above. Add the path for a local install to support either usage.
-# TODO: If we want to support additional EPs being loadable from a local install we also need to add EP specific
-# directories under /include/onnxruntime/core/providers
-include_directories("${ONNXRUNTIME_ROOTDIR}/include"                           # Pre-built package
-        "${ONNXRUNTIME_ROOTDIR}/include/onnxruntime"               # Linux local install to /usr/local
-        "${ONNXRUNTIME_ROOTDIR}/include/onnxruntime/core/session") # Windows local install
-
-link_directories("${ONNXRUNTIME_ROOTDIR}/lib")
 
 if (WIN32)
     add_library(wil INTERFACE)
@@ -72,27 +73,56 @@ endfunction()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3 -funroll-loops -ftree-vectorize -finline-functions -std=c++17")
 
-add_executable(ego-gomoku-zero SelfPlay.cpp Game.h Game.cpp MCTS.h MCTS.cpp SelfPlay.h Main.cpp
-        Analyzer.cpp Analyzer.h Piskvork.cpp Pisqpipe.h
-        Pisqpipe.cpp Utils.cpp Utils.h Shape.cpp Shape.h
-        Model.cpp Model.h ConfigReader.cpp ConfigReader.h
-        Bridge.cpp Bridge.h Evaluate.cpp Evaluate.h
+# ========== 源文件 ==========
+set(COMMON_SOURCES
+    SelfPlay.cpp Game.h Game.cpp MCTS.h MCTS.cpp SelfPlay.h Main.cpp
+    Analyzer.cpp Analyzer.h Piskvork.cpp Pisqpipe.h
+    Pisqpipe.cpp Utils.cpp Utils.h Shape.cpp Shape.h
+    Model.cpp Model.h ConfigReader.cpp ConfigReader.h
+    Bridge.cpp Bridge.h Evaluate.cpp Evaluate.h
 )
-set_property(TARGET ego-gomoku-zero PROPERTY CXX_STANDARD 17)
 
-# ONNX
-find_library(MY_LIBRARY
-        NAMES onnxruntime onnxruntime_providers_tensorrt onnxruntime_providers_shared onnxruntime_providers_cuda
-        PATHS ${ONNXRUNTIME_ROOTDIR}/lib)
+# ========== libtorch + MPS 后端 ==========
+if(USE_LIBTORCH)
+    message(STATUS "=== Building with libtorch + MPS backend ===")
+    add_definitions(-DUSE_LIBTORCH)
 
-# 链接第三方静态库到你的目标
-target_link_libraries(ego-gomoku-zero ${MY_LIBRARY})
+    # 查找 libtorch
+    if(NOT DEFINED ENV{LIBTORCH_ROOTDIR})
+        message(FATAL_ERROR "LIBTORCH_ROOTDIR environment variable is not set. "
+                            "Set it to your libtorch installation directory.")
+    endif()
+    set(LIBTORCH_ROOTDIR $ENV{LIBTORCH_ROOTDIR})
+    message(STATUS "LIBTORCH_ROOTDIR: ${LIBTORCH_ROOTDIR}")
 
-# TENSORRT
-#if(DEFINED ENV{TENSORRT_ROOTDIR})
-#    message(STATUS "TENSORRT_ROOTDIR environment variable set $ENV{TENSORRT_ROOTDIR}")
-#    find_library(TENSORRT_LIBRARY
-#            NAMES nvinfer nvcaffe_parser nvinfer_dispatch nvinfer_lean nvinfer_plugin nvinfer_vc_plugin nvparsers onnx_proto
-#            PATHS $ENV{TENSORRT_ROOTDIR}/lib)
-#    target_link_libraries(ego-gomoku-zero ${TENSORRT_LIBRARY})
-#endif()
+    # C++17 required by libtorch
+    set(CMAKE_CXX_STANDARD 17)
+
+    find_package(Torch REQUIRED PATHS ${LIBTORCH_ROOTDIR})
+    include_directories(${TORCH_INCLUDE_DIRS})
+
+    add_executable(ego-gomoku-zero
+        ${COMMON_SOURCES}
+        TorchBackend.cpp TorchBackend.h
+    )
+    set_property(TARGET ego-gomoku-zero PROPERTY CXX_STANDARD 17)
+
+    target_link_libraries(ego-gomoku-zero ${TORCH_LIBRARIES})
+
+# ========== ONNX Runtime 后端（默认） ==========
+else()
+    message(STATUS "=== Building with ONNX Runtime backend ===")
+
+    add_executable(ego-gomoku-zero
+        ${COMMON_SOURCES}
+        ONNXBackend.cpp ONNXBackend.h
+    )
+    set_property(TARGET ego-gomoku-zero PROPERTY CXX_STANDARD 17)
+
+    # ONNX
+    find_library(MY_LIBRARY
+            NAMES onnxruntime onnxruntime_providers_tensorrt onnxruntime_providers_shared onnxruntime_providers_cuda
+            PATHS ${ONNXRUNTIME_ROOTDIR}/lib)
+
+    target_link_libraries(ego-gomoku-zero ${MY_LIBRARY})
+endif()

@@ -8,7 +8,7 @@ class ConfigReader:
         with open(file_path, 'r', encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#'):  # 忽略注释和空行
+                if line and not line.startswith('#') and '=' in line:  # 忽略注释和空行
                     key, value = line.split('=', 1)
                     ConfigReader.config[key.strip()] = value.strip()
 
