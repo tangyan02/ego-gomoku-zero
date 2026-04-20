@@ -129,6 +129,50 @@ ONNXBackend::evaluate_state_batch(const std::vector<std::vector<std::vector<std:
     return results;
 }
 
+std::vector<std::pair<float, std::vector<float>>>
+ONNXBackend::evaluate_state_batch_flat(const float* data, int batch_size, int channels, int height, int width) {
+    if (batch_size == 0) {
+        return {};
+    }
+
+    int total_size = batch_size * channels * height * width;
+
+    std::vector<int64_t> input_tensor_shape = {batch_size, channels, height, width};
+    Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
+        memoryInfo, const_cast<float*>(data), total_size,
+        input_tensor_shape.data(), input_tensor_shape.size());
+
+    std::vector<const char*> input_node_names = {"input"};
+    std::vector<Ort::Value> input_tensors;
+    input_tensors.push_back(std::move(input_tensor));
+
+    std::vector<const char*> output_node_names = {"value", "act"};
+
+    auto output_tensors = session->Run(
+        Ort::RunOptions{nullptr}, input_node_names.data(), input_tensors.data(),
+        input_tensors.size(), output_node_names.data(), output_node_names.size());
+
+    float* value_data = output_tensors[0].GetTensorMutableData<float>();
+    float* act_data = output_tensors[1].GetTensorMutableData<float>();
+
+    std::vector<int64_t> act_shape = output_tensors[1].GetTensorTypeAndShapeInfo().GetShape();
+    int act_size_per_batch = std::accumulate(act_shape.begin() + 1, act_shape.end(), 1, std::multiplies<int64_t>());
+
+    std::vector<std::pair<float, std::vector<float>>> results;
+    results.reserve(batch_size);
+
+    for (int b = 0; b < batch_size; b++) {
+        float value = value_data[b];
+        std::vector<float> prior_prob;
+        for (int i = 0; i < act_size_per_batch; i++) {
+            prior_prob.emplace_back(exp(act_data[b * act_size_per_batch + i]));
+        }
+        results.emplace_back(value, prior_prob);
+    }
+
+    return results;
+}
+
 std::pair<float, std::vector<float>>
 ONNXBackend::evaluate_state(std::vector<std::vector<std::vector<float>>>& data) {
     std::vector<std::vector<std::vector<std::vector<float>>>> batchData;

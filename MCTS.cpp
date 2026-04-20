@@ -2,6 +2,7 @@
 
 #include <random>
 #include <numeric>
+#include <cstring>
 //#include <__random/random_device.h>
 
 using namespace std;
@@ -242,27 +243,18 @@ void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, 
             }
         }
 
-        // 3. 批量推理（仅 TT 未命中的部分）
+        // 3. 批量推理（仅 TT 未命中的部分）—— 直接拼接连续 float 数组，零拷贝传入
         std::vector<std::pair<float, std::vector<float>>> batch_results;
         if (!batch_states.empty()) {
-            // 将扁平化 states 重新组织为 evaluate_state_batch 期望的格式
-            // [batch, channels, H, W]
-            std::vector<std::vector<std::vector<std::vector<float>>>> batch_data;
-            batch_data.reserve(batch_states.size());
+            // 将所有状态拼接为一个连续 float 数组 [batch * channels * H * W]
+            int single_size = channels * MAX_BOARD_SIZE * MAX_BOARD_SIZE;
+            std::vector<float> flat_batch(eval_indices.size() * single_size);
             for (size_t b = 0; b < batch_states.size(); b++) {
-                std::vector<std::vector<std::vector<float>>> data(
-                    channels, std::vector<std::vector<float>>(MAX_BOARD_SIZE,
-                        std::vector<float>(MAX_BOARD_SIZE, 0.0f)));
-                for (int c = 0; c < channels; c++) {
-                    for (int h = 0; h < MAX_BOARD_SIZE; h++) {
-                        for (int w = 0; w < MAX_BOARD_SIZE; w++) {
-                            data[c][h][w] = batch_states[b][c * MAX_BOARD_SIZE * MAX_BOARD_SIZE + h * MAX_BOARD_SIZE + w];
-                        }
-                    }
-                }
-                batch_data.push_back(std::move(data));
+                std::memcpy(flat_batch.data() + b * single_size,
+                           batch_states[b].data(), single_size * sizeof(float));
             }
-            batch_results = model->evaluate_state_batch(batch_data);
+            batch_results = model->evaluate_state_batch_flat(
+                flat_batch.data(), eval_indices.size(), channels, MAX_BOARD_SIZE, MAX_BOARD_SIZE);
         }
 
         // 4. 处理 TT 命中的叶子

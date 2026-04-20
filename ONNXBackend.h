@@ -28,6 +28,9 @@ public:
     std::vector<std::pair<float, std::vector<float>>>
     evaluate_state_batch(const std::vector<std::vector<std::vector<std::vector<float>>>>& batchData) override;
 
+    std::vector<std::pair<float, std::vector<float>>>
+    evaluate_state_batch_flat(const float* data, int batch_size, int channels, int height, int width) override;
+
     std::future<std::pair<float, std::vector<float>>>
     enqueueData(std::vector<std::vector<std::vector<float>>> data) override;
 

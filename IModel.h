@@ -23,9 +23,13 @@ public:
     virtual std::pair<float, std::vector<float>>
         evaluate_state(const float* data, int channels, int height, int width) = 0;
 
-    // 批量推理
+    // 批量推理（嵌套 vector 版，兼容旧接口）
     virtual std::vector<std::pair<float, std::vector<float>>>
         evaluate_state_batch(const std::vector<std::vector<std::vector<std::vector<float>>>>& batchData) = 0;
+
+    // 批量推理（扁平化连续内存版，高性能——避免4D嵌套vector的重复拷贝）
+    virtual std::vector<std::pair<float, std::vector<float>>>
+        evaluate_state_batch_flat(const float* data, int batch_size, int channels, int height, int width) = 0;
 
     // 异步入队（用于批推理攒批）
     virtual std::future<std::pair<float, std::vector<float>>>

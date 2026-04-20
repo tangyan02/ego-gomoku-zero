@@ -241,9 +241,15 @@ if __name__ == "__main__":
 
         start_time = time.time()
 
-        Bridge.run_program(cppPath)
+        retcode = Bridge.run_program(cppPath)
+        if retcode != 0:
+            Logger.infoD(f"C++ 自对弈进程异常退出 (code {retcode})，重试本 episode")
+            continue
 
         training_data = Bridge.getFileData(num_processes)
+        if not training_data:
+            Logger.infoD("自对弈数据为空，跳过本 episode")
+            continue
 
         end_time = time.time()
         Logger.infoD(f"自我对弈完毕，用时 {end_time - start_time} s")

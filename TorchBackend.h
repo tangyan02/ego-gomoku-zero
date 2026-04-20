@@ -21,6 +21,9 @@ public:
     std::vector<std::pair<float, std::vector<float>>>
     evaluate_state_batch(const std::vector<std::vector<std::vector<std::vector<float>>>>& batchData) override;
 
+    std::vector<std::pair<float, std::vector<float>>>
+    evaluate_state_batch_flat(const float* data, int batch_size, int channels, int height, int width) override;
+
     std::future<std::pair<float, std::vector<float>>>
     enqueueData(std::vector<std::vector<std::vector<float>>> data) override;
 
@@ -30,6 +33,7 @@ private:
     torch::jit::script::Module module;
     torch::Device device{torch::kCPU};
     bool loaded{false};
+    std::mutex inferenceMutex;  // 保护 MPS 推理的互斥锁
 
     using DataPromisePair = std::pair<std::vector<std::vector<std::vector<float>>>,
                                        std::promise<std::pair<float, std::vector<float>>>>;

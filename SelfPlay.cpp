@@ -231,7 +231,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         cout << "============= " << prefix << "============" << endl;
 
         Game game(boardSize);
-        std::vector<std::tuple<vector<vector<vector<float> > >, int, std::vector<float> > > game_data;
+        std::vector<std::tuple<vector<vector<vector<float> > >, int, std::vector<float>, float>> game_data;
 
         game = randomGame(game, prefix);
 
@@ -312,9 +312,10 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
                 }
             }
 
-            //记录局面
+            //记录局面 + MCTS Q 值（root 的平均价值，用于 n-step bootstrapping）
             auto state = game.getState();
-            std::tuple record(state, game.currentPlayer, probs_matrix);
+            float mcts_q = (rootNode->visits > 0) ? (float)(rootNode->value_sum / rootNode->visits) : 0.0f;
+            std::tuple record(state, game.currentPlayer, probs_matrix, mcts_q);
             game.makeMove(move);
             game_data.push_back(record);
 
@@ -353,8 +354,29 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         if (win) {
             winner = game.getOtherPlayer();
         }
-        for (const auto &[state, player, mcts_probs]: game_data) {
-            float value = (winner == player) ? 1.0f : ((winner == (3 - player)) ? -1.0f : 0.0f);
+
+        // n-step TD bootstrapping: 用 MCTS Q 值替代纯最终胜负
+        // value_target(t) = gamma^n * mcts_q(t+n) + (1-gamma^n) * final_outcome
+        // 终局 n 步内直接用 final_outcome
+        static int td_n = stoi(ConfigReader::get("tdN") == "" ? "5" : ConfigReader::get("tdN"));
+        static float td_gamma = stof(ConfigReader::get("tdGamma") == "" ? "0.7" : ConfigReader::get("tdGamma"));
+        float gamma_n = pow(td_gamma, td_n);
+
+        int game_len = game_data.size();
+        for (int t = 0; t < game_len; t++) {
+            const auto &[state, player, mcts_probs, mcts_q] = game_data[t];
+            float final_value = (winner == player) ? 1.0f : ((winner == (3 - player)) ? -1.0f : 0.0f);
+            
+            float value;
+            if (t + td_n < game_len) {
+                // n-step: 混合 n 步后的 MCTS Q 值和最终结果
+                float mcts_q_tn = get<3>(game_data[t + td_n]);
+                value = gamma_n * mcts_q_tn + (1 - gamma_n) * final_value;
+            } else {
+                // 终局附近：直接用最终结果
+                value = final_value;
+            }
+            
             training_data.emplace_back(state, mcts_probs, std::vector<float>{value});
         }
 
@@ -369,11 +391,10 @@ void recordSelfPlay(
     int numSimulations,
     float temperatureDefault,
     float explorationFactor,
-    int shard) {
-    string modelPath = ConfigReader::get("modelPath");
-    string coreType = ConfigReader::get("coreType");
-    auto model = std::make_unique<Model>();
-    model->init(modelPath, coreType);
+    int shard,
+    Model* sharedModel) {
+    // 使用共享模型（主线程已初始化，避免多线程并发 MPS 初始化崩溃）
+    Model* model = sharedModel;
 
     // 创建文件流对象
     std::ofstream file("record/data_" + to_string(shard) + ".txt");

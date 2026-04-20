@@ -35,7 +35,8 @@ void recordSelfPlay(
     int numSimulation,
     float temperatureDefault,
     float explorationFactor,
-    int shard);
+    int shard,
+    Model* sharedModel);
 
 Game randomGame(Game& game);
 

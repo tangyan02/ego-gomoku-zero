@@ -20,6 +20,12 @@ void selfPlay(int argc, char *argv[]) {
     float explorationFactor = stof(ConfigReader::get("explorationFactor"));
     int numProcesses = stoi(ConfigReader::get("numProcesses"));
 
+    // 主线程加载模型，避免多线程并发 MPS 初始化崩溃
+    string modelPath = ConfigReader::get("modelPath");
+    string coreType = ConfigReader::get("coreType");
+    auto sharedModel = std::make_unique<Model>();
+    sharedModel->init(modelPath, coreType);
+
     std::vector<std::thread> threads; // 存储线程的容器
 
     auto context = std::make_unique<Context>(numGames);
@@ -31,7 +37,8 @@ void selfPlay(int argc, char *argv[]) {
                              numSimulation,
                              temperatureDefault,
                              explorationFactor,
-                             i);
+                             i,
+                             sharedModel.get());
     }
 
     // 等待所有线程执行完毕

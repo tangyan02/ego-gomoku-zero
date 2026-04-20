@@ -90,11 +90,56 @@ TorchBackend::evaluate_state_batch(const std::vector<std::vector<std::vector<std
         flattened_data.data(), {batch_size, dim1, dim2, dim3},
         torch::TensorOptions().dtype(torch::kFloat32)).clone().to(device);
 
-    // 前向推理
+    // 前向推理（MPS 不支持并发 forward，加锁保护）
     std::vector<torch::jit::IValue> inputs;
     inputs.push_back(input_tensor);
 
     torch::NoGradGuard no_grad;
+    std::lock_guard<std::mutex> lock(inferenceMutex);
+    auto output = module.forward(inputs).toTuple();
+
+    auto value_tensor = output->elements()[0].toTensor();  // [batch, 1]
+    auto act_tensor = output->elements()[1].toTensor();     // [batch, 400]
+
+    // 拷回 CPU
+    auto value_cpu = value_tensor.to(torch::kCPU);
+    auto act_cpu = act_tensor.to(torch::kCPU);
+
+    // 解析输出
+    std::vector<std::pair<float, std::vector<float>>> results;
+    results.reserve(batch_size);
+
+    int act_size = act_cpu.size(1);
+    for (int b = 0; b < batch_size; b++) {
+        float value = value_cpu[b].item<float>();
+        std::vector<float> prior_prob(act_size);
+        for (int i = 0; i < act_size; i++) {
+            prior_prob[i] = exp(act_cpu[b][i].item<float>());
+        }
+        results.emplace_back(value, prior_prob);
+    }
+
+    return results;
+}
+
+std::vector<std::pair<float, std::vector<float>>>
+TorchBackend::evaluate_state_batch_flat(const float* data, int batch_size, int channels, int height, int width) {
+    if (batch_size == 0) {
+        return {};
+    }
+
+    int total_size = batch_size * channels * height * width;
+
+    // 直接从连续内存创建 tensor（零拷贝 clone + to device）
+    auto input_tensor = torch::from_blob(
+        const_cast<float*>(data), {batch_size, channels, height, width},
+        torch::TensorOptions().dtype(torch::kFloat32)).clone().to(device);
+
+    std::vector<torch::jit::IValue> inputs;
+    inputs.push_back(input_tensor);
+
+    torch::NoGradGuard no_grad;
+    std::lock_guard<std::mutex> lock(inferenceMutex);
     auto output = module.forward(inputs).toTuple();
 
     auto value_tensor = output->elements()[0].toTensor();  // [batch, 1]
@@ -141,6 +186,7 @@ TorchBackend::evaluate_state(const float* data, int channels, int height, int wi
     inputs.push_back(input_tensor);
 
     torch::NoGradGuard no_grad;
+    std::lock_guard<std::mutex> lock(inferenceMutex);
     auto output = module.forward(inputs).toTuple();
 
     auto value_tensor = output->elements()[0].toTensor();
