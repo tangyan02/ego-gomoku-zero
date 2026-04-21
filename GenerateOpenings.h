@@ -1,0 +1,8 @@
+#ifndef EGO_GOMOKU_ZERO_GENERATEOPENINGS_H
+#define EGO_GOMOKU_ZERO_GENERATEOPENINGS_H
+
+#include <string>
+
+void runGenerateOpenings();
+
+#endif //EGO_GOMOKU_ZERO_GENERATEOPENINGS_H
