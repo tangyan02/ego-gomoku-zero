@@ -24,6 +24,13 @@ public:
     }
 
     static string get(const string &key);
+
+    static string getOrDefault(const string &key, const string &defaultValue) {
+        auto &m = getInstance().map;
+        auto it = m.find(key);
+        if (it != m.end()) return it->second;
+        return defaultValue;
+    }
 };
 
 

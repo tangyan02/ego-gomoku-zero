@@ -13,7 +13,6 @@ import Logger as Logger
 from Network import get_model, save_model
 from Train import train
 from Utils import getDevice, dirPreBuild
-from GenerateOpenings import generate_balanced_openings
 
 import sys
 
@@ -73,6 +72,21 @@ def update_count(k, filepath="model/count.txt"):
 
     Logger.infoD(f"更新对局计数，当前完成对局 {count}")
     return count
+
+
+def read_persistent_int(filepath, default=0):
+    """从文件读取持久化的整数值"""
+    try:
+        with open(filepath, 'r') as f:
+            return int(f.read().strip())
+    except (FileNotFoundError, ValueError):
+        return default
+
+
+def write_persistent_int(value, filepath):
+    """将整数值持久化到文件"""
+    with open(filepath, 'w') as f:
+        f.write(str(value))
 
 
 def save_checkpoint(total_games):
@@ -170,6 +184,65 @@ def run_evaluate(cpp_path, model_path1, model_path2, eval_games, eval_simulation
     return result
 
 
+def run_generate_openings(cpp_path, model_path):
+    """调用 C++ generate_openings 模式生成平衡开局库"""
+    model_path = os.path.abspath(model_path)
+    cpp_dir = os.path.dirname(os.path.abspath(cpp_path))
+    conf_path = os.path.join(cpp_dir, "application.conf")
+
+    # 备份原配置
+    backup_conf = conf_path + ".bak"
+    if os.path.exists(conf_path):
+        shutil.copy2(conf_path, backup_conf)
+
+    with open(conf_path, 'w') as f:
+        f.write(f"mode=generate_openings\n")
+        f.write(f"coreType=cpu\n")  # 开局生成用 CPU 即可，无需 GPU/MPS
+        f.write(f"boardSize={ConfigReader.get('boardSize')}\n")
+        f.write(f"modelPath={model_path}\n")
+        f.write(f"genOpenings_trainCount=300\n")
+        f.write(f"genOpenings_evalCount=50\n")
+        f.write(f"genOpenings_minMoves=1\n")
+        f.write(f"genOpenings_maxMoves=8\n")
+        f.write(f"genOpenings_threshold=0.4\n")
+        f.write(f"genOpenings_maxAttempts=15000\n")
+        f.write(f"genOpenings_nearCenter=6\n")
+
+    env = os.environ.copy()
+    env['DYLD_LIBRARY_PATH'] = os.path.join(os.path.dirname(os.path.abspath(cpp_path)), '..', 'onnxruntime', 'lib')
+    process = subprocess.Popen([os.path.abspath(cpp_path)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               cwd=cpp_dir, env=env)
+    for line in process.stdout:
+        decoded = line.decode()
+        print(decoded, end='')
+    process.wait()
+
+    # 恢复原配置
+    if os.path.exists(backup_conf):
+        shutil.copy2(backup_conf, conf_path)
+        os.remove(backup_conf)
+
+    # 把生成的开局文件复制到 train 目录和自对弈目录
+    src_train = os.path.join(cpp_dir, "openings", "openings_train.txt")
+    src_eval = os.path.join(cpp_dir, "openings", "openings_eval.txt")
+
+    # 目标目录列表：train/openings + 自对弈 C++ 目录（如果与 eval 不同）
+    dst_dirs = ["openings"]
+    cpp_path_train = ConfigReader.get("cppPath")
+    train_cpp_dir = os.path.dirname(os.path.abspath(cpp_path_train))
+    if os.path.normpath(train_cpp_dir) != os.path.normpath(cpp_dir):
+        dst_dirs.append(os.path.join(train_cpp_dir, "openings"))
+
+    for dst_dir in dst_dirs:
+        os.makedirs(dst_dir, exist_ok=True)
+        if os.path.exists(src_train):
+            shutil.copy2(src_train, os.path.join(dst_dir, "openings_train.txt"))
+        if os.path.exists(src_eval):
+            shutil.copy2(src_eval, os.path.join(dst_dir, "openings_eval.txt"))
+
+    return process.returncode == 0
+
+
 if __name__ == "__main__":
 
     dirPreBuild()
@@ -208,12 +281,17 @@ if __name__ == "__main__":
     # 初始化 best 模型：首次启动时复制 latest 为 best
     best_path = "model/model_best.onnx"
     latest_path = "model/model_latest.onnx"
+    best_pt = "model/model_best.pt"
+    latest_pt = "model/model_latest.pt"
     if not os.path.exists(best_path):
         shutil.copy2(latest_path, best_path)
         Logger.infoD("首次启动：model_best.onnx 从 model_latest.onnx 复制而来")
+    if not os.path.exists(best_pt) and os.path.exists(latest_pt):
+        shutil.copy2(latest_pt, best_pt)
+        Logger.infoD("首次启动：model_best.pt 从 model_latest.pt 复制而来")
 
-    # Arena 状态
-    arena_skip_count = 0  # 连续未通过 arena 的次数
+    # Arena 状态（arena_skip_count 持久化，防止进程重启丢失）
+    arena_skip_count = read_persistent_int("model/arena_skip_count.txt", 0)
     last_arena_games = (total_games_count // arena_interval) * arena_interval  # 上一次 arena 的对局数
 
     # 保存初始检查点作为基线（仅首次训练时）
@@ -233,9 +311,7 @@ if __name__ == "__main__":
 
     # 启动时立即生成平衡开局（确保自对弈第一局就用生成开局）
     Logger.infoD("启动时生成平衡开局库...")
-    generate_balanced_openings(
-        model_path=best_path,
-    )
+    run_generate_openings(cppPathEval, best_path)
 
     for i_episode in range(1, episode + 1):
 
@@ -314,12 +390,14 @@ if __name__ == "__main__":
                     shutil.copy2(latest_pt, best_pt)
                 Logger.infoD(f"✅ g{total_games_count} 已升格为 best (胜率 {arena_win_rate * 100:.1f}%)", "arena.log")
                 arena_skip_count = 0
+                write_persistent_int(arena_skip_count, "model/arena_skip_count.txt")
                 # 保存 pth 快照，方便回退
                 pth_snapshot = f"model/checkpoint_g{total_games_count}.pth"
                 shutil.copy2("model/checkpoint.pth", pth_snapshot)
                 Logger.infoD(f"已保存权重快照: {pth_snapshot}")
             else:
                 arena_skip_count += 1
+                write_persistent_int(arena_skip_count, "model/arena_skip_count.txt")
                 Logger.infoD(f"❌ 新模型被拒绝 (胜率 {arena_win_rate * 100:.1f}% < {arena_threshold * 100:.0f}%)", "arena.log")
 
         # Elo 评估（基于全局对局计数）
@@ -359,9 +437,7 @@ if __name__ == "__main__":
         if current_openings_point > last_openings_refresh and current_openings_point > 0:
             last_openings_refresh = current_openings_point
             Logger.infoD(f"开始刷新开局库（g{total_games_count}）...")
-            generate_balanced_openings(
-                model_path=best_path,
-            )
+            run_generate_openings(cppPathEval, best_path)
 
         Logger.infoD(f"episode {i_episode} 完成")
 

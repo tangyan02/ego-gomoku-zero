@@ -8,6 +8,7 @@
 #include "Model.h"
 #include "Bridge.h"
 #include "Evaluate.h"
+#include "GenerateOpenings.h"
 #include <memory>
 
 using namespace std;
@@ -71,6 +72,11 @@ int main(int argc, char *argv[]) {
 
     if (mode == "evaluate") {
         runEvaluate();
+        return 0;
+    }
+
+    if (mode == "generate_openings") {
+        runGenerateOpenings();
         return 0;
     }
 

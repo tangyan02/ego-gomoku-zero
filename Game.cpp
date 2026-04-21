@@ -64,7 +64,7 @@ Game::Game(int boardSize) {
     zobristHash = zobristTable.currentPlayerHash;  // 初始为黑方行棋
 }
 
-int Game::getOtherPlayer() {
+int Game::getOtherPlayer() const {
     return 3 - currentPlayer;
 }
 
@@ -147,14 +147,16 @@ vector<vector<vector<float>>> Game::getState() {
         }
     }
 
-    // 通道2: 最近一步落子位置
-    if (lastAction.x >= 0 && lastAction.y >= 0) {
-        data[2][lastAction.x][lastAction.y] = 1;
+    // 通道2: 我方VCF进攻点
+    auto myVCF = getMyVCFMoves();
+    for (const auto &p : myVCF) {
+        data[2][p.x][p.y] = 1;
     }
 
-    // 通道3: 最近两步落子位置
-    if (lastLastAction.x >= 0 && lastLastAction.y >= 0) {
-        data[3][lastLastAction.x][lastLastAction.y] = 1;
+    // 通道3: 对方VCF进攻点
+    auto oppVCF = getOppVCFMoves();
+    for (const auto &p : oppVCF) {
+        data[3][p.x][p.y] = 1;
     }
 
     return data;
@@ -177,14 +179,16 @@ void Game::getState(float* buffer, int channels) const {
         }
     }
 
-    // 通道2: 最近一步落子位置
-    if (lastAction.x >= 0 && lastAction.y >= 0) {
-        buffer[2 * planeSize + lastAction.x * boardSize + lastAction.y] = 1.0f;
+    // 通道2: 我方VCF进攻点
+    auto myVCF = getMyVCFMoves();
+    for (const auto &p : myVCF) {
+        buffer[2 * planeSize + p.x * boardSize + p.y] = 1.0f;
     }
 
-    // 通道3: 最近两步落子位置
-    if (lastLastAction.x >= 0 && lastLastAction.y >= 0) {
-        buffer[3 * planeSize + lastLastAction.x * boardSize + lastLastAction.y] = 1.0f;
+    // 通道3: 对方VCF进攻点
+    auto oppVCF = getOppVCFMoves();
+    for (const auto &p : oppVCF) {
+        buffer[3 * planeSize + p.x * boardSize + p.y] = 1.0f;
     }
 }
 
@@ -271,35 +275,60 @@ bool Game::checkWin(int row, int col, int player) {
     return false;
 }
 
-vector<Point> Game::getMyVCFMoves() {
-    if (myVcfDone) {
-        return myVcfMoves;
+// 私有方法：确保 VCF 结果已计算
+void Game::ensureVCFComputed() const {
+    if (myVcfDone && oppVcfDone) return;
+
+    // 早期跳过：棋盘上子太少不可能有 VCF
+    int pieceCount = boardSize * boardSize - emptyCount;
+    if (pieceCount < 6) {
+        myVcfMoves.clear();
+        myAllAttackMoves.clear();
+        myVcfDone = true;
+        oppVcfMoves.clear();
+        oppVcfAttackMoves.clear();
+        oppVcfDefenceMoves.clear();
+        oppVcfDone = true;
+        return;
     }
-    Game game = *this;
-    myAllAttackMoves.clear();
-    auto myVCF = dfsVCF(currentPlayer, currentPlayer,
-                        game, Point(), Point(), 0,
-                        nullptr, nullptr, &myAllAttackMoves);
-    myAllAttackMoves = removeDuplicates(myAllAttackMoves);
-    myVcfMoves = myVCF.second;
-    myVcfDone = true;
+
+    // 计算 myVCF
+    if (!myVcfDone) {
+        Game game = *this;
+        myAllAttackMoves.clear();
+        auto myVCF = dfsVCF(currentPlayer, currentPlayer,
+                            game, Point(), Point(), 0,
+                            nullptr, nullptr, &myAllAttackMoves);
+        myAllAttackMoves = removeDuplicates(myAllAttackMoves);
+        myVcfMoves = myVCF.second;
+        myVcfDone = true;
+    }
+
+    // 计算 oppVCF
+    if (!oppVcfDone) {
+        Game game = *this;
+        oppVcfDefenceMoves.clear();
+        oppVcfAttackMoves.clear();
+        auto oppVCF = dfsVCF(getOtherPlayer(), getOtherPlayer(),
+                             game, Point(), Point(), 0,
+                             &oppVcfAttackMoves, &oppVcfDefenceMoves);
+        oppVcfDefenceMoves = removeDuplicates(oppVcfDefenceMoves);
+        oppVcfAttackMoves = removeDuplicates(oppVcfAttackMoves);
+        oppVcfMoves = oppVCF.second;
+        oppVcfDone = true;
+    }
+}
+
+vector<Point> Game::getMyVCFMoves() const {
+    if (!myVcfDone) {
+        ensureVCFComputed();
+    }
     return myVcfMoves;
 }
 
-vector<Point> Game::getOppVCFMoves() {
-    if (oppVcfDone) {
-        return oppVcfMoves;
+vector<Point> Game::getOppVCFMoves() const {
+    if (!oppVcfDone) {
+        ensureVCFComputed();
     }
-    Game game = *this;
-    oppVcfDefenceMoves.clear();
-    oppVcfAttackMoves.clear();
-    auto oppVCF = dfsVCF(getOtherPlayer(), getOtherPlayer(),
-                         game, Point(), Point(), 0,
-                         &oppVcfAttackMoves, &oppVcfDefenceMoves);
-//    cout<<"oppVcfDefenceMoves "<<oppVcfDefenceMoves.size()<<endl;
-    oppVcfDefenceMoves = removeDuplicates(oppVcfDefenceMoves);
-    oppVcfAttackMoves = removeDuplicates(oppVcfAttackMoves);
-    oppVcfMoves = oppVCF.second;
-    oppVcfDone = true;
     return oppVcfMoves;
 }

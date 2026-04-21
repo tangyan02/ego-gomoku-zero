@@ -17,7 +17,7 @@ def generate_balanced_openings(
     board_size: int = 20,
     num_train_openings: int = 300,
     num_eval_openings: int = 50,
-    num_moves_range: tuple = (3, 8),
+    num_moves_range: tuple = (1, 8),
     value_threshold: float = 0.4,
     max_attempts: int = 15000,
     near_center_range: int = 6,

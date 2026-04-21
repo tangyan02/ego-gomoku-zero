@@ -26,23 +26,42 @@ void printGame(Game &game, Point action, float rate, vector<float> probs,
 }
 
 // 缓存开局库，只读一次文件
-static std::vector<std::string>& getCachedOpenings() {
-    static std::vector<std::string> lines;
+struct OpeningCache {
+    std::vector<std::string> generated;  // 生成开局
+    std::vector<std::string> manual;     // 手工设计开局
+};
+
+static OpeningCache& getCachedOpenings() {
+    static OpeningCache cache;
     static bool loaded = false;
     if (!loaded) {
-        std::ifstream file("openings/openings_train.txt");
-        if (file.is_open()) {
+        // 加载生成开局
+        std::ifstream genFile("openings/openings_train.txt");
+        if (genFile.is_open()) {
             std::string line;
-            while (std::getline(file, line)) {
+            while (std::getline(genFile, line)) {
                 if (!line.empty()) {
-                    lines.push_back(line);
+                    cache.generated.push_back(line);
                 }
             }
-            file.close();
+            genFile.close();
         }
+        // 加载手工设计开局
+        std::ifstream manFile("openings/openings_manual.txt");
+        if (manFile.is_open()) {
+            std::string line;
+            while (std::getline(manFile, line)) {
+                if (!line.empty()) {
+                    cache.manual.push_back(line);
+                }
+            }
+            manFile.close();
+        }
+        cout << "[SelfPlay] Loaded " << cache.generated.size() << " generated openings, "
+             << cache.manual.size() << " manual openings" << endl;
         loaded = true;
     }
-    return lines;
+    return cache;
 }
 
 Game randomGame(Game &game, const string &prefix) {
@@ -50,27 +69,47 @@ Game randomGame(Game &game, const string &prefix) {
     double randomNum = dis(gen);
 
     // 开局策略：
-    // 90% 概率：使用开局库
     // 10% 概率：空棋盘直接开始（训练第一手选点能力）
+    // 90% 概率：使用开局库
     if (randomNum < 0.1) {
         // 空棋盘直接开始
         cout << prefix << "empty board start" << endl;
         return game;
     }
 
-    // 使用开局库
-    auto& lines = getCachedOpenings();
-    if (lines.empty()) {
+    // 使用开局库：50% 生成开局 vs 50% 手工开局
+    auto& cache = getCachedOpenings();
+    std::vector<std::string>* pool = nullptr;
+    string poolName;
+
+    if (cache.generated.empty() && cache.manual.empty()) {
         std::cout << prefix << "No openings loaded, empty board start" << std::endl;
         return game;
     }
 
-    std::uniform_int_distribution<int> disInt(0, lines.size() - 1);
+    if (cache.generated.empty()) {
+        pool = &cache.manual;
+        poolName = "manual";
+    } else if (cache.manual.empty()) {
+        pool = &cache.generated;
+        poolName = "generated";
+    } else {
+        // 50% 概率选择生成开局或手工开局
+        if (dis(gen) < 0.5) {
+            pool = &cache.generated;
+            poolName = "generated";
+        } else {
+            pool = &cache.manual;
+            poolName = "manual";
+        }
+    }
+
+    std::uniform_int_distribution<int> disInt(0, pool->size() - 1);
     int randomIndex = disInt(gen);
 
-    std::cout << prefix << "Randomly selected index: " << randomIndex << std::endl;
-    std::string randomLine = lines[randomIndex];
-    std::cout << prefix << "Randomly selected coordinates: " << randomLine << std::endl;
+    std::cout << prefix << "Opening pool=" << poolName << " index=" << randomIndex << std::endl;
+    std::string randomLine = (*pool)[randomIndex];
+    std::cout << prefix << "Opening coordinates: " << randomLine << std::endl;
 
     std::vector<Point> points;
     std::stringstream ss(randomLine);
@@ -236,7 +275,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         game = randomGame(game, prefix);
 
         // 开局落子顺序不反映真实战术意图，清掉最近落子记录
-        // 避免通道2/3（最近一步/两步）在MCTS第一步收到误导信息
+        // （通道2/3已改为VCF点，但lastAction仍被其他逻辑使用，保持清除）
         game.lastAction = Point();
         game.lastLastAction = Point();
 

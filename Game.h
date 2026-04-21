@@ -42,7 +42,7 @@ struct PointEqual {
 
 const int MAX_BOARD_SIZE = 20;
 const int CONNECT = 5;
-const int INPUT_CHANNELS = 4;  // 通道: 己方棋子, 对方棋子, 最近一步, 最近两步
+const int INPUT_CHANNELS = 4;  // 通道: 己方棋子, 对方棋子, 我方VCF点, 对方VCF点
 
 #define NONE_P 0
 #define BLACK 1
@@ -59,6 +59,7 @@ struct ZobristTable {
 };
 extern ZobristTable zobristTable;
 
+
 class Game {
 public:
     int board[MAX_BOARD_SIZE][MAX_BOARD_SIZE];
@@ -71,18 +72,18 @@ public:
     int vctTimeOut = 0;
     uint64_t zobristHash = 0;  // 局面的 Zobrist hash，makeMove 时增量更新
 
-    bool myVcfDone = false;
-    bool oppVcfDone = false;
-    vector<Point> myVcfMoves;
-    vector<Point> myAllAttackMoves;
-    vector<Point> oppVcfMoves;
-    vector<Point> oppVcfAttackMoves;
-    vector<Point> oppVcfDefenceMoves;
+    mutable bool myVcfDone = false;
+    mutable bool oppVcfDone = false;
+    mutable vector<Point> myVcfMoves;
+    mutable vector<Point> myAllAttackMoves;
+    mutable vector<Point> oppVcfMoves;
+    mutable vector<Point> oppVcfAttackMoves;
+    mutable vector<Point> oppVcfDefenceMoves;
 
 
     Game(int boardSize);
 
-    int getOtherPlayer();
+    int getOtherPlayer() const;
 
     int getActionIndex(Point &p);
 
@@ -108,9 +109,12 @@ public:
 
     bool checkWin(int row, int col, int player);
 
-    vector<Point> getMyVCFMoves();
+    vector<Point> getMyVCFMoves() const;
 
-    vector<Point> getOppVCFMoves();
+    vector<Point> getOppVCFMoves() const;
+
+private:
+    void ensureVCFComputed() const;
 
 };
 

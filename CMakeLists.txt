@@ -80,6 +80,7 @@ set(COMMON_SOURCES
     Pisqpipe.cpp Utils.cpp Utils.h Shape.cpp Shape.h
     Model.cpp Model.h ConfigReader.cpp ConfigReader.h
     Bridge.cpp Bridge.h Evaluate.cpp Evaluate.h
+    GenerateOpenings.cpp GenerateOpenings.h
 )
 
 # ========== libtorch + MPS 后端 ==========
