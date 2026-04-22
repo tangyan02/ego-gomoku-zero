@@ -26,15 +26,35 @@ class ReplayBuffer:
     """经验回放池，保留最近 max_size 条训练数据"""
 
     def __init__(self, max_size=500000):
-        self.buffer = deque(maxlen=max_size)
+        self.buffer = []
+        self.max_size = max_size
 
     def add(self, data_list):
         self.buffer.extend(data_list)
+        # 超出容量时只保留最新的 max_size 条
+        if len(self.buffer) > self.max_size:
+            self.buffer = self.buffer[-self.max_size:]
 
-    def sample(self, sample_size):
-        if sample_size >= len(self.buffer):
+    def sample(self, sample_size, recent_ratio=0.7):
+        """采样训练数据，recent_ratio 比例来自最近 1/3 数据，其余来自全池"""
+        buf_len = len(self.buffer)
+        if sample_size >= buf_len:
             return list(self.buffer)
-        return random.sample(list(self.buffer), sample_size)
+
+        recent_count = int(sample_size * recent_ratio)
+        old_count = sample_size - recent_count
+
+        # 最近 1/3 的数据
+        recent_boundary = max(buf_len * 2 // 3, buf_len - sample_size)
+        recent_pool_size = buf_len - recent_boundary
+        recent_count = min(recent_count, recent_pool_size)
+        old_count = sample_size - recent_count
+
+        recent_indices = random.sample(range(recent_boundary, buf_len), recent_count)
+        old_indices = random.sample(range(recent_boundary), min(old_count, recent_boundary))
+        
+        indices = recent_indices + old_indices
+        return [self.buffer[i] for i in indices]
 
     def __len__(self):
         return len(self.buffer)
@@ -197,24 +217,27 @@ def run_generate_openings(cpp_path, model_path):
 
     with open(conf_path, 'w') as f:
         f.write(f"mode=generate_openings\n")
-        f.write(f"coreType=cpu\n")  # 开局生成用 CPU 即可，无需 GPU/MPS
+        f.write(f"coreType={ConfigReader.get('coreType')}\n")  # 跟随训练配置（macOS 用 apple CoreML 加速）
         f.write(f"boardSize={ConfigReader.get('boardSize')}\n")
         f.write(f"modelPath={model_path}\n")
-        f.write(f"genOpenings_trainCount=300\n")
+        f.write(f"genOpenings_trainCount=150\n")
         f.write(f"genOpenings_evalCount=50\n")
         f.write(f"genOpenings_minMoves=1\n")
         f.write(f"genOpenings_maxMoves=8\n")
-        f.write(f"genOpenings_threshold=0.4\n")
-        f.write(f"genOpenings_maxAttempts=15000\n")
+        f.write(f"genOpenings_threshold=0.5\n")
+        f.write(f"genOpenings_maxAttempts=10000\n")
         f.write(f"genOpenings_nearCenter=6\n")
 
     env = os.environ.copy()
     env['DYLD_LIBRARY_PATH'] = os.path.join(os.path.dirname(os.path.abspath(cpp_path)), '..', 'onnxruntime', 'lib')
     process = subprocess.Popen([os.path.abspath(cpp_path)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                cwd=cpp_dir, env=env)
+    openings_output = []
     for line in process.stdout:
         decoded = line.decode()
         print(decoded, end='')
+        if '[Openings]' in decoded:
+            openings_output.append(decoded.strip())
     process.wait()
 
     # 恢复原配置
@@ -225,6 +248,14 @@ def run_generate_openings(cpp_path, model_path):
     # 把生成的开局文件复制到 train 目录和自对弈目录
     src_train = os.path.join(cpp_dir, "openings", "openings_train.txt")
     src_eval = os.path.join(cpp_dir, "openings", "openings_eval.txt")
+
+    # 统计生成结果并写日志
+    train_count = sum(1 for _ in open(src_train)) if os.path.exists(src_train) and os.path.getsize(src_train) > 0 else 0
+    eval_count = sum(1 for _ in open(src_eval)) if os.path.exists(src_eval) and os.path.getsize(src_eval) > 0 else 0
+    log_msg = f"开局生成完成: train={train_count}, eval={eval_count}"
+    if openings_output:
+        log_msg += f" | {openings_output[-1]}"
+    Logger.infoD(log_msg, "openings.log")
 
     # 目标目录列表：train/openings + 自对弈 C++ 目录（如果与 eval 不同）
     dst_dirs = ["openings"]
@@ -311,7 +342,7 @@ if __name__ == "__main__":
 
     # 启动时立即生成平衡开局（确保自对弈第一局就用生成开局）
     Logger.infoD("启动时生成平衡开局库...")
-    run_generate_openings(cppPathEval, best_path)
+    run_generate_openings(cppPathEval, latest_path)
 
     for i_episode in range(1, episode + 1):
 
@@ -355,50 +386,15 @@ if __name__ == "__main__":
         save_model(model, optimizer)
         Logger.infoD(f"最新模型已保存 episode:{i_episode}")
 
+        # 隐式备份：latest → backup（防止写入中途崩溃丢失模型）
+        backup_onnx = "model/model_backup.onnx"
+        backup_pt = "model/model_backup.pt"
+        shutil.copy2(latest_path, backup_onnx)
+        if os.path.exists(latest_path.replace('.onnx', '.pt')):
+            shutil.copy2(latest_path.replace('.onnx', '.pt'), backup_pt)
+
         # 先更新计数，再检查是否触发评估
         total_games_count = update_count(numGames)
-
-        # Arena 门槛准入：基于对局计数触发（每 arena_interval 局触发一次）
-        current_arena_point = (total_games_count // arena_interval) * arena_interval
-        if current_arena_point > last_arena_games and current_arena_point > 0:
-            last_arena_games = current_arena_point
-            Logger.infoD(f"开始 Arena 评估: latest(g{total_games_count}) vs best (连续跳过: {arena_skip_count}, 全开局模式)")
-            arena_result = run_evaluate(
-                cppPathEval,
-                latest_path,
-                best_path,
-                -1,
-                arena_simulation
-            )
-            arena_win_rate = arena_result['win_rate']
-            force_accept = arena_skip_count >= arena_max_skip
-            accepted = arena_win_rate >= arena_threshold or force_accept
-
-            reason = "通过阈值" if arena_win_rate >= arena_threshold else ("强制接受(连续跳过达上限)" if force_accept else "未通过")
-            Logger.infoD(
-                f"Arena [g{total_games_count}] 结果: 胜率 {arena_win_rate * 100:.1f}% ({arena_result['wins']}-{arena_result['losses']}-{arena_result['draws']}), "
-                f"Elo {arena_result['elo_diff']:+.0f}, {reason}",
-                "arena.log"
-            )
-
-            if accepted:
-                shutil.copy2(latest_path, best_path)
-                # 同时复制 .pt 文件（libtorch 后端需要）
-                latest_pt = latest_path.replace('.onnx', '.pt')
-                best_pt = best_path.replace('.onnx', '.pt')
-                if os.path.exists(latest_pt):
-                    shutil.copy2(latest_pt, best_pt)
-                Logger.infoD(f"✅ g{total_games_count} 已升格为 best (胜率 {arena_win_rate * 100:.1f}%)", "arena.log")
-                arena_skip_count = 0
-                write_persistent_int(arena_skip_count, "model/arena_skip_count.txt")
-                # 保存 pth 快照，方便回退
-                pth_snapshot = f"model/checkpoint_g{total_games_count}.pth"
-                shutil.copy2("model/checkpoint.pth", pth_snapshot)
-                Logger.infoD(f"已保存权重快照: {pth_snapshot}")
-            else:
-                arena_skip_count += 1
-                write_persistent_int(arena_skip_count, "model/arena_skip_count.txt")
-                Logger.infoD(f"❌ 新模型被拒绝 (胜率 {arena_win_rate * 100:.1f}% < {arena_threshold * 100:.0f}%)", "arena.log")
 
         # Elo 评估（基于全局对局计数）
         current_eval_point = (total_games_count // eval_interval) * eval_interval
@@ -432,12 +428,54 @@ if __name__ == "__main__":
                 )
                 Logger.infoD(json.dumps(elo_history[-1]), "elo.log")
 
+                # Elo 上升时更新 best 模型（best = 最后一个 Elo 没下降的 checkpoint）
+                if eval_result["elo_diff"] >= 0:
+                    current_onnx = f"model/checkpoint_g{current_eval_point}.onnx"
+                    current_pt = f"model/checkpoint_g{current_eval_point}.pt"
+                    if os.path.exists(current_onnx):
+                        shutil.copy2(current_onnx, best_path)
+                        best_pt = best_path.replace('.onnx', '.pt')
+                        if os.path.exists(current_pt):
+                            shutil.copy2(current_pt, best_pt)
+                        Logger.infoD(f"✅ best 模型已更新为 g{current_eval_point}", "elo.log")
+
+                # 安全阀：连续 3 次 Elo 评估为负（胜率 < 50%），回滚到最后一个正 Elo 的 checkpoint
+                consecutive_decline = 0
+                rollback_target = None
+                for entry in reversed(elo_history):
+                    if entry["elo_diff"] < 0:
+                        consecutive_decline += 1
+                    else:
+                        rollback_target = entry["total_games"]
+                        break
+                if consecutive_decline >= 3 and rollback_target is not None:
+                    rollback_onnx = f"model/checkpoint_g{rollback_target}.onnx"
+                    rollback_pt = f"model/checkpoint_g{rollback_target}.pt"
+                    rollback_pth = f"model/checkpoint_g{rollback_target}.pth"
+                    if os.path.exists(rollback_onnx):
+                        Logger.infoD(
+                            f"⚠️ 安全阀触发：连续 {consecutive_decline} 次 Elo 下降，"
+                            f"回滚到 g{rollback_target}",
+                            "elo.log"
+                        )
+                        shutil.copy2(rollback_onnx, latest_path)
+                        shutil.copy2(rollback_onnx, best_path)
+                        if os.path.exists(rollback_pt):
+                            shutil.copy2(rollback_pt, latest_path.replace('.onnx', '.pt'))
+                            shutil.copy2(rollback_pt, best_path.replace('.onnx', '.pt'))
+                        if os.path.exists(rollback_pth):
+                            shutil.copy2(rollback_pth, "model/checkpoint.pth")
+                            # 重新加载模型权重
+                            model, optimizer = get_model(device, lr, wd)
+                            Logger.infoD(f"模型已回滚到 g{rollback_target}，训练继续")
+                        elo_history.clear()  # 清空历史，重新开始追踪
+
         # 开局库自动刷新：每 openings_refresh_interval 局用 best 模型重新生成平衡开局
         current_openings_point = (total_games_count // openings_refresh_interval) * openings_refresh_interval
         if current_openings_point > last_openings_refresh and current_openings_point > 0:
             last_openings_refresh = current_openings_point
             Logger.infoD(f"开始刷新开局库（g{total_games_count}）...")
-            run_generate_openings(cppPathEval, best_path)
+            run_generate_openings(cppPathEval, latest_path)
 
         Logger.infoD(f"episode {i_episode} 完成")
 

@@ -12,3 +12,14 @@
 /out/build/x64-Release
 /remark
 /onnxruntime
+/libtorch
+/libtorch.zip
+/cmake-build-debug
+/cmake-build-torch
+.DS_Store
+__pycache__
+/train/model
+/train/record
+/train/log
+/train/__pycache__
+.workbuddy

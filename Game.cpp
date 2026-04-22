@@ -265,10 +265,9 @@ bool Game::makeMove(Point p) {
 }
 
 bool Game::checkWin(int row, int col, int player) {
-    Game game = *this;
     Point action = Point(row, col);
     for (int i = 0; i < 4; i++) {
-        if (checkPointDirectShape(game, player, action, i, LONG_FIVE)) {
+        if (checkPointDirectShape(*this, player, action, i, LONG_FIVE)) {
             return true;
         }
     }
@@ -292,12 +291,11 @@ void Game::ensureVCFComputed() const {
         return;
     }
 
-    // 计算 myVCF
+    // 计算 myVCF（dfsVCF 内部会临时修改 board 再 undo，不需要拷贝 Game）
     if (!myVcfDone) {
-        Game game = *this;
         myAllAttackMoves.clear();
         auto myVCF = dfsVCF(currentPlayer, currentPlayer,
-                            game, Point(), Point(), 0,
+                            const_cast<Game&>(*this), Point(), Point(), 0,
                             nullptr, nullptr, &myAllAttackMoves);
         myAllAttackMoves = removeDuplicates(myAllAttackMoves);
         myVcfMoves = myVCF.second;
@@ -306,11 +304,10 @@ void Game::ensureVCFComputed() const {
 
     // 计算 oppVCF
     if (!oppVcfDone) {
-        Game game = *this;
         oppVcfDefenceMoves.clear();
         oppVcfAttackMoves.clear();
         auto oppVCF = dfsVCF(getOtherPlayer(), getOtherPlayer(),
-                             game, Point(), Point(), 0,
+                             const_cast<Game&>(*this), Point(), Point(), 0,
                              &oppVcfAttackMoves, &oppVcfDefenceMoves);
         oppVcfDefenceMoves = removeDuplicates(oppVcfDefenceMoves);
         oppVcfAttackMoves = removeDuplicates(oppVcfAttackMoves);

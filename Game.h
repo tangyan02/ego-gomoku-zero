@@ -62,7 +62,7 @@ extern ZobristTable zobristTable;
 
 class Game {
 public:
-    int board[MAX_BOARD_SIZE][MAX_BOARD_SIZE];
+    mutable int board[MAX_BOARD_SIZE][MAX_BOARD_SIZE];  // mutable: dfsVCF 会临时修改再 undo
     vector<Point> historyMoves;
     Point lastAction;
     Point lastLastAction;

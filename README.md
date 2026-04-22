@@ -1,154 +1,147 @@
-# Ego-Gomoku-Zero
+# EGO-Gomoku-Zero
 
-A Gomoku (Five in a Row) AI based on the **AlphaZero** algorithm, featuring a closed-loop pipeline of self-play, training, and inference on a **20×20** board.
+AlphaZero 风格的五子棋（20×20）自我对弈训练系统。
 
-- **C++ Engine**: Game logic, MCTS search, neural network inference via ONNX Runtime
-- **Python Training**: Model definition, training, and ONNX export via PyTorch
-- **Competition Ready**: Supports the [Piskvork](http://sourceforge.net/projects/piskvork) protocol for AI tournaments
+## 架构
 
-## Architecture
+- **C++ 端**：MCTS 搜索 + 自对弈数据生成 + 棋型分析（VCF/VCT）
+- **Python 端**：神经网络训练（PyTorch）+ 训练流程管理
+- **双推理后端**：
+  - ONNX Runtime（默认，跨平台，用于评估/对弈）
+  - libtorch + MPS（macOS 专用，用于自对弈加速）
 
-```
-┌──────────────┐   record/data_*.txt   ┌──────────────┐
-│  C++ Engine   │ ────────────────────▶ │ Python Train  │
-│  (Self-Play)  │                       │ (MainCpp.py)  │
-│               │ ◀──────────────────── │               │
-└──────────────┘   model_latest.onnx   └──────────────┘
-```
-
-### Training Loop
-
-1. **Self-Play** (C++): Multiple threads play games using MCTS + neural network, generating training data
-2. **Data Augmentation** (Python): 8× augmentation via rotation and flipping
-3. **Training** (Python): Update the PolicyValueNetwork with MSE + cross-entropy loss
-4. **Export** (Python): Save model as ONNX for C++ inference
-5. Repeat
-
-## Key Features
-
-| Feature | Description |
-|---------|-------------|
-| **MCTS + PUCT** | AlphaZero-style Monte Carlo Tree Search with PUCT selection formula |
-| **10-Block ResNet** | PolicyValueNetwork with 128 channels, dual-head (policy + value) |
-| **Shape Lookup Table** | O(1) pattern recognition via precomputed hash table for all board shapes |
-| **VCF Search** | Victory by Continuous Fours — deterministic winning move detection |
-| **VCT Search** | Victory by Continuous Threats — iterative deepening threat search (parallel with MCTS) |
-| **Opening Book** | 108 standard opening variations for diverse self-play |
-| **Tree Reuse** | Preserves MCTS subtree across moves, pruning irrelevant branches |
-| **Time Management** | Smart early termination in Piskvork mode based on visit count estimation |
-
-## Project Structure
+## 网络结构
 
 ```
-├── Main.cpp              # Entry point: train / predict / test modes
-├── Game.h/cpp            # Board state, move logic, win detection
-├── MCTS.h/cpp            # Monte Carlo Tree Search (PUCT + Dirichlet noise)
-├── Model.h/cpp           # ONNX Runtime inference (CPU / CUDA / CoreML / TensorRT)
-├── Analyzer.h/cpp        # Tactical engine: selectActions, VCF, VCT search
-├── Shape.h/cpp           # Precomputed shape lookup table (O(1) pattern matching)
-├── SelfPlay.h/cpp        # Self-play data generation with parallel VCT
-├── Bridge.h/cpp          # stdin/stdout text protocol for Python integration
-├── Piskvork.cpp          # Piskvork tournament protocol (Windows)
-├── Pisqpipe.h/cpp        # Piskvork pipe communication layer
-├── ConfigReader.h/cpp    # Configuration file parser (application.conf)
-├── Utils.h/cpp           # Utility functions
-├── test/                 # Unit tests (doctest framework, 36 test cases)
-│   ├── AnalyzerTest.cpp
-│   ├── GameTest.cpp
-│   ├── MCTSTest.cpp
-│   └── ShapeTest.cpp
-└── train/                # Python training pipeline
-    ├── MainCpp.py        # Main training loop: self-play → train → export
-    ├── Network.py        # PolicyValueNetwork (10-block ResNet, 128ch)
-    ├── Train.py          # Training logic (AdamW, MSE + CE loss)
-    ├── Bridge.py         # Read self-play data, invoke C++ engine
-    ├── Server.py         # Flask server for distributed self-play
-    ├── WatchAgent.py     # Interactive game UI (Pygame) for debugging
-    ├── GameUI.py         # Pygame board renderer with probability heatmap
-    ├── ConfigReader.py   # Python config reader
-    ├── SampleSet.py      # PyTorch Dataset wrapper
-    ├── Logger.py         # Logging utility
-    └── Utils.py          # Device detection, directory setup
+输入: 4ch × 20 × 20 (己方棋子, 对方棋子, 我方VCF点, 对方VCF点)
+  → Conv3×3 + BN → 128ch
+  → 10× ResBlock (后2块带 SE 注意力)
+  → Policy Head: Conv1×1→8ch, FC→256→400, log_softmax
+  → Value Head: Conv1×1→32ch, GAP→32→1, tanh
 ```
 
-## Dependencies
+参数量约 3M，FP32 ONNX ~12MB。
 
-| Dependency          | Version       |
-|---------------------|---------------|
-| C++                 | 17            |
-| Python              | 3.8.17        |
-| PyTorch             | 1.13.1+cu117  |
-| ONNX Runtime (C++)  | 1.17.1+       |
-| CUDA (optional)     | 11.7          |
-| CMake               | ≥ 3.18        |
+## 依赖
 
-## Build & Run
+### ONNX Runtime (必须)
 
-### Build
+下载 [onnxruntime](https://github.com/microsoft/onnxruntime/releases)，解压后设置环境变量：
 
 ```bash
-# Set ONNX Runtime path
-export ONNXRUNTIME_ROOTDIR=/path/to/onnxruntime
-
-# Build
-./make.sh
+# macOS arm64
+wget https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-osx-arm64-1.22.0.tgz
+tar xzf onnxruntime-osx-arm64-1.22.0.tgz
+export ONNXRUNTIME_ROOTDIR=$(pwd)/onnxruntime-osx-arm64-1.22.0
 ```
 
-### Configuration
+### libtorch (可选，macOS MPS 加速)
 
-Edit `train/application.conf`:
+仅 macOS Apple Silicon 自对弈需要，不影响评估和对弈。
 
-```ini
-mode=train                    # train / predict
-coreType=apple                # apple / cuda / cpu
-boardSize=20
-numGames=100                  # games per episode
-numSimulation=200             # MCTS simulations per move
-explorationFactor=5           # PUCT exploration constant
-numProcesses=2                # parallel self-play threads
-lr=3e-4
-wd=1e-4
-batchSize=256
-episode=100000
-temperatureDefault=1
-temperatureDownBeginStep=4    # step to switch temperature to 0
-randomRate=0.9                # probability of using opening book
-modelPath=./model/model_latest.onnx
+```bash
+# libtorch 2.6.0 macOS arm64
+wget https://download.pytorch.org/libtorch/cpu/libtorch-macos-arm64-2.6.0.zip
+unzip libtorch-macos-arm64-2.6.0.zip
+export LIBTORCH_ROOTDIR=$(pwd)/libtorch
 ```
 
-### Run Training
+### Python 依赖
+
+```bash
+pip install torch numpy
+```
+
+## 构建
+
+### ONNX 后端（默认，用于评估/对弈）
+
+```bash
+mkdir cmake-build-debug && cd cmake-build-debug
+cmake ..
+cmake --build . -j
+```
+
+### libtorch + MPS 后端（macOS 自对弈加速）
+
+```bash
+mkdir cmake-build-torch && cd cmake-build-torch
+LIBTORCH_ROOTDIR=/path/to/libtorch cmake .. -DUSE_LIBTORCH=ON
+cmake --build . -j
+```
+
+运行需要设置动态库路径：
+
+```bash
+# 创建 run.sh
+echo '#!/bin/bash
+DIR="$(cd "$(dirname "$0")" && pwd)"
+DYLD_LIBRARY_PATH="$DIR/../libtorch/lib" "$DIR/ego-gomoku-zero" "$@"' > run.sh
+chmod +x run.sh
+```
+
+## 训练
 
 ```bash
 cd train
-python MainCpp.py
+python3 MainCpp.py
 ```
 
-### Run Tests
+训练配置在 `train/application.conf`，主要参数：
 
-Set `mode` to anything other than `train` or `predict`, then run the executable. All 36 doctest test cases should pass.
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `boardSize` | 20 | 棋盘大小 |
+| `numSimulation` | 200 | MCTS 模拟次数 |
+| `numGames` | 100 | 每 episode 自对弈局数 |
+| `lr` | 5e-5 | 学习率 |
+| `batchSize` | 256 | 训练批大小 |
+| `trainEpochs` | 2 | 每 episode 训练轮数 |
+| `replayBufferSize` | 300000 | 经验回放池容量 |
+| `tdN` / `tdGamma` | 5 / 0.7 | N-step TD bootstrapping |
+| `evalInterval` | 1000 | Elo 评估间隔（局数） |
 
-### Piskvork (Windows)
-
-Build on Windows and load the executable in [Piskvork](http://sourceforge.net/projects/piskvork) as a player.
-
-## Neural Network
+### 训练流程
 
 ```
-Input: [batch, 2, 20, 20]  (current player + opponent channels)
-  │
-  Conv2d(2→128, 3×3) + ReLU
-  │
-  10 × ResidualBlock(128)
-  ┌──────┴──────┐
-Policy Head    Value Head
-Conv1×1(→4)    Conv1×1(→2)
-BN + ReLU      BN + ReLU
-FC → 400       FC → 64 → 1
-LogSoftmax     Tanh
-  │              │
-[400]          [-1, 1]
+自对弈(MPS) → 数据增强(8倍) → 经验回放采样(偏向新数据70%) → 训练 → 循环
+                                                                  ↓
+                                                    每1000局: Elo评估(ONNX)
+                                                    每2000局: 刷新平衡开局库
 ```
 
-## Author
+### 模型文件
 
-**TangYan** — tangyan1412@foxmail.com
+| 文件 | 说明 |
+|---|---|
+| `model_latest.onnx/pt` | 最新训练模型，自对弈使用 |
+| `model_best.onnx/pt` | 最后一次 Elo 上升的模型 |
+| `model_backup.onnx/pt` | latest 的隐式备份 |
+| `checkpoint_gXXXX.*` | 历史快照（每 1000 局） |
+
+## 运行模式
+
+| 模式 | 说明 |
+|---|---|
+| `train` | 自对弈生成训练数据 |
+| `evaluate` | 两个模型对弈评估 |
+| `generate_openings` | 生成平衡开局库 |
+| `predict` | 通过 Bridge 启动对局 |
+| Windows | 自动进入 Piskvork 协议 |
+
+## 开局库
+
+系统维护两类开局：
+
+- **生成开局**（`openings_train.txt` / `openings_eval.txt`）：C++ 端随机生成，用模型双视角评估筛选平衡局面，渐进 threshold (0.3→0.4→0.5→0.6)
+- **手工开局**（`openings_manual.txt`）：比赛数据
+
+自对弈选取策略：10% 空棋盘 + 45% 生成开局 + 45% 手工开局。
+
+## 可视化
+
+```bash
+cd train
+python3 openings_viewer.py
+# 浏览器打开 http://127.0.0.1:8765 查看开局库
+```

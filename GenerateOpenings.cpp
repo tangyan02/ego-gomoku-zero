@@ -49,18 +49,25 @@ void runGenerateOpenings() {
     mt19937 rng(random_device{}());
     uniform_int_distribution<int> moveDist(minMoves, maxMoves);
 
-    // 收集平衡开局
+    // 收集平衡开局（渐进 threshold：先严后松，优先收集最平衡的）
     struct Opening {
         vector<Point> moves; // 相对中心坐标
+        float balanceScore;  // 越小越平衡
     };
-    vector<Opening> balanced;
+    vector<Opening> candidates;  // 所有通过最宽松阈值的候选
     int attempts = 0;
+
+    // 渐进阈值：从严到松
+    float thresholds[] = {threshold * 0.6f, threshold * 0.8f, threshold, threshold * 1.2f};
+    int numThresholds = 4;
 
     // 预分配 state buffer
     int planeSize = boardSize * boardSize;
     vector<float> stateBuf(INPUT_CHANNELS * planeSize, 0.0f);
 
-    while ((int)balanced.size() < numOpenings && attempts < maxAttempts) {
+    // 第一遍：收集所有通过最宽松阈值的候选，记录 balanceScore
+    float maxThreshold = thresholds[numThresholds - 1];
+    while (attempts < maxAttempts) {
         attempts++;
         int numMoves = moveDist(rng);
 
@@ -120,14 +127,35 @@ void runGenerateOpenings() {
         // 恢复（虽然 game 是局部变量马上就销毁，但保持一致）
         game.currentPlayer = currentPlayer;
 
-        // 平衡判定：双视角绝对值之和 < 阈值*2
+        // 平衡判定：收集所有通过最宽松阈值的候选
         float balanceScore = fabs(v1) + fabs(v2);
-        if (balanceScore < threshold * 2) {
+        if (balanceScore < maxThreshold * 2) {
             Opening op;
             for (auto& p : absMoves) {
                 op.moves.emplace_back(p.x - center, p.y - center);
             }
-            balanced.push_back(op);
+            op.balanceScore = balanceScore;
+            candidates.push_back(op);
+        }
+    }
+
+    // 按 balanceScore 排序（越小越平衡），渐进选取
+    sort(candidates.begin(), candidates.end(),
+         [](const Opening& a, const Opening& b) { return a.balanceScore < b.balanceScore; });
+
+    vector<Opening> balanced;
+    for (int t = 0; t < numThresholds && (int)balanced.size() < numOpenings; t++) {
+        float curThreshold = thresholds[t];
+        for (auto& op : candidates) {
+            if ((int)balanced.size() >= numOpenings) break;
+            if (op.balanceScore < curThreshold * 2) {
+                // 检查是否已选中（避免重复）
+                bool dup = false;
+                for (auto& sel : balanced) {
+                    if (sel.moves == op.moves) { dup = true; break; }
+                }
+                if (!dup) balanced.push_back(op);
+            }
         }
     }
 
@@ -136,10 +164,11 @@ void runGenerateOpenings() {
         return;
     }
 
-    // 打乱后分割训练集/评估集
+    // 打乱后按比例分割训练集/评估集（确保 eval 也能分到开局）
     shuffle(balanced.begin(), balanced.end(), rng);
-    int trainCount = min(numTrain, (int)balanced.size());
-    int evalCount = min(numEval, (int)balanced.size() - trainCount);
+    float totalTarget = (float)(numTrain + numEval);
+    int evalCount = min(numEval, max(1, (int)(balanced.size() * numEval / totalTarget)));
+    int trainCount = min(numTrain, (int)balanced.size() - evalCount);
 
     auto writeOpenings = [](const string& path, const vector<Opening>& openings) {
         // 确保 openings 目录存在
@@ -172,8 +201,8 @@ void runGenerateOpenings() {
     writeOpenings("openings/openings_train.txt", trainOpenings);
     writeOpenings("openings/openings_eval.txt", evalOpenings);
 
-    float passRate = (float)balanced.size() / attempts * 100;
+    float passRate = (float)candidates.size() / attempts * 100;
     cout << "[Openings] 生成 " << trainCount << " 训练 + " << evalCount << " 评估开局"
-         << "（尝试 " << attempts << " 次，通过率 " << passRate << "%），"
-         << "阈值 |value|<" << threshold << endl;
+         << "（尝试 " << attempts << " 次，候选 " << candidates.size() << " 个，通过率 " << passRate << "%），"
+         << "阈值 " << thresholds[0] << "/" << thresholds[1] << "/" << thresholds[2] << "/" << thresholds[3] << endl;
 }
