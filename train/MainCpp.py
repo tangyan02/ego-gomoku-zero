@@ -110,10 +110,8 @@ def write_persistent_int(value, filepath):
 
 
 def save_checkpoint(total_games):
-    """保存带对局计数编号的检查点模型（从 best 模型保存）"""
-    src = "model/model_best.onnx"
-    if not os.path.exists(src):
-        src = "model/model_latest.onnx"  # 兼容首次启动
+    """保存带对局计数编号的检查点模型（从 latest 模型保存）"""
+    src = "model/model_latest.onnx"
     dst = f"model/checkpoint_g{total_games}.onnx"
     if os.path.exists(src) and not os.path.exists(dst):
         shutil.copy2(src, dst)

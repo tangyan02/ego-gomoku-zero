@@ -108,20 +108,64 @@ static int playOneGame(
     MonteCarloTree mctsBlack(modelBlack, explorationFactor);
     MonteCarloTree mctsWhite(modelWhite, explorationFactor);
 
-    while (!game.isGameOver()) {
-        Node node;
-        MonteCarloTree& mcts = (game.currentPlayer == BLACK) ? mctsBlack : mctsWhite;
+    // Tree Reuse：每方各维护一棵树
+    Node* rootBlack = new Node();
+    Node* rootWhite = new Node();
 
-        mcts.search(game, &node, numSimulation);
+    while (!game.isGameOver()) {
+        bool isBlack = (game.currentPlayer == BLACK);
+        MonteCarloTree& mcts = isBlack ? mctsBlack : mctsWhite;
+        Node* rootNode = isBlack ? rootBlack : rootWhite;
+
+        // 补齐模拟次数（子树已有 visits 算作已完成）
+        int existingVisits = rootNode->visits;
+        int targetSim = max(numSimulation - existingVisits, 1);
+
+        mcts.search(game, rootNode, 1);
+        if (mcts.root->children.size() > 1) {
+            mcts.searchBatched(game, rootNode, targetSim - 1, 16);
+        }
+
         Point move = mcts.get_max_visit_move();
         game.makeMove(move);
-        node.release();
+
+        // Tree Reuse：保留选中子树
+        auto reuseTree = [&](Node*& root, Point selectedMove) {
+            Node* selectedChild = nullptr;
+            for (auto& item : root->children) {
+                if (item.first == selectedMove) {
+                    selectedChild = item.second;
+                } else {
+                    item.second->release();
+                }
+            }
+            root->children.clear();
+            if (selectedChild) {
+                selectedChild->parent = nullptr;
+                delete root;
+                root = selectedChild;
+            } else {
+                delete root;
+                root = new Node();
+            }
+        };
+
+        // 当前方走完，更新当前方的树
+        reuseTree(isBlack ? rootBlack : rootWhite, move);
+        // 对方的树也需要更新（对方的子树中有这步棋的分支）
+        Node*& oppRoot = isBlack ? rootWhite : rootBlack;
+        if (!oppRoot->isLeaf()) {
+            reuseTree(oppRoot, move);
+        }
     }
 
+    rootBlack->release(); delete rootBlack;
+    rootWhite->release(); delete rootWhite;
+
     if (game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer())) {
-        return game.getOtherPlayer(); // 最后落子方获胜
+        return game.getOtherPlayer();
     }
-    return 0; // 平局
+    return 0;
 }
 
 /**
@@ -151,15 +195,54 @@ static int playOneGameWithOpening(
     MonteCarloTree mctsBlack(modelBlack, explorationFactor);
     MonteCarloTree mctsWhite(modelWhite, explorationFactor);
 
-    while (!game.isGameOver()) {
-        Node node;
-        MonteCarloTree& mcts = (game.currentPlayer == BLACK) ? mctsBlack : mctsWhite;
+    Node* rootBlack = new Node();
+    Node* rootWhite = new Node();
 
-        mcts.search(game, &node, numSimulation);
+    while (!game.isGameOver()) {
+        bool isBlack = (game.currentPlayer == BLACK);
+        MonteCarloTree& mcts = isBlack ? mctsBlack : mctsWhite;
+        Node* rootNode = isBlack ? rootBlack : rootWhite;
+
+        int existingVisits = rootNode->visits;
+        int targetSim = max(numSimulation - existingVisits, 1);
+
+        mcts.search(game, rootNode, 1);
+        if (mcts.root->children.size() > 1) {
+            mcts.searchBatched(game, rootNode, targetSim - 1, 16);
+        }
+
         Point move = mcts.get_max_visit_move();
         game.makeMove(move);
-        node.release();
+
+        auto reuseTree = [&](Node*& root, Point selectedMove) {
+            Node* selectedChild = nullptr;
+            for (auto& item : root->children) {
+                if (item.first == selectedMove) {
+                    selectedChild = item.second;
+                } else {
+                    item.second->release();
+                }
+            }
+            root->children.clear();
+            if (selectedChild) {
+                selectedChild->parent = nullptr;
+                delete root;
+                root = selectedChild;
+            } else {
+                delete root;
+                root = new Node();
+            }
+        };
+
+        reuseTree(isBlack ? rootBlack : rootWhite, move);
+        Node*& oppRoot = isBlack ? rootWhite : rootBlack;
+        if (!oppRoot->isLeaf()) {
+            reuseTree(oppRoot, move);
+        }
     }
+
+    rootBlack->release(); delete rootBlack;
+    rootWhite->release(); delete rootWhite;
 
     if (game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer())) {
         return game.getOtherPlayer();
