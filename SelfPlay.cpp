@@ -69,9 +69,9 @@ Game randomGame(Game &game, const string &prefix) {
     double randomNum = dis(gen);
 
     // 开局策略：
-    // 10% 概率：空棋盘直接开始（训练第一手选点能力）
-    // 90% 概率：使用开局库
-    if (randomNum < 0.1) {
+    // 5% 概率：空棋盘直接开始（训练第一手选点能力）
+    // 95% 概率：使用开局库
+    if (randomNum < 0.05) {
         // 空棋盘直接开始
         cout << prefix << "empty board start" << endl;
         return game;
@@ -123,9 +123,33 @@ Game randomGame(Game &game, const string &prefix) {
         points.push_back(point);
     }
 
+    // 随机对称变换（8种：4旋转 × 2翻转），在绝对坐标上操作避免越界
+    std::uniform_int_distribution<int> transDist(0, 7);
+    int transform = transDist(gen);
+    int center = game.boardSize / 2;
+    int maxIdx = game.boardSize - 1;
+
+    for (auto &p : points) {
+        // 先转为绝对坐标
+        int r = p.x + center, c = p.y + center;
+        // 旋转 (0/90/180/270): (r,c) → (c, max-r) 每次
+        int rot = transform % 4;
+        for (int i = 0; i < rot; i++) {
+            int tmp = r;
+            r = c;
+            c = maxIdx - tmp;
+        }
+        // 翻转: (r,c) → (r, max-c)
+        if (transform >= 4) {
+            c = maxIdx - c;
+        }
+        p.x = r - center;
+        p.y = c - center;
+    }
+
     for (const auto &item: points) {
-        int x = item.x + game.boardSize / 2;
-        int y = item.y + game.boardSize / 2;
+        int x = item.x + center;
+        int y = item.y + center;
         cout << prefix << "make move " << x << "," << y << endl;
         game.makeMove(Point(x, y));
     }
@@ -274,11 +298,6 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
 
         game = randomGame(game, prefix);
 
-        // 开局落子顺序不反映真实战术意图，清掉最近落子记录
-        // （通道2/3已改为VCF点，但lastAction仍被其他逻辑使用，保持清除）
-        game.lastAction = Point();
-        game.lastLastAction = Point();
-
         int step = 0;
         // VCT 开关，读一次缓存
         static bool useVct = (ConfigReader::get("useVct") == "true");
@@ -376,6 +395,23 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
                 selectedChild->parent = nullptr;
                 delete rootNode;
                 rootNode = selectedChild;
+
+                // Tree Reuse 后对新 root children 注入 Dirichlet noise（保持每步探索性）
+                if (!rootNode->children.empty()) {
+                    int numChildren = rootNode->children.size();
+                    std::vector<float> priors(numChildren);
+                    std::vector<Node*> childNodes(numChildren);
+                    int idx = 0;
+                    for (auto& [pt, child] : rootNode->children) {
+                        priors[idx] = (float)child->prior_prob;
+                        childNodes[idx] = child;
+                        idx++;
+                    }
+                    MonteCarloTree::add_dirichlet_noise(priors, 0.25, 0.03, gen);
+                    for (int i = 0; i < numChildren; i++) {
+                        childNodes[i]->prior_prob = priors[i];
+                    }
+                }
             } else {
                 delete rootNode;
                 rootNode = new Node();

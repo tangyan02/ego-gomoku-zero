@@ -221,7 +221,7 @@ def run_generate_openings(cpp_path, model_path):
         f.write(f"genOpenings_trainCount=150\n")
         f.write(f"genOpenings_evalCount=50\n")
         f.write(f"genOpenings_minMoves=1\n")
-        f.write(f"genOpenings_maxMoves=8\n")
+        f.write(f"genOpenings_maxMoves=4\n")
         f.write(f"genOpenings_threshold=0.5\n")
         f.write(f"genOpenings_maxAttempts=10000\n")
         f.write(f"genOpenings_nearCenter=6\n")

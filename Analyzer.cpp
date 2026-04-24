@@ -627,7 +627,7 @@ dfsVCT(int checkPlayer, int currentPlayer, Game &game, atomic<bool>& running, Po
 tuple<bool, vector<Point>, string> selectActions(Game &game) {
 
     vector<Point> emptyPoints;
-    if(game.lastAction == Point()) {
+    if(game.historyMoves.empty()) {
         emptyPoints = game.getAllEmptyPoints();
     } else {
         int range = 2;

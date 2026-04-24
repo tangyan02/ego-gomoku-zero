@@ -47,7 +47,17 @@ void runGenerateOpenings() {
 
     int center = boardSize / 2;
     mt19937 rng(random_device{}());
-    uniform_int_distribution<int> moveDist(minMoves, maxMoves);
+    // 加权步数分布：2-3步多，1和4步少
+    // 权重: 1步=15%, 2步=35%, 3步=35%, 4步=15% (超出范围的归零)
+    vector<double> moveWeights;
+    for (int m = minMoves; m <= maxMoves; m++) {
+        if (m == 1)      moveWeights.push_back(15);
+        else if (m == 2) moveWeights.push_back(35);
+        else if (m == 3) moveWeights.push_back(35);
+        else if (m == 4) moveWeights.push_back(15);
+        else             moveWeights.push_back(10);
+    }
+    discrete_distribution<int> moveDist(moveWeights.begin(), moveWeights.end());
 
     // 收集平衡开局（渐进 threshold：先严后松，优先收集最平衡的）
     struct Opening {
@@ -69,7 +79,7 @@ void runGenerateOpenings() {
     float maxThreshold = thresholds[numThresholds - 1];
     while (attempts < maxAttempts) {
         attempts++;
-        int numMoves = moveDist(rng);
+        int numMoves = moveDist(rng) + minMoves;
 
         // 在中心附近随机落子
         Game game(boardSize);

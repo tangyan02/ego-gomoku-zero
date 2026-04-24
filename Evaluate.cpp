@@ -63,20 +63,44 @@ static std::vector<std::string>& getOpenings() {
 }
 
 /**
- * 对 game 应用指定序号的开局
+ * 对 game 应用指定序号的开局（含随机对称变换，同一 index 变换一致）
  */
 static void applyOpening(Game& game, int index) {
     auto& openings = getOpenings();
     if (index < 0 || index >= (int)openings.size()) return;
 
     const std::string& line = openings[index];
+    std::vector<std::pair<int,int>> coords;
     std::stringstream ss(line);
     std::string token;
     while (std::getline(ss, token, ',')) {
         int x = std::stoi(token);
         std::getline(ss, token, ',');
         int y = std::stoi(token);
-        game.makeMove(Point(x + game.boardSize / 2, y + game.boardSize / 2));
+        coords.push_back({x, y});
+    }
+
+    // 用 index 做种子，确保同一开局先后手用相同变换
+    std::mt19937 transRng(index * 7919 + 42);
+    int transform = std::uniform_int_distribution<int>(0, 7)(transRng);
+    int center = game.boardSize / 2;
+    int maxIdx = game.boardSize - 1;
+
+    for (auto& [rx, ry] : coords) {
+        // 转为绝对坐标
+        int r = rx + center, c = ry + center;
+        // 旋转
+        int rot = transform % 4;
+        for (int i = 0; i < rot; i++) {
+            int tmp = r;
+            r = c;
+            c = maxIdx - tmp;
+        }
+        // 翻转
+        if (transform >= 4) {
+            c = maxIdx - c;
+        }
+        game.makeMove(Point(r, c));
     }
 }
 

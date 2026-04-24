@@ -62,14 +62,14 @@ class PolicyValueNetwork(nn.Module):
         self.bn1 = nn.BatchNorm2d(self.residual_channels)
 
         self.residual_blocks = nn.Sequential(
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
-            ResidualBlock(self.residual_channels),
+            ResidualBlock(self.residual_channels, use_se=True),
+            ResidualBlock(self.residual_channels, use_se=True),
+            ResidualBlock(self.residual_channels, use_se=True),
+            ResidualBlock(self.residual_channels, use_se=True),
+            ResidualBlock(self.residual_channels, use_se=True),
+            ResidualBlock(self.residual_channels, use_se=True),
+            ResidualBlock(self.residual_channels, use_se=True),
+            ResidualBlock(self.residual_channels, use_se=True),
             ResidualBlock(self.residual_channels, use_se=True),
             ResidualBlock(self.residual_channels, use_se=True),
         )
