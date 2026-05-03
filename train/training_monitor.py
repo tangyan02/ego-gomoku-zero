@@ -764,6 +764,8 @@ function connectSSE() {
     });
     es.addEventListener('eval_game', e => {
         const d = JSON.parse(e.data);
+        // 去重：如果已有相同 current 的记录则跳过
+        if (evalState.games.length > 0 && evalState.games[evalState.games.length - 1].current >= d.current) return;
         evalState.current = d.current;
         evalState.total = d.total;
         evalState.active = true;
@@ -897,8 +899,8 @@ if __name__ == "__main__":
     tail_thread = threading.Thread(target=tail_log, daemon=True)
     tail_thread.start()
 
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    url = f"http://127.0.0.1:{PORT}"
+    server = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    url = f"http://0.0.0.0:{PORT}"
     print(f"训练监控面板启动: {url}")
     print("实时推送模式 (SSE)")
     print("按 Ctrl+C 退出")

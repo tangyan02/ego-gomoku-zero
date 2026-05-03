@@ -301,18 +301,17 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
 
         int step = 0;
 
-        // 每局清空 Transposition Table（不同局不能共享缓存）
+        // 每局清空 Transposition Table
         mcts.clearTranspositionTable();
 
-        // Tree Reuse：整局共用一棵树，每步保留选中子树
+        // Tree Reuse：整局共用一棵树
         Node* rootNode = new Node();
-        int earlyWinner = 0;  // early stop 时记录胜者
+        int earlyWinner = 0;
 
         while (!game.isGameOver()) {
-            //开始mcts预测
             long long startTime = getSystemTime();
 
-            // 补齐模拟次数：子树已有 visits 算作已完成
+            // 补齐模拟次数
             int existingVisits = rootNode->visits;
             int targetSimulations = max(numSimulations - existingVisits, 1);
 
@@ -331,15 +330,13 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             vector<Point> moves;
             vector<float> move_probs;
 
-            // 必胜检测：直接调用 selectActions 判断
+            // 必胜检测
             auto [currentWin, _, __] = selectActions(game);
 
             tie(moves, move_probs)= mcts.get_action_probabilities();
 
-            //决策下一步
             auto [temperature, move, rate] = getNextMove(step, temperatureDefault, tempDownStep, move_probs, moves, mcts);
 
-            // 构造矩阵
             vector<float> probs_matrix(game.boardSize * game.boardSize, 0);
             if (!moves[0].isNull()) {
                 for (int k = 0; k < moves.size(); k++) {
@@ -348,20 +345,17 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
                 }
             }
 
-            //记录局面 + MCTS Q 值（root 的平均价值，用于 n-step bootstrapping）
             auto state = game.getState();
             float mcts_q = (rootNode->visits > 0) ? (float)(rootNode->value_sum / rootNode->visits) : 0.0f;
             std::tuple record(state, game.currentPlayer, probs_matrix, mcts_q);
             game.makeMove(move);
             game_data.push_back(record);
 
-            //打印局面
             printGame(game, move, rate, probs_matrix, temperature, prefix, rootNode->selectInfo, &model);
 
-            // 必胜检测：selectActions 返回 win=true（五连/活四/VCF），提前结束
+            // Early stop：必胜检测
             if (currentWin) {
-                cout << prefix << " early stop: forced win detected, skip remaining moves" << endl;
-                // makeMove 后 currentPlayer 已翻转，胜者是落子方 = getOtherPlayer()
+                cout << prefix << " early stop: forced win detected" << endl;
                 earlyWinner = game.getOtherPlayer();
                 rootNode->release();
                 delete rootNode;
@@ -369,7 +363,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
                 break;
             }
 
-            // Tree Reuse：保留选中子树，释放其他分支
+            // Tree Reuse
             Node* selectedChild = nullptr;
             for (auto& item : rootNode->children) {
                 if (item.first == move) {
@@ -385,7 +379,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
                 delete rootNode;
                 rootNode = selectedChild;
 
-                // Tree Reuse 后对新 root children 注入 Dirichlet noise（保持每步探索性）
+                // Dirichlet noise
                 if (!rootNode->children.empty()) {
                     int numChildren = rootNode->children.size();
                     std::vector<float> priors(numChildren);
@@ -409,7 +403,6 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             step++;
         }
 
-        // 局结束，释放整棵树
         rootNode->release();
         delete rootNode;
 
@@ -421,28 +414,24 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             }
         }
 
-        // n-step TD bootstrapping: 用 MCTS Q 值替代纯最终胜负
-        // value_target(t) = gamma^n * mcts_q(t+n) + (1-gamma^n) * final_outcome
-        // 终局 n 步内直接用 final_outcome
-        static int td_n = stoi(ConfigReader::get("tdN") == "" ? "5" : ConfigReader::get("tdN"));
-        static float td_gamma = stof(ConfigReader::get("tdGamma") == "" ? "0.7" : ConfigReader::get("tdGamma"));
+        // n-step TD bootstrapping
+        static int td_n = stoi(ConfigReader::getOrDefault("tdN", "5"));
+        static float td_gamma = stof(ConfigReader::getOrDefault("tdGamma", "0.7"));
         float gamma_n = pow(td_gamma, td_n);
 
         int game_len = game_data.size();
         for (int t = 0; t < game_len; t++) {
             const auto &[state, player, mcts_probs, mcts_q] = game_data[t];
             float final_value = (winner == player) ? 1.0f : ((winner == (3 - player)) ? -1.0f : 0.0f);
-            
+
             float value;
             if (t + td_n < game_len) {
-                // n-step: 混合 n 步后的 MCTS Q 值和最终结果
                 float mcts_q_tn = get<3>(game_data[t + td_n]);
                 value = gamma_n * mcts_q_tn + (1 - gamma_n) * final_value;
             } else {
-                // 终局附近：直接用最终结果
                 value = final_value;
             }
-            
+
             training_data.emplace_back(state, mcts_probs, std::vector<float>{value});
         }
 
