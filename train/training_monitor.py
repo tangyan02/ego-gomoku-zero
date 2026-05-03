@@ -115,13 +115,16 @@ def tail_log():
     # 启动前先回扫日志尾部，恢复当前评估状态
     _backfill_eval_state()
     
-    # tail -f 跟踪新内容
+    # tail -f 跟踪新内容（bufsize=1 逐行读取，避免缓冲区阻塞）
     proc = subprocess.Popen(
         ["tail", "-n", "0", "-f", LOG_PATH],
-        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1
     )
     
-    for line in proc.stdout:
+    while True:
+        line = proc.stdout.readline()
+        if not line:
+            break
         line = line.strip()
         if not line:
             continue
@@ -154,6 +157,43 @@ def tail_log():
             eval_state["info"] = line.strip()
             broadcast_sse("eval_start", {"info": line.strip()})
             continue
+
+        # 训练 batch 进度
+        tm = re.search(r'\[train\] batch (\d+)/(\d+) loss=([\d.]+)', line)
+        if tm:
+            broadcast_sse("train_batch", {
+                "batch": int(tm.group(1)),
+                "total": int(tm.group(2)),
+                "loss": float(tm.group(3))
+            })
+            continue
+
+        # 训练 epoch 完成
+        te = re.search(r'episode (\d+) Loss: ([\d.]+) \(value: ([\d.]+), policy: ([\d.]+)\)', line)
+        if te:
+            broadcast_sse("train_epoch", {
+                "episode": int(te.group(1)),
+                "loss": float(te.group(2)),
+                "value_loss": float(te.group(3)),
+                "policy_loss": float(te.group(4))
+            })
+            continue
+
+        # 训练采样信息
+        if "本轮采样" in line:
+            broadcast_sse("train_sample", {"info": line.strip()})
+            continue
+
+        # 自对弈速度
+        sp = re.search(r'自对弈完成.*?(\d+)局.*?(\d+)条.*?([\d.]+)s.*?([\d.]+)条/s', line)
+        if sp:
+            broadcast_sse("selfplay_done", {
+                "games": int(sp.group(1)),
+                "records": int(sp.group(2)),
+                "time": float(sp.group(3)),
+                "speed": float(sp.group(4))
+            })
+            continue
         
         # 评估单局结果
         em = re.match(r'\[Evaluate\] Game (\d+)/(\d+) Opening (\d+) \((M1=\w+)\): (M\d WIN) \((\d+)ms\)', line)
@@ -176,6 +216,15 @@ def tail_log():
             broadcast_sse("eval_game", game_data)
             continue
         
+        # 分开局类型统计
+        gm = re.match(r'\[Evaluate\] (Generated|Manual) openings:\s+(\d+)-(\d+)\s+\(([\d.]+)%\)', line)
+        if gm:
+            otype = "generated" if gm.group(1) == "Generated" else "manual"
+            w, l, wr = int(gm.group(2)), int(gm.group(3)), float(gm.group(4))
+            eval_state.setdefault("by_type", {})[otype] = {"wins": w, "losses": l, "win_rate": wr}
+            broadcast_sse("eval_type", {"type": otype, "wins": w, "losses": l, "win_rate": wr})
+            continue
+
         # Elo 结果
         if '"elo_diff"' in line:
             idx = line.find("{")
@@ -362,10 +411,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
     </div>
     <div class="right-col">
         <div class="panel"><h2>📈 Elo 趋势</h2><div class="chart-wrap"><canvas id="eloChart"></canvas></div></div>
+        <div class="panel" style="flex:none;height:100px;padding:4px 8px;">
+            <h2 style="margin-bottom:2px;">📊 训练进度</h2>
+            <div id="trainProgress" style="font-size:11px;color:#aaa;">等待数据...</div>
+        </div>
         <div class="panel" style="flex: 1.2;">
             <h2>🏆 评估对战 <span id="evalStatus" style="font-size:11px;color:#888;font-weight:normal;"></span></h2>
             <div id="evalProgress" style="margin-bottom:6px;"></div>
-            <div id="evalGames" style="max-height:300px;overflow-y:auto;font-size:11px;"></div>
+            <div id="evalGames" style="max-height:200px;overflow-y:auto;font-size:11px;"></div>
         </div>
     </div>
 </div>
@@ -386,7 +439,7 @@ async function loadHistory() {
     ]);
     episodes = await epRes.json();
     eloData = await eloRes.json();
-    cumElo = eloData.reduce((s, e) => s + e.elo_diff, 0);
+    cumElo = eloData.reduce((s, e) => s + (e.elo_diff || 0), 0);
     const es = await evalRes.json();
     if (es.active || es.games.length > 0) {
         evalState.active = es.active;
@@ -486,22 +539,55 @@ function addToHistory(game) {
 }
 
 function updateCharts() {
-    const eLabels = eloData.map(e => 'g'+e.total_games);
+    // 过滤 rollback 标记，计算累计 Elo（不做补偿，忠实记录）
+    const eloEntries = eloData.filter(e => e.elo_diff !== undefined && !e.rollback);
+    const eLabels = eloEntries.map(e => 'g'+e.total_games);
     const eCum = []; let s = 0;
-    eloData.forEach(e => { s += e.elo_diff; eCum.push(s); });
-    const eDiff = eloData.map(e => e.elo_diff);
+    eloEntries.forEach(e => { s += e.elo_diff; eCum.push(s); });
+    const eDiff = eloEntries.map(e => e.elo_diff);
 
     if (eloChart) eloChart.destroy();
 
     const ctx = document.getElementById('eloChart').getContext('2d');
 
-    // 点颜色：与前一个点比较，上升=红，下降=绿
+    // 标记被回退撤销的点（rollback_target 之后、rollback 之前的 entry）
+    const rolledBack = new Set();
+    let entryIdx = 0;
+    const entryIdxMap = [];  // eloData index → eloEntries index
+    eloData.forEach((e, i) => {
+        if (e.elo_diff !== undefined && !e.rollback) {
+            entryIdxMap.push(entryIdx);
+            entryIdx++;
+        } else {
+            entryIdxMap.push(-1);
+        }
+    });
+    eloData.forEach((e, i) => {
+        if (e.rollback && e.rollback_target) {
+            // 往前找 entry，标记 total_games > rollback_target 的为 rolled back
+            for (let j = i - 1; j >= 0; j--) {
+                const d = eloData[j];
+                if (d.elo_diff !== undefined && !d.rollback) {
+                    if (d.total_games > e.rollback_target) {
+                        const ei = entryIdxMap[j];
+                        if (ei >= 0) rolledBack.add(ei);
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+    });
+
+    // 点颜色：被撤销=黄色，上升=红，下降=绿
     const pointColors = eCum.map((v, i) => {
+        if (rolledBack.has(i)) return '#f9ca24';
         if (i === 0) return v >= 0 ? '#e94560' : '#4ecdc4';
         return v >= eCum[i-1] ? '#e94560' : '#4ecdc4';
     });
-    // 线段颜色：终点比起点高=红，低=绿
+    // 线段颜色：被撤销=黄色，上升=红，下降=绿
     const segmentColor = (ctx) => {
+        if (rolledBack.has(ctx.p1DataIndex) || rolledBack.has(ctx.p0DataIndex)) return '#f9ca24';
         const curr = eCum[ctx.p1DataIndex];
         const prev = eCum[ctx.p0DataIndex];
         return curr >= prev ? '#e94560' : '#4ecdc4';
@@ -568,7 +654,11 @@ function updateEvalPanel(game) {
         `<div style="display:flex;gap:12px;margin-top:4px;font-size:12px;">` +
         `<span style="color:#4ecdc4;">M1胜: ${evalState.m1Wins}</span>` +
         `<span style="color:#e94560;">M2胜: ${evalState.m2Wins}</span>` +
-        `<span style="color:#888;">胜率: ${wr}%</span></div>`;
+        `<span style="color:#888;">胜率: ${wr}%</span></div>` +
+        (evalState.byType ? `<div style="display:flex;gap:12px;margin-top:2px;font-size:11px;color:#666;">` +
+            (evalState.byType.generated ? `<span>生成: ${evalState.byType.generated.wins}-${evalState.byType.generated.losses} (${evalState.byType.generated.win_rate}%)</span>` : '') +
+            (evalState.byType.manual ? `<span>手工: ${evalState.byType.manual.wins}-${evalState.byType.manual.losses} (${evalState.byType.manual.win_rate}%)</span>` : '') +
+            `</div>` : '');
 
     // 对局列表
     const div = document.getElementById('evalGames');
@@ -625,6 +715,40 @@ function connectSSE() {
         document.getElementById('liveDot').style.background = '#888';
         addToHistory({ id: d.id, winner: d.winner, totalMoves: d.total_moves });
     });
+    es.addEventListener('train_batch', e => {
+        const d = JSON.parse(e.data);
+        const pct = Math.round(d.batch / d.total * 100);
+        const tp = document.getElementById('trainProgress');
+        tp.innerHTML =
+            `<div style="display:flex;align-items:center;gap:8px;">` +
+            `<div style="flex:1;background:#16213e;border-radius:4px;height:14px;overflow:hidden;">` +
+            `<div style="width:${pct}%;height:100%;background:#f9ca24;transition:width 0.2s;"></div></div>` +
+            `<span style="font-size:11px;">${d.batch}/${d.total}</span></div>` +
+            (tp.dataset.info || '');
+    });
+    es.addEventListener('train_epoch', e => {
+        const d = JSON.parse(e.data);
+        const tp = document.getElementById('trainProgress');
+        const color = v => v > 1.8 ? '#e94560' : v > 1.5 ? '#f9ca24' : '#4ecdc4';
+        tp.dataset.info =
+            `<div style="margin-top:3px;">ep${d.episode} loss=<b>${d.loss.toFixed(3)}</b> ` +
+            `<span style="color:${color(d.value_loss)}">V=${d.value_loss.toFixed(3)}</span> ` +
+            `<span style="color:${color(d.policy_loss)}">P=${d.policy_loss.toFixed(3)}</span></div>`;
+        tp.innerHTML = tp.innerHTML.replace(/<div style="margin-top:3px;">.*<\/div>$/, '') + tp.dataset.info;
+    });
+    es.addEventListener('train_sample', e => {
+        const d = JSON.parse(e.data);
+        const tp = document.getElementById('trainProgress');
+        const info = d.info.replace(/.*\]\s*/, '');
+        tp.innerHTML = `<div style="color:#888;font-size:11px;">${info}</div>`;
+        tp.dataset.info = '';
+    });
+    es.addEventListener('selfplay_done', e => {
+        const d = JSON.parse(e.data);
+        const tp = document.getElementById('trainProgress');
+        tp.innerHTML = `<div style="font-size:11px;">自对弈 ${d.games}局 ${d.records}条 ${d.speed}条/s (${d.time.toFixed(0)}s)</div>` +
+            (tp.dataset.info || '');
+    });
     es.addEventListener('episode', e => {
         const d = JSON.parse(e.data);
         episodes.push(d);
@@ -633,7 +757,7 @@ function connectSSE() {
     });
     es.addEventListener('eval_start', e => {
         const d = JSON.parse(e.data);
-        evalState = { active: true, m1Wins: 0, m2Wins: 0, draws: 0, current: 0, total: 0, games: [] };
+        evalState = { active: true, m1Wins: 0, m2Wins: 0, draws: 0, current: 0, total: 0, games: [], byType: null };
         document.getElementById('evalStatus').textContent = '开始评估...';
         document.getElementById('evalGames').innerHTML = '<div style="color:#888;padding:8px;">' + d.info + '</div>';
         document.getElementById('evalProgress').innerHTML = '';
@@ -650,10 +774,16 @@ function connectSSE() {
         document.getElementById('evalStatus').textContent = evalStatusText();
         updateEvalPanel();
     });
+    es.addEventListener('eval_type', e => {
+        const d = JSON.parse(e.data);
+        if (!evalState.byType) evalState.byType = {};
+        evalState.byType[d.type] = { wins: d.wins, losses: d.losses, win_rate: d.win_rate };
+        updateEvalPanel();
+    });
     es.addEventListener('elo', e => {
         const d = JSON.parse(e.data);
         eloData.push(d);
-        cumElo += d.elo_diff;
+        cumElo += (d.elo_diff || 0);
         evalState.active = false;
         document.getElementById('evalStatus').textContent =
             `完成 胜率${(d.win_rate*100).toFixed(1)}% Elo${d.elo_diff>=0?'+':''}${d.elo_diff}`;
@@ -685,7 +815,7 @@ setInterval(async () => {
         const eloChanged = newElo.length !== eloData.length;
         if (eloChanged) {
             eloData = newElo;
-            cumElo = eloData.reduce((s, e) => s + e.elo_diff, 0);
+            cumElo = eloData.reduce((s, e) => s + (e.elo_diff || 0), 0);
             updateCharts();
         }
         const es = await evalRes.json();
@@ -731,7 +861,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         # keepalive
                         self.wfile.write(": keepalive\n\n".encode())
                         self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError):
+            except Exception:
                 pass
             finally:
                 with sse_lock:

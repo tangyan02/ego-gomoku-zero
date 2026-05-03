@@ -17,7 +17,8 @@ def train(extended_data, network, device, optimizer, batch_size, i_episode):
     running_loss = 0.0
     running_value_loss = 0.0
     running_policy_loss = 0.0
-    for batch_data in dataloader:
+    n_batches = len(dataloader)
+    for batch_idx, batch_data in enumerate(dataloader):
         states = batch_data[0].float().to(device)
         mcts_probs = batch_data[1].float().to(device)
         values = batch_data[2].float().to(device)
@@ -48,10 +49,15 @@ def train(extended_data, network, device, optimizer, batch_size, i_episode):
         running_value_loss += value_loss.item()
         running_policy_loss += policy_loss.item()
 
-    n_batches = len(dataloader)
+        # 进度输出（覆盖式）
+        if (batch_idx + 1) % 10 == 0 or batch_idx == n_batches - 1:
+            cur_loss = running_loss / (batch_idx + 1)
+            print(f"\r  [train] batch {batch_idx+1}/{n_batches} loss={cur_loss:.4f}", end="", flush=True)
+
+    print()  # 换行
     loss_avg = running_loss / n_batches
     value_loss_avg = running_value_loss / n_batches
     policy_loss_avg = running_policy_loss / n_batches
     print(getTimeStr() + f"episode {i_episode} Loss: {loss_avg:.4f} (value: {value_loss_avg:.4f}, policy: {policy_loss_avg:.4f})")
-    return loss_avg
+    return loss_avg, value_loss_avg, policy_loss_avg
 

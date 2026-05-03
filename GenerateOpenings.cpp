@@ -9,21 +9,13 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <chrono>
 
 using namespace std;
 
 /**
  * 在 C++ 端生成平衡开局库。
- * 复用 Game::getState() 构造真实输入通道（含 VCF），用模型 value head 做平衡过滤。
- *
- * 配置项（application.conf）：
- *   genOpenings_trainCount   训练用开局数量，默认 300
- *   genOpenings_evalCount    评估用开局数量，默认 50
- *   genOpenings_minMoves     最少步数，默认 1
- *   genOpenings_maxMoves     最多步数，默认 8
- *   genOpenings_threshold    平衡阈值 |value|，默认 0.4
- *   genOpenings_maxAttempts  最大尝试次数，默认 15000
- *   genOpenings_nearCenter   落子距中心范围，默认 6
+ * 用 policy 采样生成候选开局，用双视角 value head 做平衡过滤。
  */
 void runGenerateOpenings() {
     int boardSize = stoi(ConfigReader::get("boardSize"));
@@ -33,9 +25,9 @@ void runGenerateOpenings() {
     int numTrain = stoi(ConfigReader::getOrDefault("genOpenings_trainCount", "300"));
     int numEval = stoi(ConfigReader::getOrDefault("genOpenings_evalCount", "50"));
     int minMoves = stoi(ConfigReader::getOrDefault("genOpenings_minMoves", "1"));
-    int maxMoves = stoi(ConfigReader::getOrDefault("genOpenings_maxMoves", "8"));
-    float threshold = stof(ConfigReader::getOrDefault("genOpenings_threshold", "0.4"));
-    int maxAttempts = stoi(ConfigReader::getOrDefault("genOpenings_maxAttempts", "15000"));
+    int maxMoves = stoi(ConfigReader::getOrDefault("genOpenings_maxMoves", "4"));
+    float threshold = stof(ConfigReader::getOrDefault("genOpenings_threshold", "0.5"));
+    int maxAttempts = stoi(ConfigReader::getOrDefault("genOpenings_maxAttempts", "20000"));
     int nearCenter = stoi(ConfigReader::getOrDefault("genOpenings_nearCenter", "6"));
 
     int numOpenings = numTrain + numEval;
@@ -45,10 +37,12 @@ void runGenerateOpenings() {
     model.init(modelPath, coreType);
     cout << "[Openings] Model loaded: " << modelPath << endl;
 
+    auto startTime = chrono::steady_clock::now();
+
     int center = boardSize / 2;
     mt19937 rng(random_device{}());
-    // 加权步数分布：2-3步多，1和4步少
-    // 权重: 1步=15%, 2步=35%, 3步=35%, 4步=15% (超出范围的归零)
+
+    // 加权步数分布
     vector<double> moveWeights;
     for (int m = minMoves; m <= maxMoves; m++) {
         if (m == 1)      moveWeights.push_back(15);
@@ -59,97 +53,109 @@ void runGenerateOpenings() {
     }
     discrete_distribution<int> moveDist(moveWeights.begin(), moveWeights.end());
 
-    // 收集平衡开局（渐进 threshold：先严后松，优先收集最平衡的）
     struct Opening {
-        vector<Point> moves; // 相对中心坐标
-        float balanceScore;  // 越小越平衡
+        vector<Point> moves;
+        float balanceScore;
     };
-    vector<Opening> candidates;  // 所有通过最宽松阈值的候选
+    vector<Opening> candidates;
     int attempts = 0;
 
-    // 渐进阈值：从严到松
-    float thresholds[] = {threshold * 0.6f, threshold * 0.8f, threshold, threshold * 1.2f};
+    // 渐进阈值（单视角 |value|）
+    float thresholds[] = {threshold * 0.2f, threshold * 0.3f, threshold * 0.4f, threshold * 0.6f};
     int numThresholds = 4;
+    float maxThreshold = thresholds[numThresholds - 1];
 
     // 预分配 state buffer
     int planeSize = boardSize * boardSize;
     vector<float> stateBuf(INPUT_CHANNELS * planeSize, 0.0f);
 
-    // 第一遍：收集所有通过最宽松阈值的候选，记录 balanceScore
-    float maxThreshold = thresholds[numThresholds - 1];
+    float strictThreshold = thresholds[0];
+    int strictCount = 0;
+
     while (attempts < maxAttempts) {
         attempts++;
         int numMoves = moveDist(rng) + minMoves;
 
-        // 在中心附近随机落子
+        // 用 policy 引导落子
         Game game(boardSize);
-        vector<Point> absMoves; // 绝对坐标
+        vector<Point> absMoves;
         bool valid = true;
 
         for (int step = 0; step < numMoves; step++) {
-            // 收集中心附近的空位
-            vector<Point> candidates;
+            // 收集中心区域内的空位
+            vector<Point> cands;
             for (int r = max(0, center - nearCenter); r < min(boardSize, center + nearCenter + 1); r++) {
                 for (int c = max(0, center - nearCenter); c < min(boardSize, center + nearCenter + 1); c++) {
                     if (game.board[r][c] == 0) {
-                        candidates.emplace_back(r, c);
+                        // 第 2 步起：必须在已有棋子 3 格范围内
+                        if (step > 0) {
+                            bool near = false;
+                            for (auto& m : absMoves) {
+                                if (abs(r - m.x) <= 3 && abs(c - m.y) <= 3) {
+                                    near = true;
+                                    break;
+                                }
+                            }
+                            if (!near) continue;
+                        }
+                        cands.emplace_back(r, c);
                     }
                 }
             }
-            if (candidates.empty()) {
-                valid = false;
-                break;
+            if (cands.empty()) { valid = false; break; }
+
+            // 第一步随机
+            if (step == 0) {
+                uniform_int_distribution<int> pickDist(0, (int)cands.size() - 1);
+                Point p = cands[pickDist(rng)];
+                game.makeMove(p);
+                absMoves.push_back(p);
+                continue;
             }
-            uniform_int_distribution<int> pickDist(0, (int)candidates.size() - 1);
-            Point p = candidates[pickDist(rng)];
-            game.makeMove(p);
-            absMoves.push_back(p);
+
+            // 后续步：policy 采样
+            game.getState(stateBuf.data(), INPUT_CHANNELS);
+            auto [val, policy] = model.evaluate_state(stateBuf.data(), INPUT_CHANNELS, boardSize, boardSize);
+            vector<float> probs;
+            probs.reserve(cands.size());
+            float temperature = 1.5f;
+            float maxLogit = -1e9f;
+            for (auto& p : cands) {
+                float logit = policy[p.x * boardSize + p.y] / temperature;
+                if (logit > maxLogit) maxLogit = logit;
+                probs.push_back(logit);
+            }
+            float sumExp = 0;
+            for (auto& p : probs) { p = exp(p - maxLogit); sumExp += p; }
+            for (auto& p : probs) { p /= sumExp; }
+            discrete_distribution<int> dist(probs.begin(), probs.end());
+            Point chosen = cands[dist(rng)];
+            game.makeMove(chosen);
+            absMoves.push_back(chosen);
         }
 
         if (!valid || (int)absMoves.size() < minMoves) continue;
 
-        // 双视角评估：用 Game::getState() 构造真实输入（含 VCF 通道）
-        // 视角 1：当前行棋方（game 已经是落子后的状态，currentPlayer 已翻转）
-        // 需要构造两个视角的 Game，分别调用 getState
-        int currentPlayer = game.currentPlayer; // 落子后轮到的一方
-        int otherPlayer = game.getOtherPlayer();
-
-        // 视角1：从 currentPlayer 看局面
-        // getState() 内部用 currentPlayer 填 ch0/ch2，otherPlayer 填 ch1/ch3
-        // 所以直接用当前 game 即可
+        // 当前行棋方视角评估（value 接近 0 = 均势）
         game.getState(stateBuf.data(), INPUT_CHANNELS);
         auto [v1, _] = model.evaluate_state(stateBuf.data(), INPUT_CHANNELS, boardSize, boardSize);
 
-        // 视角2：从 otherPlayer 看局面（交换 currentPlayer）
-        // 需要临时翻转 currentPlayer 来调用 getState
-        game.currentPlayer = otherPlayer;
-        // 清 VCF 缓存，因为 currentPlayer 变了
-        game.myVcfDone = false;
-        game.oppVcfDone = false;
-        game.myVcfMoves.clear();
-        game.oppVcfMoves.clear();
-        game.myAllAttackMoves.clear();
-        game.oppVcfAttackMoves.clear();
-        game.oppVcfDefenceMoves.clear();
-        game.getState(stateBuf.data(), INPUT_CHANNELS);
-        auto [v2, __] = model.evaluate_state(stateBuf.data(), INPUT_CHANNELS, boardSize, boardSize);
-
-        // 恢复（虽然 game 是局部变量马上就销毁，但保持一致）
-        game.currentPlayer = currentPlayer;
-
-        // 平衡判定：收集所有通过最宽松阈值的候选
-        float balanceScore = fabs(v1) + fabs(v2);
-        if (balanceScore < maxThreshold * 2) {
+        float balanceScore = fabs(v1);
+        if (balanceScore < maxThreshold) {
             Opening op;
             for (auto& p : absMoves) {
                 op.moves.emplace_back(p.x - center, p.y - center);
             }
             op.balanceScore = balanceScore;
             candidates.push_back(op);
+            if (balanceScore < strictThreshold) {
+                strictCount++;
+                if (strictCount >= numOpenings) break;  // 最严档已够，提前退出
+            }
         }
     }
 
-    // 按 balanceScore 排序（越小越平衡），渐进选取
+    // 按 balanceScore 排序，渐进选取
     sort(candidates.begin(), candidates.end(),
          [](const Opening& a, const Opening& b) { return a.balanceScore < b.balanceScore; });
 
@@ -158,8 +164,7 @@ void runGenerateOpenings() {
         float curThreshold = thresholds[t];
         for (auto& op : candidates) {
             if ((int)balanced.size() >= numOpenings) break;
-            if (op.balanceScore < curThreshold * 2) {
-                // 检查是否已选中（避免重复）
+            if (op.balanceScore < curThreshold) {
                 bool dup = false;
                 for (auto& sel : balanced) {
                     if (sel.moves == op.moves) { dup = true; break; }
@@ -174,27 +179,20 @@ void runGenerateOpenings() {
         return;
     }
 
-    // 打乱后按比例分割训练集/评估集（确保 eval 也能分到开局）
     shuffle(balanced.begin(), balanced.end(), rng);
     float totalTarget = (float)(numTrain + numEval);
     int evalCount = min(numEval, max(1, (int)(balanced.size() * numEval / totalTarget)));
     int trainCount = min(numTrain, (int)balanced.size() - evalCount);
 
     auto writeOpenings = [](const string& path, const vector<Opening>& openings) {
-        // 确保 openings 目录存在
         string dir = path.substr(0, path.find_last_of('/'));
-        // 简单创建目录（如果不存在）
         #ifdef _WIN32
             system(("if not exist \"" + dir + "\" mkdir \"" + dir + "\"").c_str());
         #else
             system(("mkdir -p \"" + dir + "\"").c_str());
         #endif
-
         ofstream file(path);
-        if (!file.is_open()) {
-            cerr << "[Openings] 无法写入: " << path << endl;
-            return;
-        }
+        if (!file.is_open()) { cerr << "[Openings] 无法写入: " << path << endl; return; }
         for (const auto& op : openings) {
             for (int i = 0; i < (int)op.moves.size(); i++) {
                 if (i > 0) file << ",";
@@ -211,8 +209,21 @@ void runGenerateOpenings() {
     writeOpenings("openings/openings_train.txt", trainOpenings);
     writeOpenings("openings/openings_eval.txt", evalOpenings);
 
+    auto endTime = chrono::steady_clock::now();
+    int elapsedSec = chrono::duration_cast<chrono::seconds>(endTime - startTime).count();
+
     float passRate = (float)candidates.size() / attempts * 100;
+    string tierInfo;
+    for (int t = 0; t < numThresholds; t++) {
+        int count = 0;
+        for (auto& op : candidates) {
+            if (op.balanceScore < thresholds[t]) count++;
+        }
+        tierInfo += (t > 0 ? "/" : "") + to_string(count);
+    }
     cout << "[Openings] 生成 " << trainCount << " 训练 + " << evalCount << " 评估开局"
          << "（尝试 " << attempts << " 次，候选 " << candidates.size() << " 个，通过率 " << passRate << "%），"
-         << "阈值 " << thresholds[0] << "/" << thresholds[1] << "/" << thresholds[2] << "/" << thresholds[3] << endl;
+         << "阈值 " << thresholds[0] << "/" << thresholds[1] << "/" << thresholds[2] << "/" << thresholds[3]
+         << "，各档 " << tierInfo
+         << "，耗时 " << elapsedSec << "s" << endl;
 }

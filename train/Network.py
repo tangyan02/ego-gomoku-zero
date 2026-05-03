@@ -74,12 +74,12 @@ class PolicyValueNetwork(nn.Module):
             ResidualBlock(self.residual_channels, use_se=True),
         )
 
-        # action policy layers（加隐藏层提升表达力）
-        self.act_channels = 8
+        # action policy layers（16ch + 512 隐藏层提升表达力）
+        self.act_channels = 16
         self.act_conv1 = nn.Conv2d(self.residual_channels, self.act_channels, kernel_size=(1, 1), bias=False)
         self.act_bn1 = nn.BatchNorm2d(self.act_channels)
-        self.act_fc1 = nn.Linear(self.act_channels * self.board_size * self.board_size, 256)
-        self.act_fc2 = nn.Linear(256, self.board_size * self.board_size)
+        self.act_fc1 = nn.Linear(self.act_channels * self.board_size * self.board_size, 512)
+        self.act_fc2 = nn.Linear(512, self.board_size * self.board_size)
 
         # state value layers（GAP 缩小，抗过拟合）
         self.val_channels = 32

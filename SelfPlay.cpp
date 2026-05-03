@@ -200,13 +200,13 @@ tuple<float, Point, float> getNextMove(int step, float temperatureDefault, int t
 }
 
 
-void tryVctCut(int numSimulations, MonteCarloTree& mcts, string& prefix, Game& game, vector<Point>& winMoves,
+bool tryVctCut(int numSimulations, MonteCarloTree& mcts, string& prefix, Game& game, vector<Point>& winMoves,
                Node& winRootNode)
 {
     auto [win,moves,info] = selectActions(game);
     if (win)
     {
-        return;
+        return true;
     }
     for (auto winMove : winMoves)
     {
@@ -269,6 +269,7 @@ void tryVctCut(int numSimulations, MonteCarloTree& mcts, string& prefix, Game& g
                 ", " << "per simi " << (getSystemTime() - startTime) / numSimulations << " ms" << endl;
         }
     }
+    return false;
 }
 
 std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std::vector<float> > > selfPlay(
@@ -299,27 +300,17 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         game = randomGame(game, prefix);
 
         int step = 0;
-        // VCT 开关，读一次缓存
-        static bool useVct = (ConfigReader::get("useVct") == "true");
 
         // 每局清空 Transposition Table（不同局不能共享缓存）
         mcts.clearTranspositionTable();
 
         // Tree Reuse：整局共用一棵树，每步保留选中子树
         Node* rootNode = new Node();
+        int earlyWinner = 0;  // early stop 时记录胜者
 
         while (!game.isGameOver()) {
             //开始mcts预测
             long long startTime = getSystemTime();
-
-            // VCT 子线程：仅在 useVct=true 时启动
-            std::atomic running(true);
-            std::packaged_task<std::pair<int, std::vector<Point>>(int, Game*, std::atomic<bool>&)> task(dfsVCTIter);
-            auto result = task.get_future();
-            thread t;
-            if (useVct) {
-                t = thread(std::move(task), game.currentPlayer, &game, std::ref(running));
-            }
 
             // 补齐模拟次数：子树已有 visits 算作已完成
             int existingVisits = rootNode->visits;
@@ -337,24 +328,11 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
                 realNumSimulations = 2;
             }
 
-            vector<Point> winMoves;
-            int level = 0;
-            if (useVct) {
-                running.store(false);
-                t.join();
-                tie(level, winMoves) = result.get();
-                if(level > 0)
-                {
-                    cout << prefix << " vct level " << level << ", win move size: " << winMoves.size() << endl;
-                }
-            }
-
             vector<Point> moves;
             vector<float> move_probs;
 
-            Node winRootNode;
-            tryVctCut(numSimulations, mcts, prefix, game, winMoves, winRootNode);
-
+            // 必胜检测：直接调用 selectActions 判断
+            auto [currentWin, _, __] = selectActions(game);
 
             tie(moves, move_probs)= mcts.get_action_probabilities();
 
@@ -379,6 +357,17 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
 
             //打印局面
             printGame(game, move, rate, probs_matrix, temperature, prefix, rootNode->selectInfo, &model);
+
+            // 必胜检测：selectActions 返回 win=true（五连/活四/VCF），提前结束
+            if (currentWin) {
+                cout << prefix << " early stop: forced win detected, skip remaining moves" << endl;
+                // makeMove 后 currentPlayer 已翻转，胜者是落子方 = getOtherPlayer()
+                earlyWinner = game.getOtherPlayer();
+                rootNode->release();
+                delete rootNode;
+                rootNode = new Node();
+                break;
+            }
 
             // Tree Reuse：保留选中子树，释放其他分支
             Node* selectedChild = nullptr;
@@ -424,10 +413,12 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         rootNode->release();
         delete rootNode;
 
-        bool win = game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer());
-        int winner = 0;
-        if (win) {
-            winner = game.getOtherPlayer();
+        int winner = earlyWinner;
+        if (winner == 0 && game.lastAction.x >= 0) {
+            bool win = game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer());
+            if (win) {
+                winner = game.getOtherPlayer();
+            }
         }
 
         // n-step TD bootstrapping: 用 MCTS Q 值替代纯最终胜负

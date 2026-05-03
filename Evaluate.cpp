@@ -28,7 +28,6 @@ static std::vector<std::string>& getOpenings() {
     static std::vector<std::string> lines;
     static bool loaded = false;
     if (!loaded) {
-        // 评估开局：生成评估开局取前 50 个 + 手动开局取前 50 个
         vector<pair<string, vector<string>>> sources = {
             {"generated_eval", {"openings/openings_eval.txt", "../train/openings/openings_eval.txt", "../openings/openings_eval.txt"}},
             {"manual",         {"openings/openings_manual.txt", "../train/openings/openings_manual.txt", "../openings/openings_manual.txt"}},
@@ -60,6 +59,27 @@ static std::vector<std::string>& getOpenings() {
         loaded = true;
     }
     return lines;
+}
+
+// 生成开局的数量（index < 此值为生成开局，>= 为手工开局）
+static int getGeneratedCount() {
+    static int count = -1;
+    if (count < 0) {
+        count = 0;
+        vector<string> paths = {"openings/openings_eval.txt", "../train/openings/openings_eval.txt", "../openings/openings_eval.txt"};
+        for (auto& path : paths) {
+            std::ifstream file(path);
+            if (file.is_open()) {
+                std::string line;
+                while (std::getline(file, line)) {
+                    if (!line.empty() && count < 50) count++;
+                }
+                file.close();
+                break;
+            }
+        }
+    }
+    return count;
 }
 
 /**
@@ -291,6 +311,8 @@ EvalResult evaluateModels(
     model2->init(modelPath2, coreType);
 
     int wins1 = 0, wins2 = 0, draws = 0;
+    int genCount = getGeneratedCount();
+    std::atomic<int> genWins1(0), genWins2(0), manWins1(0), manWins2(0);
 
     auto& openings = getOpenings();
     bool useAllOpenings = (numGames == -1);
@@ -333,14 +355,21 @@ EvalResult evaluateModels(
                 long long cost = getSystemTime() - startTime;
 
                 // 统计结果
+                bool m1Won = false;
                 if (t.m1IsBlack) {
-                    if (result == BLACK) atomicWins1++;
+                    if (result == BLACK) { atomicWins1++; m1Won = true; }
                     else if (result == WHITE) atomicWins2++;
                     else atomicDraws++;
                 } else {
-                    if (result == WHITE) atomicWins1++;
+                    if (result == WHITE) { atomicWins1++; m1Won = true; }
                     else if (result == BLACK) atomicWins2++;
                     else atomicDraws++;
+                }
+                // 分开局类型统计
+                if (t.openingIdx < genCount) {
+                    if (m1Won) genWins1++; else genWins2++;
+                } else {
+                    if (m1Won) manWins1++; else manWins2++;
                 }
 
                 int count = atomicGameCount.fetch_add(1) + 1;
@@ -416,6 +445,16 @@ EvalResult evaluateModels(
     cout << "[Evaluate] Wins: " << wins1 << " | Losses: " << wins2 << " | Draws: " << draws << endl;
     cout << "[Evaluate] Win rate: " << (winRate1 * 100) << "%" << endl;
     cout << "[Evaluate] Elo diff: " << (eloDiff >= 0 ? "+" : "") << round(eloDiff) << endl;
+    int gw1 = genWins1.load(), gw2 = genWins2.load(), mw1 = manWins1.load(), mw2 = manWins2.load();
+    int genTotal = gw1 + gw2, manTotal = mw1 + mw2;
+    if (genTotal > 0) {
+        cout << "[Evaluate] Generated openings: " << gw1 << "-" << gw2 << " ("
+             << round(gw1 * 1000.0 / genTotal) / 10 << "%)" << endl;
+    }
+    if (manTotal > 0) {
+        cout << "[Evaluate] Manual openings:    " << mw1 << "-" << mw2 << " ("
+             << round(mw1 * 1000.0 / manTotal) / 10 << "%)" << endl;
+    }
     cout << "[Evaluate] ============================" << endl;
 
     return EvalResult{wins1, wins2, draws, totalGames, winRate1, eloDiff};

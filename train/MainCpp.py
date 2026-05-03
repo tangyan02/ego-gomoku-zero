@@ -223,8 +223,8 @@ def run_generate_openings(cpp_path, model_path):
         f.write(f"genOpenings_minMoves=1\n")
         f.write(f"genOpenings_maxMoves=4\n")
         f.write(f"genOpenings_threshold=0.5\n")
-        f.write(f"genOpenings_maxAttempts=10000\n")
-        f.write(f"genOpenings_nearCenter=6\n")
+        f.write(f"genOpenings_maxAttempts=20000\n")
+        f.write(f"genOpenings_nearCenter=9\n")
 
     env = os.environ.copy()
     env['DYLD_LIBRARY_PATH'] = os.path.join(os.path.dirname(os.path.abspath(cpp_path)), '..', 'onnxruntime', 'lib')
@@ -375,11 +375,17 @@ if __name__ == "__main__":
 
         # 多 epoch 训练
         total_loss = 0.0
+        total_value_loss = 0.0
+        total_policy_loss = 0.0
         for epoch in range(train_epochs):
-            loss = train(sampled_data, model, device, optimizer, batch_size, i_episode)
+            loss, v_loss, p_loss = train(sampled_data, model, device, optimizer, batch_size, i_episode)
             total_loss += loss
+            total_value_loss += v_loss
+            total_policy_loss += p_loss
         avg_loss = total_loss / train_epochs
-        Logger.infoD(f"episode {i_episode} 训练 {train_epochs} epochs, 平均 loss: {avg_loss:.4f}")
+        avg_value_loss = total_value_loss / train_epochs
+        avg_policy_loss = total_policy_loss / train_epochs
+        Logger.infoD(f"episode {i_episode} 训练 {train_epochs} epochs, 平均 loss: {avg_loss:.4f} (value: {avg_value_loss:.4f}, policy: {avg_policy_loss:.4f})")
 
         save_model(model, optimizer)
         Logger.infoD(f"最新模型已保存 episode:{i_episode}")
@@ -456,6 +462,12 @@ if __name__ == "__main__":
                             f"回滚到 g{rollback_target}",
                             "elo.log"
                         )
+                        # 写入回退标记，前端据此标黄
+                        rollback_info = {
+                            "rollback": True,
+                            "rollback_target": rollback_target
+                        }
+                        Logger.infoD(json.dumps(rollback_info), "elo.log")
                         shutil.copy2(rollback_onnx, latest_path)
                         shutil.copy2(rollback_onnx, best_path)
                         if os.path.exists(rollback_pt):
@@ -481,6 +493,8 @@ if __name__ == "__main__":
         episodeInfo = {
             "i_episode": i_episode,
             "loss": avg_loss,
+            "value_loss": avg_value_loss,
+            "policy_loss": avg_policy_loss,
             "record_count": len(extended_data),
             "buffer_size": len(replay_buffer),
             "sample_size": len(sampled_data),
