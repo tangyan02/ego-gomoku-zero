@@ -194,7 +194,58 @@ def tail_log():
                 "speed": float(sp.group(4))
             })
             continue
-        
+
+        # VCT 标注启动: [VCTLabel] START files=N threads=M maxTimeMs=X
+        vs = re.search(r'\[VCTLabel\] START files=(\d+) threads=(\d+) maxTimeMs=(\d+)', line)
+        if vs:
+            broadcast_sse("vct_start", {
+                "files": int(vs.group(1)),
+                "threads": int(vs.group(2)),
+                "max_time_ms": int(vs.group(3))
+            })
+            continue
+
+        # VCT 单文件进度: [VCTLabel] file=data_X.txt progress=N/M labeled=K changed=C elapsed=Xs
+        vp = re.search(r'\[VCTLabel\] file=(\S+) progress=(\d+)/(\d+) labeled=(\d+) changed=(\d+) elapsed=(\d+)s', line)
+        if vp:
+            broadcast_sse("vct_file_progress", {
+                "file": vp.group(1),
+                "current": int(vp.group(2)),
+                "total": int(vp.group(3)),
+                "labeled": int(vp.group(4)),
+                "changed": int(vp.group(5)),
+                "elapsed": int(vp.group(6))
+            })
+            continue
+
+        # VCT 全局进度: [VCTLabel] global progress=N/M labeled=K/T changed=C alreadyOne=A
+        vg = re.search(r'\[VCTLabel\] global progress=(\d+)/(\d+) labeled=(\d+)/(\d+) changed=(\d+) alreadyOne=(\d+)', line)
+        if vg:
+            broadcast_sse("vct_global_progress", {
+                "files_done": int(vg.group(1)),
+                "files_total": int(vg.group(2)),
+                "labeled": int(vg.group(3)),
+                "samples_total": int(vg.group(4)),
+                "changed": int(vg.group(5)),
+                "already_one": int(vg.group(6))
+            })
+            continue
+
+        # VCT 完成: [VCTLabel] FINISH totalFiles=X totalSamples=Y totalLabeled=Z changed=C alreadyOne=A (label=R% change=R%) elapsed=Ws
+        vf = re.search(r'\[VCTLabel\] FINISH totalFiles=(\d+) totalSamples=(\d+) totalLabeled=(\d+) changed=(\d+) alreadyOne=(\d+) \(label=([\d.]+)% change=([\d.]+)%\) elapsed=([\d.]+)s', line)
+        if vf:
+            broadcast_sse("vct_finish", {
+                "files": int(vf.group(1)),
+                "samples": int(vf.group(2)),
+                "labeled": int(vf.group(3)),
+                "changed": int(vf.group(4)),
+                "already_one": int(vf.group(5)),
+                "label_ratio": float(vf.group(6)),
+                "change_ratio": float(vf.group(7)),
+                "elapsed": float(vf.group(8))
+            })
+            continue
+
         # 评估单局结果
         em = re.match(r'\[Evaluate\] Game (\d+)/(\d+) Opening (\d+) \((M1=\w+)\): (M\d WIN) \((\d+)ms\)', line)
         if em:
@@ -341,6 +392,7 @@ HTML = r"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EGO-Zero 训练监控</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -358,6 +410,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
 .panel h2 { font-size: 13px; color: #e94560; margin-bottom: 2px; }
 .left-panel { display: flex; flex-direction: column; }
 .left-panel .history { flex: 1; min-height: 0; overflow-y: auto; }
+
+/* 手机端响应式 */
+@media (max-width: 768px) {
+    .container { grid-template-columns: 1fr; height: auto; padding: 4px; gap: 4px; overflow-y: auto; max-height: none; }
+    .left-panel { max-height: none; }
+    .right-col { min-height: auto; }
+    .right-col .panel { min-height: 200px; }
+    .header h1 { font-size: 14px; }
+    .board-wrap { text-align: center; }
+    .board-wrap canvas { max-width: 100%; height: auto !important; }
+    .history { max-height: 200px; }
+    html, body { overflow-y: auto; height: auto; }
+}
 
 .stats-row { display: flex; gap: 6px; margin-bottom: 0; }
 .stat-card { background: #16213e; border-radius: 5px; padding: 2px 8px; text-align: center; flex: 1; }
@@ -383,6 +448,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
 .history-item .loss { color: #e94560; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2"></script>
 </head>
 <body>
 <div class="header">
@@ -411,9 +478,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
     </div>
     <div class="right-col">
         <div class="panel"><h2>📈 Elo 趋势</h2><div class="chart-wrap"><canvas id="eloChart"></canvas></div></div>
-        <div class="panel" style="flex:none;height:100px;padding:4px 8px;">
+        <div class="panel" style="flex:none;height:130px;padding:4px 8px;">
             <h2 style="margin-bottom:2px;">📊 训练进度</h2>
             <div id="trainProgress" style="font-size:11px;color:#aaa;">等待数据...</div>
+            <div style="height:1px;background:#2a2a4a;margin:4px 0;"></div>
+            <div id="vctProgress" style="font-size:11px;color:#aaa;">VCT标注: 等待中</div>
         </div>
         <div class="panel" style="flex: 1.2;">
             <h2>🏆 评估对战 <span id="evalStatus" style="font-size:11px;color:#888;font-weight:normal;"></span></h2>
@@ -518,7 +587,11 @@ function updateMoveInfo() {
     }
     const m = moves[moves.length - 1];
     const color = m.color === 'x' ? '⚫' : '⚪';
-    info.innerHTML = `第 ${moves.length} 步 ${color} (${m.row},${m.col}) rate=${m.rate} T=${m.temp} ${m.info||''}`;
+    let infoStr = m.info || '';
+    if (infoStr.includes('[F]')) {
+        infoStr = infoStr.replace('[F]', '<span style="color:#f9ca24;font-weight:bold;">[F]</span>');
+    }
+    info.innerHTML = `第 ${moves.length} 步 ${color} (${m.row},${m.col}) rate=${m.rate} T=${m.temp} ${infoStr}`;
 }
 
 function showWinner(winner, totalMoves) {
@@ -529,6 +602,8 @@ function showWinner(winner, totalMoves) {
 }
 
 function addToHistory(game) {
+    // 去重：检查是否已存在相同ID的对局（防止后端重复推送game_end）
+    if (recentGames.find(g => g.id === game.id)) return;
     recentGames.unshift(game);
     if (recentGames.length > 50) recentGames.pop();
     const div = document.getElementById('history');
@@ -551,32 +626,25 @@ function updateCharts() {
     const ctx = document.getElementById('eloChart').getContext('2d');
 
     // 标记被回退撤销的点（rollback_target 之后、rollback 之前的 entry）
-    const rolledBack = new Set();
-    let entryIdx = 0;
-    const entryIdxMap = [];  // eloData index → eloEntries index
-    eloData.forEach((e, i) => {
-        if (e.elo_diff !== undefined && !e.rollback) {
-            entryIdxMap.push(entryIdx);
-            entryIdx++;
-        } else {
-            entryIdxMap.push(-1);
-        }
-    });
+    const rolledBackGames = new Set();
     eloData.forEach((e, i) => {
         if (e.rollback && e.rollback_target) {
-            // 往前找 entry，标记 total_games > rollback_target 的为 rolled back
             for (let j = i - 1; j >= 0; j--) {
                 const d = eloData[j];
                 if (d.elo_diff !== undefined && !d.rollback) {
                     if (d.total_games > e.rollback_target) {
-                        const ei = entryIdxMap[j];
-                        if (ei >= 0) rolledBack.add(ei);
+                        rolledBackGames.add(d.total_games);
                     } else {
                         break;
                     }
                 }
             }
         }
+    });
+    // 映射到当前显示的 eloEntries 索引
+    const rolledBack = new Set();
+    eloEntries.forEach((e, i) => {
+        if (rolledBackGames.has(e.total_games)) rolledBack.add(i);
     });
 
     // 点颜色：被撤销=黄色，上升=红，下降=绿
@@ -603,8 +671,8 @@ function updateCharts() {
                 segment: { borderColor: segmentColor },
                 pointBackgroundColor: pointColors,
                 pointBorderColor: pointColors,
-                pointRadius: 4,
-                pointHoverRadius: 6,
+                pointRadius: 2.5,
+                pointHoverRadius: 4,
                 borderWidth: 2.5,
                 tension: 0.1,
                 fill: {
@@ -628,10 +696,20 @@ function updateCharts() {
                             return `累计: +${cum}  ${arrow} ${diff >= 0 ? '+' : ''}${diff}`;
                         }
                     }
+                },
+                zoom: {
+                    pan: {
+                        enabled: window.innerWidth <= 768,
+                        mode: 'x',
+                    },
+                    limits: { x: { minRange: 10 } }
                 }
             },
             scales: {
-                x: { ticks: { color: '#555', font: { size: 9 }, maxTicksLimit: 15, maxRotation: 45 } },
+                x: {
+                    ticks: { color: '#555', font: { size: 9 }, maxTicksLimit: 15, maxRotation: 45 },
+                    min: (window.innerWidth <= 768 && eLabels.length > 20) ? eLabels[eLabels.length - 20] : undefined,
+                },
                 y: {
                     ticks: { color: '#888', callback: v => '+' + v },
                     grid: { color: '#1a1a2e' }
@@ -749,6 +827,51 @@ function connectSSE() {
         tp.innerHTML = `<div style="font-size:11px;">自对弈 ${d.games}局 ${d.records}条 ${d.speed}条/s (${d.time.toFixed(0)}s)</div>` +
             (tp.dataset.info || '');
     });
+
+    // VCT 标注：独立区域展示，不与训练进度互相覆盖
+    es.addEventListener('vct_start', e => {
+        const d = JSON.parse(e.data);
+        const vp = document.getElementById('vctProgress');
+        vp.dataset.active = '1';
+        vp.innerHTML =
+            `<div style="color:#9b59b6;">🔍 VCT标注 启动 ${d.files}文件 ${d.threads}线程</div>`;
+    });
+    es.addEventListener('vct_file_progress', e => {
+        const d = JSON.parse(e.data);
+        const vp = document.getElementById('vctProgress');
+        if (vp.dataset.active !== '1') return;
+        const pct = Math.round(d.current / d.total * 100);
+        const labelRatio = d.current > 0 ? (100 * d.labeled / d.current).toFixed(1) : '0.0';
+        const changeRatio = d.current > 0 ? (100 * d.changed / d.current).toFixed(1) : '0.0';
+        vp.innerHTML =
+            `<div style="display:flex;align-items:center;gap:8px;">` +
+            `<div style="flex:1;background:#16213e;border-radius:4px;height:12px;overflow:hidden;">` +
+            `<div style="width:${pct}%;height:100%;background:#9b59b6;transition:width 0.2s;"></div></div>` +
+            `<span style="font-size:11px;">${d.current}/${d.total}</span></div>` +
+            `<div style="color:#9b59b6;margin-top:2px;">🔍 ${d.file} 标注${d.labeled}(${labelRatio}%) <b>覆盖${d.changed}(${changeRatio}%)</b> ${d.elapsed}s</div>`;
+    });
+    es.addEventListener('vct_global_progress', e => {
+        const d = JSON.parse(e.data);
+        const vp = document.getElementById('vctProgress');
+        if (vp.dataset.active !== '1') return;
+        const pct = Math.round(d.files_done / d.files_total * 100);
+        const labelRatio = d.samples_total > 0 ? (100 * d.labeled / d.samples_total).toFixed(1) : '0.0';
+        const changeRatio = d.samples_total > 0 ? (100 * d.changed / d.samples_total).toFixed(1) : '0.0';
+        vp.innerHTML =
+            `<div style="display:flex;align-items:center;gap:8px;">` +
+            `<div style="flex:1;background:#16213e;border-radius:4px;height:12px;overflow:hidden;">` +
+            `<div style="width:${pct}%;height:100%;background:#9b59b6;transition:width 0.2s;"></div></div>` +
+            `<span style="font-size:11px;">${d.files_done}/${d.files_total}文件</span></div>` +
+            `<div style="color:#9b59b6;margin-top:2px;">🔍 全局 标注${d.labeled}/${d.samples_total}(${labelRatio}%) <b>覆盖${d.changed}(${changeRatio}%)</b></div>`;
+    });
+    es.addEventListener('vct_finish', e => {
+        const d = JSON.parse(e.data);
+        const vp = document.getElementById('vctProgress');
+        vp.dataset.active = '0';
+        vp.innerHTML =
+            `<div style="color:#9b59b6;">✓ VCT标注完成 ${d.files}文件 标注${d.labeled}/${d.samples}(${d.label_ratio.toFixed(1)}%) <b>覆盖${d.changed}(${d.change_ratio.toFixed(1)}%)</b> ${d.elapsed.toFixed(1)}s</div>`;
+    });
+
     es.addEventListener('episode', e => {
         const d = JSON.parse(e.data);
         episodes.push(d);

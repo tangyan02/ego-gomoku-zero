@@ -63,7 +63,7 @@ private:
     Node* selectInterior(Node* node);
 
     // 单次模拟：从 root 到叶子，展开并回传
-    void simulate(Game& game, Node* root, const std::vector<Point>& candidates);
+    void simulate(Game& game, Node* root, const std::vector<Point>& candidates, int rootActionIdx = -1);
 
     // 计算改进后的 policy target
     std::vector<float> computeImprovedPolicy(Node* root, Game& game,

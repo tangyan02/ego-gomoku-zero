@@ -27,17 +27,17 @@ public:
     }
 };
 
-void printGame(Game& game, int action, std::vector<float>& action_probs, float temperature);
+void printGame(Game& game, Point action, float rate,
+               const std::string &prefix, const std::string selectInfo);
 
 void recordSelfPlay(
     int boardSize,
     Context *context,
     int numSimulation,
-    float temperatureDefault,
     float explorationFactor,
     int shard,
     Model* sharedModel);
 
-Game randomGame(Game& game);
+Game randomGame(Game& game, const std::string& prefix = "");
 
 #endif //EGO_GOMOKU_ZERO_SELFPLAY_H

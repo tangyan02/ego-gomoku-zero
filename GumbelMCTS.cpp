@@ -18,10 +18,11 @@ double GumbelMCTS::sampleGumbel() {
 }
 
 float GumbelMCTS::sigma(float q, int totalVisits) {
-    // σ(Q) = cScale * maxVisits * Q
-    // 将 Q ∈ [-1, 1] 缩放到和 logits 可比较的范围
-    // 使用 50 * Q 作为默认缩放（类似 KataGo 的做法）
-    return cScale * 50.0f * q;
+    // σ(Q) 需要和 logits 在同一量级
+    // log_softmax 典型范围 [-10, -3]，所以 σ 也应在这个量级
+    // 使用 c * sqrt(N) * Q，随访问数增长逐渐信任 Q
+    float c = 2.0f;
+    return c * sqrt(max(1, totalVisits)) * q;
 }
 
 std::pair<float, std::vector<float>> GumbelMCTS::evaluateLeaf(Game& game) {
@@ -40,22 +41,26 @@ std::pair<float, std::vector<float>> GumbelMCTS::evaluateLeaf(Game& game) {
 }
 
 Node* GumbelMCTS::selectInterior(Node* node) {
-    // 内部节点确定性选择：选 Q + prior_boost 最大的子节点
-    // 未访问的子节点用父节点 Q 值替代
+    // 内部节点：PUCT 式选择（和传统 MCTS 一致，保证搜索质量）
+    double parentVisits = max(1, node->visits);
+    double sqrtParent = sqrt(parentVisits);
     double parentQ = node->visits > 0 ? node->value_sum / node->visits : 0.0;
+
+    // FPU
+    double visitedPriorSum = 0.0;
+    for (auto& [p, child] : node->children) {
+        if (child->visits > 0) visitedPriorSum += child->prior_prob;
+    }
+    double fpuValue = parentQ - 0.2 * sqrt(visitedPriorSum);
+
     Node* best = nullptr;
     double bestScore = -1e18;
+    float cPuct = 3.0f;
 
     for (auto& [point, child] : node->children) {
-        double q;
-        if (child->visits > 0) {
-            q = child->value_sum / child->visits;
-        } else {
-            q = parentQ;  // 用 value 补全未访问节点
-        }
-        // 确定性选择：σ(Q) + log(prior)
-        double logPrior = log(max((double)child->prior_prob, 1e-8));
-        double score = sigma(q, node->visits) + logPrior;
+        double q = child->visits > 0 ? child->value_sum / child->visits : fpuValue;
+        double exploration = cPuct * child->prior_prob * sqrtParent / (1 + child->visits);
+        double score = q + exploration;
         if (score > bestScore) {
             bestScore = score;
             best = child;
@@ -64,18 +69,15 @@ Node* GumbelMCTS::selectInterior(Node* node) {
     return best;
 }
 
-void GumbelMCTS::simulate(Game& game, Node* root, const std::vector<Point>& candidates) {
-    // 从 root 往下走到叶子
+void GumbelMCTS::simulate(Game& game, Node* root, const std::vector<Point>& candidates, int rootActionIdx) {
     Node* node = root;
     Game simGame = game;
 
-    // 如果 root 是叶子，先展开
+    // root 是叶子则先展开
     if (node->isLeaf()) {
         auto [value, priors] = evaluateLeaf(simGame);
-        // 用 candidates 展开
         vector<Point> moves = candidates;
         node->expand(simGame, moves, priors);
-        // 回传
         float v = -value;
         Node* cur = node;
         while (cur != nullptr) {
@@ -86,8 +88,16 @@ void GumbelMCTS::simulate(Game& game, Node* root, const std::vector<Point>& cand
         return;
     }
 
-    // 已展开的 root，选子节点往下
-    Node* child = selectInterior(node);
+    // 根节点：走指定的动作（Sequential Halving 分配的）
+    Node* child = nullptr;
+    if (rootActionIdx >= 0 && rootActionIdx < (int)candidates.size()) {
+        auto it = node->children.find(candidates[rootActionIdx]);
+        if (it != node->children.end()) child = it->second;
+    }
+    if (child == nullptr) {
+        // fallback: 用内部选择
+        child = selectInterior(node);
+    }
     if (child == nullptr) return;
     simGame.makeMove(child->move);
     node = child;
@@ -218,7 +228,7 @@ GumbelResult GumbelMCTS::search(Game& game) {
         // 对每个存活动作分配模拟
         for (int idx : alive) {
             for (int s = 0; s < simsPerAction && simsUsed < numSimulations; s++) {
-                simulate(game, &root_node, candidates);
+                simulate(game, &root_node, candidates, idx);
                 simsUsed++;
             }
         }
@@ -242,9 +252,13 @@ GumbelResult GumbelMCTS::search(Game& game) {
         }
     }
 
-    // 剩余预算分配给最终存活的动作
+    // 剩余预算分配给最终存活的最佳动作
+    int bestAlive = alive[0];
+    for (int idx : alive) {
+        if (scores[idx] > scores[bestAlive]) bestAlive = idx;
+    }
     while (simsUsed < numSimulations) {
-        simulate(game, &root_node, candidates);
+        simulate(game, &root_node, candidates, bestAlive);
         simsUsed++;
     }
 

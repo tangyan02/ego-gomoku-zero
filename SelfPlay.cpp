@@ -15,14 +15,15 @@ using namespace std;
 // 线程局部随机数生成器，避免多线程竞态
 static thread_local std::mt19937 gen(std::random_device{}());
 
-void printGame(Game &game, Point action, float rate, vector<float> probs,
-               float temperature, const std::string &prefix, const string selectInfo, Model *model) {
+void printGame(Game &game, Point action, float rate,
+               const std::string &prefix, const string selectInfo) {
     std::string pic = (game.getOtherPlayer() == 1) ? "x" : "o";
     cout << prefix << " " << pic << " " << action.x << ","
             << action.y
             << " rate=" << round(rate * 1000) / 1000
-            << " T=" << round(temperature * 100) / 100
-            << selectInfo << endl;
+            << " T=0"
+            << selectInfo
+            << endl;
 }
 
 // 缓存开局库，只读一次文件
@@ -157,46 +158,15 @@ Game randomGame(Game &game, const string &prefix) {
     return game;
 }
 
-tuple<float, Point, float> getNextMove(int step, float temperatureDefault, int tempDownStep,
-                                       vector<float>& move_probs,
-                                       vector<Point>& moves, MonteCarloTree& mcts)
+tuple<float, Point, float, bool> getNextMove(MonteCarloTree& mcts)
 {
-    //按温度决策
-    float temperature;
-    Point move;
-    float rate;
-
-    // 三段式温度策略：
-    // 步骤 0 ~ tempDownStep:        temperature = temperatureDefault (充分探索)
-    // 步骤 tempDownStep+1 ~ +10:    temperature = 0.3 (有限探索)
-    // 步骤 tempDownStep+11+:        temperature = 0 (贪心)
-    int exploreEndStep = tempDownStep + 10;
-
-    if (step >= exploreEndStep)
-    {
-        //温度为0
-        temperature = 0;
-        move = mcts.get_max_visit_move();
-        rate = 1;
-        return tuple(temperature, move, rate);
-    }
-
-    if (step >= tempDownStep)
-    {
-        //中间阶段，温度0.3
-        temperature = 0.3f;
-    } else {
-        //前期，温度为默认值
-        temperature = temperatureDefault;
-    }
-
-    // 使用温度采样
-    auto [tempMoves, tempProbs] = mcts.get_action_probabilities(temperature);
-    std::discrete_distribution<int> distribution(tempProbs.begin(), tempProbs.end());
-    int index = distribution(gen);
-    move = tempMoves[index];
-    rate = tempProbs[index];
-    return tuple(temperature, move, rate);
+    // 全程贪心（temperature=0），生成最高质量对局
+    // 原因：温度采样会导致松散开局，模型无法学会防守VCT
+    // 参考AlphaZero最终策略：自对弈用纯贪心，确保对局质量
+    float temperature = 0;
+    Point move = mcts.get_max_visit_move();
+    float rate = 1;
+    return tuple(temperature, move, rate, false);
 }
 
 
@@ -276,14 +246,12 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
     int boardSize,
     Context* context,
     int numSimulations,
-    float temperatureDefault,
     float explorationFactor,
     int shard,
     Model &model
 ) {
     MonteCarloTree mcts = MonteCarloTree(&model, explorationFactor, true);
     std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std::vector<float> > > training_data;
-    int tempDownStep = stoi(ConfigReader::get("temperatureDownBeginStep"));
 
     while (true){
         int gameNum = context->counter.fetch_add(1);
@@ -299,43 +267,32 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
 
         game = randomGame(game, prefix);
 
-        int step = 0;
-
         // 每局清空 Transposition Table
         mcts.clearTranspositionTable();
 
         // Tree Reuse：整局共用一棵树
         Node* rootNode = new Node();
-        int earlyWinner = 0;
 
         while (!game.isGameOver()) {
-            long long startTime = getSystemTime();
-
             // 补齐模拟次数
             int existingVisits = rootNode->visits;
             int targetSimulations = max(numSimulations - existingVisits, 1);
 
-            int realNumSimulations = 1;
             mcts.search(game, rootNode, 1);
             if (mcts.root->children.size() > 1)
             {
                 mcts.searchBatched(game, rootNode, targetSimulations - 1, 16);
-                realNumSimulations = targetSimulations;
             } else
             {
                 mcts.search(game, rootNode, 1);
-                realNumSimulations = 2;
             }
 
             vector<Point> moves;
             vector<float> move_probs;
 
-            // 必胜检测
-            auto [currentWin, _, __] = selectActions(game);
-
             tie(moves, move_probs)= mcts.get_action_probabilities();
 
-            auto [temperature, move, rate] = getNextMove(step, temperatureDefault, tempDownStep, move_probs, moves, mcts);
+            auto [temperature, move, rate, forced] = getNextMove(mcts);
 
             vector<float> probs_matrix(game.boardSize * game.boardSize, 0);
             if (!moves[0].isNull()) {
@@ -351,17 +308,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             game.makeMove(move);
             game_data.push_back(record);
 
-            printGame(game, move, rate, probs_matrix, temperature, prefix, rootNode->selectInfo, &model);
-
-            // Early stop：必胜检测
-            if (currentWin) {
-                cout << prefix << " early stop: forced win detected" << endl;
-                earlyWinner = game.getOtherPlayer();
-                rootNode->release();
-                delete rootNode;
-                rootNode = new Node();
-                break;
-            }
+            printGame(game, move, rate, prefix, rootNode->selectInfo);
 
             // Tree Reuse
             Node* selectedChild = nullptr;
@@ -400,14 +347,13 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
                 rootNode = new Node();
             }
 
-            step++;
         }
 
         rootNode->release();
         delete rootNode;
 
-        int winner = earlyWinner;
-        if (winner == 0 && game.lastAction.x >= 0) {
+        int winner = 0;
+        if (game.lastAction.x >= 0) {
             bool win = game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer());
             if (win) {
                 winner = game.getOtherPlayer();
@@ -444,7 +390,6 @@ void recordSelfPlay(
     int boardSize,
     Context* context,
     int numSimulations,
-    float temperatureDefault,
     float explorationFactor,
     int shard,
     Model* sharedModel) {
@@ -455,7 +400,7 @@ void recordSelfPlay(
     std::ofstream file("record/data_" + to_string(shard) + ".txt");
 
     if (file.is_open()) {
-        auto data = selfPlay(boardSize, context, numSimulations, temperatureDefault,
+        auto data = selfPlay(boardSize, context, numSimulations,
                              explorationFactor, shard, *model);
         file << data.size() << endl;
         std::cout << "data count " << data.size() << endl;
