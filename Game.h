@@ -42,7 +42,7 @@ struct PointEqual {
 
 const int MAX_BOARD_SIZE = 20;
 const int CONNECT = 5;
-const int INPUT_CHANNELS = 4;  // 通道: 己方棋子, 对方棋子, 我方VCF点, 对方VCF点
+const int INPUT_CHANNELS = 6;  // 通道: ch0己方棋子, ch1对方棋子, ch2我方VCF点, ch3对方VCF点, ch4我方VCT种子, ch5对方VCT种子
 
 #define NONE_P 0
 #define BLACK 1
@@ -99,7 +99,7 @@ public:
 
     // 高性能版本：直接写入预分配的连续内存，避免动态分配
     // buffer 大小须 >= channels * boardSize * boardSize
-    void getState(float* buffer, int channels) const;
+    void getState(float* buffer, int channels);
 
     bool isGameOver();
 

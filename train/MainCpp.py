@@ -199,6 +199,14 @@ def run_evaluate(cpp_path, model_path1, model_path2, eval_games, eval_simulation
                 elif "Draws:" in part:
                     result["draws"] = int(part.split("Draws:")[1].strip())
 
+    # 防御性检查：如果 wins+losses+draws==0，说明 evaluate 没真正跑（可能是模型加载失败、通道不匹配等）
+    total = result["wins"] + result["losses"] + result["draws"]
+    if total == 0:
+        Logger.infoD(f"⚠️ Evaluate 异常：wins+losses+draws=0，疑似模型加载或对弈失败")
+        result["valid"] = False
+    else:
+        result["valid"] = True
+
     return result
 
 
@@ -487,69 +495,82 @@ if __name__ == "__main__":
                     -1,
                     eval_simulation
                 )
-                elo_history.append({
-                    "total_games": current_eval_point,
-                    "vs_games": baseline_games,
-                    "elo_diff": eval_result["elo_diff"],
-                    "win_rate": eval_result["win_rate"],
-                    "wins": eval_result["wins"],
-                    "losses": eval_result["losses"],
-                    "draws": eval_result["draws"]
-                })
-                Logger.infoD(
-                    f"Elo 评估完成: g{current_eval_point} vs g{baseline_games} → "
-                    f"胜率 {eval_result['win_rate'] * 100:.1f}%, Elo {eval_result['elo_diff']:+.0f}",
-                    "elo.log"
-                )
-                Logger.infoD(json.dumps(elo_history[-1]), "elo.log")
 
-                # Elo 上升时更新 best 模型（best = 最后一个 Elo 没下降的 checkpoint）
-                if eval_result["elo_diff"] >= 0:
-                    current_onnx = f"model/checkpoint_g{current_eval_point}.onnx"
-                    current_pt = f"model/checkpoint_g{current_eval_point}.pt"
-                    if os.path.exists(current_onnx):
-                        shutil.copy2(current_onnx, best_path)
-                        best_pt = best_path.replace('.onnx', '.pt')
-                        if os.path.exists(current_pt):
-                            shutil.copy2(current_pt, best_pt)
-                        Logger.infoD(f"✅ best 模型已更新为 g{current_eval_point}", "elo.log")
+                # 无效评估（wins+losses+draws=0）→ 跳过记录与 best 更新，避免污染历史
+                eval_valid = eval_result.get("valid", True)
+                if not eval_valid:
+                    Logger.infoD(f"⚠️ 跳过本次 Elo 评估记录（结果无效）", "elo.log")
 
-                # 安全阀：连续 3 次 Elo 评估为负（胜率 < 50%），回滚到最后一个正 Elo 的 checkpoint
-                consecutive_decline = 0
-                rollback_target = None
-                for entry in reversed(elo_history):
-                    if entry["elo_diff"] < 0:
-                        consecutive_decline += 1
-                    else:
-                        rollback_target = entry["total_games"]
-                        break
-                if consecutive_decline >= 3 and rollback_target is not None:
-                    rollback_onnx = f"model/checkpoint_g{rollback_target}.onnx"
-                    rollback_pt = f"model/checkpoint_g{rollback_target}.pt"
-                    rollback_pth = f"model/checkpoint_g{rollback_target}.pth"
-                    if os.path.exists(rollback_onnx):
-                        Logger.infoD(
-                            f"⚠️ 安全阀触发：连续 {consecutive_decline} 次 Elo 下降，"
-                            f"回滚到 g{rollback_target}",
-                            "elo.log"
-                        )
-                        # 写入回退标记，前端据此标黄
-                        rollback_info = {
-                            "rollback": True,
-                            "rollback_target": rollback_target
-                        }
-                        Logger.infoD(json.dumps(rollback_info), "elo.log")
-                        shutil.copy2(rollback_onnx, latest_path)
-                        shutil.copy2(rollback_onnx, best_path)
-                        if os.path.exists(rollback_pt):
-                            shutil.copy2(rollback_pt, latest_path.replace('.onnx', '.pt'))
-                            shutil.copy2(rollback_pt, best_path.replace('.onnx', '.pt'))
-                        if os.path.exists(rollback_pth):
-                            shutil.copy2(rollback_pth, "model/checkpoint.pth")
-                            # 重新加载模型权重
-                            model, optimizer = get_model(device, lr, wd)
-                            Logger.infoD(f"模型已回滚到 g{rollback_target}，训练继续")
-                        elo_history.clear()  # 清空历史，重新开始追踪
+                if eval_valid:
+                    elo_history.append({
+                        "total_games": current_eval_point,
+                        "vs_games": baseline_games,
+                        "elo_diff": eval_result["elo_diff"],
+                        "win_rate": eval_result["win_rate"],
+                        "wins": eval_result["wins"],
+                        "losses": eval_result["losses"],
+                        "draws": eval_result["draws"]
+                    })
+                    Logger.infoD(
+                        f"Elo 评估完成: g{current_eval_point} vs g{baseline_games} → "
+                        f"胜率 {eval_result['win_rate'] * 100:.1f}%, Elo {eval_result['elo_diff']:+.0f}",
+                        "elo.log"
+                    )
+                    Logger.infoD(json.dumps(elo_history[-1]), "elo.log")
+
+                    # Elo 上升时更新 best 模型（best = 最后一个 Elo 没下降的 checkpoint）
+                    if eval_result["elo_diff"] >= 0:
+                        current_onnx = f"model/checkpoint_g{current_eval_point}.onnx"
+                        current_pt = f"model/checkpoint_g{current_eval_point}.pt"
+                        if os.path.exists(current_onnx):
+                            shutil.copy2(current_onnx, best_path)
+                            best_pt = best_path.replace('.onnx', '.pt')
+                            if os.path.exists(current_pt):
+                                shutil.copy2(current_pt, best_pt)
+                            Logger.infoD(f"✅ best 模型已更新为 g{current_eval_point}", "elo.log")
+
+                    # 安全阀：连续 N 次 Elo 评估为负（胜率 < 50%），回滚到最后一个正 Elo 的 checkpoint
+                    # 每次判定前重读 application.conf，支持运行时热调阈值
+                    ConfigReader.init()
+                    rollback_threshold = int(
+                        ConfigReader.get('eloRollbackThreshold')
+                        if 'eloRollbackThreshold' in ConfigReader.config else 6
+                    )
+                    consecutive_decline = 0
+                    rollback_target = None
+                    for entry in reversed(elo_history):
+                        if entry["elo_diff"] < 0:
+                            consecutive_decline += 1
+                        else:
+                            rollback_target = entry["total_games"]
+                            break
+                    if consecutive_decline >= rollback_threshold and rollback_target is not None:
+                        rollback_onnx = f"model/checkpoint_g{rollback_target}.onnx"
+                        rollback_pt = f"model/checkpoint_g{rollback_target}.pt"
+                        rollback_pth = f"model/checkpoint_g{rollback_target}.pth"
+                        if os.path.exists(rollback_onnx):
+                            Logger.infoD(
+                                f"⚠️ 安全阀触发：连续 {consecutive_decline} 次 Elo 下降，"
+                                f"回滚到 g{rollback_target}",
+                                "elo.log"
+                            )
+                            # 写入回退标记，前端据此标黄
+                            rollback_info = {
+                                "rollback": True,
+                                "rollback_target": rollback_target
+                            }
+                            Logger.infoD(json.dumps(rollback_info), "elo.log")
+                            shutil.copy2(rollback_onnx, latest_path)
+                            shutil.copy2(rollback_onnx, best_path)
+                            if os.path.exists(rollback_pt):
+                                shutil.copy2(rollback_pt, latest_path.replace('.onnx', '.pt'))
+                                shutil.copy2(rollback_pt, best_path.replace('.onnx', '.pt'))
+                            if os.path.exists(rollback_pth):
+                                shutil.copy2(rollback_pth, "model/checkpoint.pth")
+                                # 重新加载模型权重
+                                model, optimizer = get_model(device, lr, wd)
+                                Logger.infoD(f"模型已回滚到 g{rollback_target}，训练继续")
+                            elo_history.clear()  # 清空历史，重新开始追踪
 
         # 开局库自动刷新：每 openings_refresh_interval 局用 best 模型重新生成平衡开局
         current_openings_point = (total_games_count // openings_refresh_interval) * openings_refresh_interval

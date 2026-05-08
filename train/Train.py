@@ -5,6 +5,19 @@ from torch.utils.data import DataLoader
 from SampleSet import SampleSet
 # 定义训练数据集类
 from Utils import getTimeStr
+from ConfigReader import ConfigReader
+
+
+def _get_new_channel_lr_mult():
+    """读 application.conf 中的 newChannelLrMult；缺省 1.0（不放大）。
+    每次训练 episode 调用一次 init() 重读，支持运行时热调。"""
+    try:
+        ConfigReader.init()
+        if 'newChannelLrMult' in ConfigReader.config:
+            return float(ConfigReader.get('newChannelLrMult'))
+    except Exception:
+        pass
+    return 1.0
 
 
 def train(extended_data, network, device, optimizer, batch_size, i_episode):
@@ -18,6 +31,19 @@ def train(extended_data, network, device, optimizer, batch_size, i_episode):
     running_value_loss = 0.0
     running_policy_loss = 0.0
     n_batches = len(dataloader)
+
+    # 新通道（ch4/ch5）梯度放大系数：从 conv1.weight 的 [in_ch] 维度切片放大
+    new_ch_lr_mult = _get_new_channel_lr_mult()
+    conv1_weight = None
+    if new_ch_lr_mult != 1.0:
+        for name, p in network.named_parameters():
+            if name == 'conv1.weight' or name.endswith('.conv1.weight'):
+                if p.ndim == 4 and p.shape[1] >= 6:
+                    conv1_weight = p
+                    break
+        if conv1_weight is not None and i_episode % 10 == 0:
+            print(f"  [train] newChannelLrMult={new_ch_lr_mult} on conv1.weight ch4/5")
+
     for batch_idx, batch_data in enumerate(dataloader):
         states = batch_data[0].float().to(device)
         mcts_probs = batch_data[1].float().to(device)
@@ -42,6 +68,11 @@ def train(extended_data, network, device, optimizer, batch_size, i_episode):
 
         # 梯度裁剪，防止梯度爆炸
         torch.nn.utils.clip_grad_norm_(network.parameters(), max_norm=1.0)
+
+        # 在裁剪之后单独放大新通道梯度：ch4/ch5 等效 lr × new_ch_lr_mult
+        if conv1_weight is not None and conv1_weight.grad is not None:
+            with torch.no_grad():
+                conv1_weight.grad[:, 4:6].mul_(new_ch_lr_mult)
 
         optimizer.step()
 

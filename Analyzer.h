@@ -27,6 +27,10 @@ vector<Point> getActiveTwoMoves(int player, Game& game, vector<Point>& basedMove
 
 vector<Point> getSleepyTwoMoves(int player, Game& game, vector<Point>& basedMoves);
 
+// VCT 种子点：落子后形成 强迫子(活三/冲四) + 不同方向潜力子(活二/眠三)，且非已必胜局面
+// 用于网络输入特征，让网络感知"潜在可连续进攻"的点
+vector<Point> getVCTSeedMoves(int player, Game& game, vector<Point>& basedMoves);
+
 pair<bool, vector<Point>>
 dfsVCF(int checkPlayer, int currentPlayer, Game& game, Point lastMove, Point lastLastMove, int level = 0,
        vector<Point>* attackPoints = nullptr, vector<Point>* defencePoints = nullptr,

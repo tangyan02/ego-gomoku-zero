@@ -159,10 +159,25 @@ vector<vector<vector<float>>> Game::getState() {
         data[3][p.x][p.y] = 1;
     }
 
+    // 通道4/5: VCT 种子点（强迫子+潜力子的复合特征，让网络感知"潜在可连续进攻"）
+    // 候选点：当前棋子附近 2 格（与 selectActions 对齐）
+    auto seedCandidates = historyMoves.empty()
+                              ? getAllEmptyPoints()
+                              : getNearEmptyPoints(2);
+
+    auto mySeeds = getVCTSeedMoves(currentPlayer, *this, seedCandidates);
+    for (const auto &p : mySeeds) {
+        data[4][p.x][p.y] = 1;
+    }
+    auto oppSeeds = getVCTSeedMoves(otherPlayer, *this, seedCandidates);
+    for (const auto &p : oppSeeds) {
+        data[5][p.x][p.y] = 1;
+    }
+
     return data;
 }
 
-void Game::getState(float* buffer, int channels) const {
+void Game::getState(float* buffer, int channels) {
     const int planeSize = boardSize * boardSize;
     memset(buffer, 0, channels * planeSize * sizeof(float));
 
@@ -189,6 +204,21 @@ void Game::getState(float* buffer, int channels) const {
     auto oppVCF = getOppVCFMoves();
     for (const auto &p : oppVCF) {
         buffer[3 * planeSize + p.x * boardSize + p.y] = 1.0f;
+    }
+
+    // 通道4/5: VCT 种子点
+    if (channels >= 6) {
+        auto seedCandidates = historyMoves.empty()
+                                  ? getAllEmptyPoints()
+                                  : getNearEmptyPoints(2);
+        auto mySeeds = getVCTSeedMoves(currentPlayer, *this, seedCandidates);
+        for (const auto &p : mySeeds) {
+            buffer[4 * planeSize + p.x * boardSize + p.y] = 1.0f;
+        }
+        auto oppSeeds = getVCTSeedMoves(otherPlayer, *this, seedCandidates);
+        for (const auto &p : oppSeeds) {
+            buffer[5 * planeSize + p.x * boardSize + p.y] = 1.0f;
+        }
     }
 }
 

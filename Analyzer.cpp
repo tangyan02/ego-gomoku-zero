@@ -155,6 +155,67 @@ getSleepyTwoMoves(int player, Game &game, std::vector<Point> &basedMoves) {
     return getShapeMoves(player, game, basedMoves, SLEEPY_TWO);
 }
 
+// VCT 种子点判定
+// 条件：
+//   1. 落子 X 后不形成"已必胜"局面（双四/四三/双活三/五连）
+//   2. 至少 1 方向形成"强迫子"：活三 / 冲四（含活四/眠四）
+//   3. 至少 1 不同方向形成"潜力子"：活二 / 眠三
+std::vector<Point>
+getVCTSeedMoves(int player, Game &game, std::vector<Point> &basedMoves) {
+    std::vector<Point> result;
+    for (const auto &point: basedMoves) {
+        if (game.board[point.x][point.y] != 0) continue;
+
+        int forcingFourCount = 0;   // 冲四方向数（含活四/眠四）
+        int activeThreeCount = 0;
+        int activeTwoCount = 0;
+        int sleepyThreeCount = 0;
+        bool isFiveLine = false;
+
+        for (int dir = 0; dir < 4; dir++) {
+            Point action = point;
+            // 优先级从强到弱判定，命中即停（一个方向最强一种棋型）
+            if (checkPointDirectShape(game, player, action, dir, LONG_FIVE)) {
+                isFiveLine = true;
+                break;
+            }
+            if (checkPointDirectShape(game, player, action, dir, ACTIVE_FOUR)) {
+                forcingFourCount++;
+                continue;
+            }
+            if (checkPointDirectShape(game, player, action, dir, SLEEPY_FOUR)) {
+                forcingFourCount++;
+                continue;
+            }
+            if (checkPointDirectShape(game, player, action, dir, ACTIVE_THREE)) {
+                activeThreeCount++;
+                continue;
+            }
+            if (checkPointDirectShape(game, player, action, dir, SLEEPY_THREE)) {
+                sleepyThreeCount++;
+                continue;
+            }
+            if (checkPointDirectShape(game, player, action, dir, ACTIVE_TWO)) {
+                activeTwoCount++;
+                continue;
+            }
+        }
+
+        if (isFiveLine) continue;  // 五连，已必胜
+        if (forcingFourCount >= 2) continue;                                       // 双四
+        if (forcingFourCount >= 1 && activeThreeCount >= 1) continue;              // 四三
+        if (activeThreeCount >= 2) continue;                                       // 双活三
+
+        bool hasForcing = (forcingFourCount >= 1) || (activeThreeCount >= 1);
+        bool hasPotential = (activeTwoCount >= 1) || (sleepyThreeCount >= 1);
+
+        if (hasForcing && hasPotential) {
+            result.emplace_back(point);
+        }
+    }
+    return result;
+}
+
 std::vector<Point>
 getQuickWinMoves(int player, Game &game, vector<Point> &myBasedMoves) {
     //对方没有长5，我方有双4的情况
