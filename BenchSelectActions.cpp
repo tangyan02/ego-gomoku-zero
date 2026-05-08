@@ -166,27 +166,27 @@ void runBenchSelectActions() {
 
     // 基线：selectActions 本身
     auto r0 = benchOne("selectActions (baseline)", games, [](Game& g) {
-        auto [win, _, __] = selectActions(g);
+        auto [win, dummy1, dummy2] = selectActions(g);
         return win;
     });
 
     // 基线 + 5 层 VCT
     auto r5 = benchOne("selectActions + VCT L5", games, [](Game& g) {
-        auto [win, _, __] = selectActions(g);
+        auto [win, dummy1, dummy2] = selectActions(g);
         if (win) return true;
         return checkVCT(g, 5);
     });
 
     // 基线 + 7 层 VCT
     auto r7 = benchOne("selectActions + VCT L7", games, [](Game& g) {
-        auto [win, _, __] = selectActions(g);
+        auto [win, dummy1, dummy2] = selectActions(g);
         if (win) return true;
         return checkVCT(g, 7);
     });
 
     // 基线 + 9 层 VCT
     auto r9 = benchOne("selectActions + VCT L9", games, [](Game& g) {
-        auto [win, _, __] = selectActions(g);
+        auto [win, dummy1, dummy2] = selectActions(g);
         if (win) return true;
         return checkVCT(g, 9);
     });
