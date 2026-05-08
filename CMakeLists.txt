@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 project(ego-gomoku-zero)
 
 if (WIN32)
-    string(APPEND CMAKE_CXX_FLAGS " /W4")
+    string(APPEND CMAKE_CXX_FLAGS " /W4 /utf-8")
 else ()
     string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra")
     string(APPEND CMAKE_C_FLAGS " -Wall -Wextra")

@@ -1,4 +1,4 @@
-#include "BenchSelectActions.h"
+﻿#include "BenchSelectActions.h"
 
 #include "ConfigReader.h"
 #include "Game.h"
