@@ -70,15 +70,14 @@ Game randomGame(Game &game, const string &prefix) {
     double randomNum = dis(gen);
 
     // 开局策略：
-    // 5% 概率：空棋盘直接开始（训练第一手选点能力）
-    // 95% 概率：使用开局库
+    //   5%  空棋盘（训练第一手选点能力）
+    //  75%  生成开局库 (openings_train.txt)
+    //  20%  手工开局库 (openings_manual.txt)
     if (randomNum < 0.05) {
-        // 空棋盘直接开始
         cout << prefix << "empty board start" << endl;
         return game;
     }
 
-    // 使用开局库：50% 生成开局 vs 50% 手工开局
     auto& cache = getCachedOpenings();
     std::vector<std::string>* pool = nullptr;
     string poolName;
@@ -95,8 +94,9 @@ Game randomGame(Game &game, const string &prefix) {
         pool = &cache.generated;
         poolName = "generated";
     } else {
-        // 50% 概率选择生成开局或手工开局
-        if (dis(gen) < 0.5) {
+        // 剩余 95% 概率内：75/95 ≈ 0.789 给生成池，0.211 给手工池
+        // 等价：randomNum 在 [0.05, 0.05+0.75)=[0.05, 0.80) 走生成；[0.80, 1.0) 走手工
+        if (randomNum < 0.80) {
             pool = &cache.generated;
             poolName = "generated";
         } else {

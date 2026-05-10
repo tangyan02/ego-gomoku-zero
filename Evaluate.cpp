@@ -8,6 +8,7 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <tuple>
 #include <memory>
 #include <fstream>
 #include <sstream>
@@ -22,18 +23,17 @@ static std::mt19937 evalRng(std::random_device{}());
 
 /**
  * 加载 openings 文件（只读一次）
- * 评估时合并生成开局 + 手动开局，覆盖更广
+ * 评估时：生成开局 40 条 + 手工开局 10 条 → 全开局模式 = 100 局（每条先后手各 1 局）
  */
 static std::vector<std::string>& getOpenings() {
     static std::vector<std::string> lines;
     static bool loaded = false;
     if (!loaded) {
-        vector<pair<string, vector<string>>> sources = {
-            {"generated_eval", {"openings/openings_eval.txt", "../train/openings/openings_eval.txt", "../openings/openings_eval.txt"}},
-            {"manual",         {"openings/openings_manual.txt", "../train/openings/openings_manual.txt", "../openings/openings_manual.txt"}},
+        vector<tuple<string, vector<string>, int>> sources = {
+            {"generated_eval", {"openings/openings_eval.txt", "../train/openings/openings_eval.txt", "../openings/openings_eval.txt"}, 40},
+            {"manual",         {"openings/openings_manual.txt", "../train/openings/openings_manual.txt", "../openings/openings_manual.txt"}, 10},
         };
-        int maxPerSource = 50;
-        for (auto& [label, paths] : sources) {
+        for (auto& [label, paths, maxPerSource] : sources) {
             for (auto& path : paths) {
                 std::ifstream file(path);
                 if (file.is_open()) {
@@ -66,13 +66,14 @@ static int getGeneratedCount() {
     static int count = -1;
     if (count < 0) {
         count = 0;
+        const int cap = 40;  // 与 getOpenings 的 generated 上限一致
         vector<string> paths = {"openings/openings_eval.txt", "../train/openings/openings_eval.txt", "../openings/openings_eval.txt"};
         for (auto& path : paths) {
             std::ifstream file(path);
             if (file.is_open()) {
                 std::string line;
                 while (std::getline(file, line)) {
-                    if (!line.empty() && count < 50) count++;
+                    if (!line.empty() && count < cap) count++;
                 }
                 file.close();
                 break;

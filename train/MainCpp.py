@@ -226,12 +226,12 @@ def run_generate_openings(cpp_path, model_path):
         f.write(f"coreType={ConfigReader.get('coreType')}\n")  # 跟随训练配置（macOS 用 apple CoreML 加速）
         f.write(f"boardSize={ConfigReader.get('boardSize')}\n")
         f.write(f"modelPath={model_path}\n")
-        f.write(f"genOpenings_trainCount=150\n")
-        f.write(f"genOpenings_evalCount=50\n")
+        f.write(f"genOpenings_trainCount=300\n")
+        f.write(f"genOpenings_evalCount=100\n")
         f.write(f"genOpenings_minMoves=1\n")
         f.write(f"genOpenings_maxMoves=4\n")
         f.write(f"genOpenings_threshold=0.5\n")
-        f.write(f"genOpenings_maxAttempts=20000\n")
+        f.write(f"genOpenings_maxAttempts=40000\n")
         f.write(f"genOpenings_nearCenter=9\n")
 
     env = os.environ.copy()
@@ -281,70 +281,8 @@ def run_generate_openings(cpp_path, model_path):
 
 
 def run_vct_labeling(cpp_path):
-    """调用 C++ vct_label 模式，对 train/record/*.txt 离线标注必胜 value=+1.0
-
-    工作目录：cpp_dir（cmake-build-debug），让 C++ 读到我们写入的 vct_label 配置。
-    通过 vctLabelRecordDir 配置项指向 train/record/ 的绝对路径，让标注作用于真实数据。
-    """
-    if ConfigReader.get('vctLabelEnabled') != 'true':
-        return True
-
-    cpp_dir = os.path.dirname(os.path.abspath(cpp_path))
-    conf_path = os.path.join(cpp_dir, "application.conf")
-
-    # train/record/ 的绝对路径（C++ 工作目录会切到 cpp_dir，所以需要绝对路径）
-    train_record_dir = os.path.abspath(os.path.join(os.getcwd(), "record"))
-
-    # 备份并覆盖配置（仅修改 mode + useVct + vctLabelRecordDir）
-    backup_conf = conf_path + ".bak"
-    if os.path.exists(conf_path):
-        shutil.copy2(conf_path, backup_conf)
-
-    # 复用主 application.conf 内容，覆写关键字段
-    with open(os.path.abspath('application.conf'), 'r') as f:
-        main_conf = f.read()
-
-    with open(conf_path, 'w') as f:
-        for line in main_conf.splitlines():
-            stripped = line.strip()
-            if not stripped or stripped.startswith('#') or stripped.startswith(';'):
-                f.write(line + '\n')
-                continue
-            if stripped.startswith('mode='):
-                f.write('mode=vct_label\n')
-            elif stripped.startswith('useVct'):
-                f.write('useVct=true\n')
-            elif stripped.startswith('vctLabelRecordDir'):
-                f.write(f'vctLabelRecordDir = {train_record_dir}\n')
-            else:
-                f.write(line + '\n')
-
-    # 运行 vct_label 模式（cwd=cpp_dir 才能读到我们刚写的配置）
-    env = os.environ.copy()
-    env['DYLD_LIBRARY_PATH'] = os.path.join(cpp_dir, '..', 'onnxruntime', 'lib')
-
-    start_time = time.time()
-    Logger.infoD("[VCTLabel] 开始对 train/record/ 做离线标注...")
-    process = subprocess.Popen([os.path.abspath(cpp_path)],
-                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                               cwd=cpp_dir, env=env)
-    final_summary = ""
-    for line in process.stdout:
-        decoded = line.decode()
-        print(decoded, end='')
-        if '[VCTLabel] FINISH' in decoded or '[VCTLabel] DONE file=' in decoded:
-            final_summary = decoded.strip()
-    process.wait()
-
-    # 恢复原配置
-    if os.path.exists(backup_conf):
-        shutil.copy2(backup_conf, conf_path)
-        os.remove(backup_conf)
-
-    elapsed = time.time() - start_time
-    Logger.infoD(f"[VCTLabel] 标注完成 用时 {elapsed:.1f}s | {final_summary}")
-
-    return process.returncode == 0
+    """[已移除] VCT 离线标注机制已废弃"""
+    return True
 
 
 if __name__ == "__main__":
@@ -425,10 +363,6 @@ if __name__ == "__main__":
         if retcode != 0:
             Logger.infoD(f"C++ 自对弈进程异常退出 (code {retcode})，重试本 episode")
             continue
-
-        # VCT 离线标注：在自对弈完成后、读 record 之前对 record/*.txt 标注必胜
-        # 必胜样本 value 直接覆盖为 +1.0，绕过 TD bootstrap，强化 VCT 学习信号
-        run_vct_labeling(cppPathEval)
 
         training_data = Bridge.getFileData(num_processes)
         if not training_data:

@@ -136,7 +136,7 @@ vector<vector<vector<float>>> Game::getState() {
     vector<vector<vector<float>>> data(INPUT_CHANNELS, vector<vector<float>>(boardSize, vector<float>(boardSize, 0.0f)));
 
     int otherPlayer = getOtherPlayer();
-    //当前局面
+    //当前局面：ch0 我方棋子 / ch1 对方棋子
     for (int row = 0; row < boardSize; row++) {
         for (int col = 0; col < boardSize; col++) {
             if (board[row][col] == currentPlayer) {
@@ -147,32 +147,37 @@ vector<vector<vector<float>>> Game::getState() {
         }
     }
 
-    // 通道2: 我方VCF进攻点
-    auto myVCF = getMyVCFMoves();
-    for (const auto &p : myVCF) {
+    // ch2 对方 VCF 点
+    auto oppVCF = getOppVCFMoves();
+    for (const auto &p : oppVCF) {
         data[2][p.x][p.y] = 1;
     }
 
-    // 通道3: 对方VCF进攻点
-    auto oppVCF = getOppVCFMoves();
-    for (const auto &p : oppVCF) {
-        data[3][p.x][p.y] = 1;
-    }
+    // 棋型判定候选点（与 selectActions 对齐：附近 2 格，空盘则整盘）
+    auto basedMoves = historyMoves.empty() ? getAllEmptyPoints() : getNearEmptyPoints(2);
 
-    // 通道4/5: VCT 种子点（强迫子+潜力子的复合特征，让网络感知"潜在可连续进攻"）
-    // 候选点：当前棋子附近 2 格（与 selectActions 对齐）
-    auto seedCandidates = historyMoves.empty()
-                              ? getAllEmptyPoints()
-                              : getNearEmptyPoints(2);
+    auto fillPlane = [&](int channel, const std::vector<Point> &pts) {
+        for (const auto &p : pts) data[channel][p.x][p.y] = 1;
+    };
 
-    auto mySeeds = getVCTSeedMoves(currentPlayer, *this, seedCandidates);
-    for (const auto &p : mySeeds) {
-        data[4][p.x][p.y] = 1;
-    }
-    auto oppSeeds = getVCTSeedMoves(otherPlayer, *this, seedCandidates);
-    for (const auto &p : oppSeeds) {
-        data[5][p.x][p.y] = 1;
-    }
+    // 活三点 / 冲四点（冲四 = 活四 ∪ 眠四）
+    auto myThree = getActiveThreeMoves(currentPlayer, *this, basedMoves);
+    fillPlane(3, myThree);
+    auto myActiveFour = getActiveFourMoves(currentPlayer, *this, basedMoves);
+    auto mySleepyFour = getSleepyFourMoves(currentPlayer, *this, basedMoves);
+    fillPlane(4, myActiveFour);
+    fillPlane(4, mySleepyFour);
+
+    auto oppThree = getActiveThreeMoves(otherPlayer, *this, basedMoves);
+    fillPlane(5, oppThree);
+    auto oppActiveFour = getActiveFourMoves(otherPlayer, *this, basedMoves);
+    auto oppSleepyFour = getSleepyFourMoves(otherPlayer, *this, basedMoves);
+    fillPlane(6, oppActiveFour);
+    fillPlane(6, oppSleepyFour);
+
+    // ch7: 对方双活三点（≥2 方向活三，强威胁，必须防守）
+    auto oppDoubleThree = getDoubleActiveThreeMoves(otherPlayer, *this, basedMoves);
+    fillPlane(7, oppDoubleThree);
 
     return data;
 }
@@ -194,32 +199,36 @@ void Game::getState(float* buffer, int channels) {
         }
     }
 
-    // 通道2: 我方VCF进攻点
-    auto myVCF = getMyVCFMoves();
-    for (const auto &p : myVCF) {
-        buffer[2 * planeSize + p.x * boardSize + p.y] = 1.0f;
-    }
+    auto setCh = [&](int channel, const std::vector<Point> &pts) {
+        for (const auto &p : pts) buffer[channel * planeSize + p.x * boardSize + p.y] = 1.0f;
+    };
 
-    // 通道3: 对方VCF进攻点
+    // ch2 对方 VCF
     auto oppVCF = getOppVCFMoves();
-    for (const auto &p : oppVCF) {
-        buffer[3 * planeSize + p.x * boardSize + p.y] = 1.0f;
-    }
+    setCh(2, oppVCF);
 
-    // 通道4/5: VCT 种子点
-    if (channels >= 6) {
-        auto seedCandidates = historyMoves.empty()
-                                  ? getAllEmptyPoints()
-                                  : getNearEmptyPoints(2);
-        auto mySeeds = getVCTSeedMoves(currentPlayer, *this, seedCandidates);
-        for (const auto &p : mySeeds) {
-            buffer[4 * planeSize + p.x * boardSize + p.y] = 1.0f;
-        }
-        auto oppSeeds = getVCTSeedMoves(otherPlayer, *this, seedCandidates);
-        for (const auto &p : oppSeeds) {
-            buffer[5 * planeSize + p.x * boardSize + p.y] = 1.0f;
-        }
-    }
+    if (channels < 7) return;
+
+    auto basedMoves = historyMoves.empty() ? getAllEmptyPoints() : getNearEmptyPoints(2);
+
+    auto myThree = getActiveThreeMoves(currentPlayer, *this, basedMoves);
+    setCh(3, myThree);
+    auto myActiveFour = getActiveFourMoves(currentPlayer, *this, basedMoves);
+    auto mySleepyFour = getSleepyFourMoves(currentPlayer, *this, basedMoves);
+    setCh(4, myActiveFour);
+    setCh(4, mySleepyFour);
+
+    auto oppThree = getActiveThreeMoves(otherPlayer, *this, basedMoves);
+    setCh(5, oppThree);
+    auto oppActiveFour = getActiveFourMoves(otherPlayer, *this, basedMoves);
+    auto oppSleepyFour = getSleepyFourMoves(otherPlayer, *this, basedMoves);
+    setCh(6, oppActiveFour);
+    setCh(6, oppSleepyFour);
+
+    if (channels < 8) return;
+
+    auto oppDoubleThree = getDoubleActiveThreeMoves(otherPlayer, *this, basedMoves);
+    setCh(7, oppDoubleThree);
 }
 
 bool Game::isGameOver() {

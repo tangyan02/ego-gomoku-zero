@@ -10,7 +10,6 @@
 #include "Evaluate.h"
 #include "GenerateOpenings.h"
 #include "GumbelMCTS.h"
-#include "VCTLabeler.h"
 #include "BenchSelectActions.h"
 #include <memory>
 
@@ -82,7 +81,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (mode == "vct_label") {
-        runVCTLabeling();
+        std::cout << "[Main] vct_label mode has been removed" << std::endl;
         return 0;
     }
 

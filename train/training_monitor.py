@@ -482,7 +482,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
             <h2 style="margin-bottom:2px;">📊 训练进度</h2>
             <div id="trainProgress" style="font-size:11px;color:#aaa;">等待数据...</div>
             <div style="height:1px;background:#2a2a4a;margin:4px 0;"></div>
-            <div id="vctProgress" style="font-size:11px;color:#aaa;">VCT标注: 等待中</div>
+            <div id="vctProgress" style="display:none;font-size:11px;color:#aaa;">VCT标注: 已废弃</div>
         </div>
         <div class="panel" style="flex: 1.2;">
             <h2>🏆 评估对战 <span id="evalStatus" style="font-size:11px;color:#888;font-weight:normal;"></span></h2>

@@ -82,7 +82,6 @@ set(COMMON_SOURCES
     Model.cpp Model.h ConfigReader.cpp ConfigReader.h
     Bridge.cpp Bridge.h Evaluate.cpp Evaluate.h
     GenerateOpenings.cpp GenerateOpenings.h
-    VCTLabeler.cpp VCTLabeler.h
     BenchSelectActions.cpp BenchSelectActions.h
 )
 
