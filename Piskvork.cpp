@@ -22,7 +22,7 @@ static bool piskvorkMessageEnable;
 static Game* game;
 
 static int firstCost = -1;
-static double exp_factor = 3.0;
+static double exp_factor = 5.0;
 static int searchThreadCount = 1;
 
 static Node* node;
@@ -185,7 +185,7 @@ bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum, int 
     int total = node->visits;
 	if (passTime / (float)thisTimeOut > 0.25) {
         //安全比例，减少误差
-        double beta = 1.5;
+        double beta = 2;
         Point maxP;
 
         //最大值
