@@ -42,7 +42,7 @@ struct PointEqual {
 
 const int MAX_BOARD_SIZE = 20;
 const int CONNECT = 5;
-// 8 通道特征
+// 9 通道特征
 //   ch0 我方棋子 (0/1)
 //   ch1 对方棋子 (0/1)
 //   ch2 对方 VCF 点 (0/1)
@@ -51,7 +51,8 @@ const int CONNECT = 5;
 //   ch5 对方活三点
 //   ch6 对方冲四点
 //   ch7 对方双活三点（落子后 ≥2 方向形成活三）
-const int INPUT_CHANNELS = 8;
+//   ch8 我方双活三点
+const int INPUT_CHANNELS = 9;
 
 #define NONE_P 0
 #define BLACK 1

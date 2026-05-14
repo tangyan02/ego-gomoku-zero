@@ -179,6 +179,10 @@ vector<vector<vector<float>>> Game::getState() {
     auto oppDoubleThree = getDoubleActiveThreeMoves(otherPlayer, *this, basedMoves);
     fillPlane(7, oppDoubleThree);
 
+    // ch8: 我方双活三点（≥2 方向活三，落子后必胜）
+    auto myDoubleThree = getDoubleActiveThreeMoves(currentPlayer, *this, basedMoves);
+    fillPlane(8, myDoubleThree);
+
     return data;
 }
 
@@ -229,6 +233,11 @@ void Game::getState(float* buffer, int channels) {
 
     auto oppDoubleThree = getDoubleActiveThreeMoves(otherPlayer, *this, basedMoves);
     setCh(7, oppDoubleThree);
+
+    if (channels < 9) return;
+
+    auto myDoubleThree = getDoubleActiveThreeMoves(currentPlayer, *this, basedMoves);
+    setCh(8, myDoubleThree);
 }
 
 bool Game::isGameOver() {
