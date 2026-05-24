@@ -42,26 +42,21 @@ void runGenerateOpenings() {
     int center = boardSize / 2;
     mt19937 rng(random_device{}());
 
-    // 加权步数分布
-    vector<double> moveWeights;
-    for (int m = minMoves; m <= maxMoves; m++) {
-        if (m == 1)      moveWeights.push_back(15);
-        else if (m == 2) moveWeights.push_back(35);
-        else if (m == 3) moveWeights.push_back(35);
-        else if (m == 4) moveWeights.push_back(15);
-        else             moveWeights.push_back(10);
-    }
+    // 步数均匀抽样：minMoves..maxMoves 等概率
+    int numBuckets = maxMoves - minMoves + 1;
+    vector<double> moveWeights(numBuckets, 1.0);
     discrete_distribution<int> moveDist(moveWeights.begin(), moveWeights.end());
 
     struct Opening {
         vector<Point> moves;
         float balanceScore;
+        int numMoves;
     };
     vector<Opening> candidates;
     int attempts = 0;
 
-    // 渐进阈值（单视角 |value|）
-    float thresholds[] = {threshold * 0.2f, threshold * 0.3f, threshold * 0.4f, threshold * 0.6f};
+    // 渐进阈值（单视角 |value|）：全部要求 < 0.1，前 3 档用于 log 细分
+    float thresholds[] = {threshold * 0.05f, threshold * 0.1f, threshold * 0.15f, threshold * 0.2f};
     int numThresholds = 4;
     float maxThreshold = thresholds[numThresholds - 1];
 
@@ -69,12 +64,19 @@ void runGenerateOpenings() {
     int planeSize = boardSize * boardSize;
     vector<float> stateBuf(INPUT_CHANNELS * planeSize, 0.0f);
 
-    float strictThreshold = thresholds[0];
-    int strictCount = 0;
+    // 步数桶配额：每个步数最多收集 bucketCap 个候选（最宽阈值下）
+    int bucketCap = (numOpenings + numBuckets - 1) / numBuckets;  // 向上取整
+    vector<int> bucketCount(numBuckets, 0);
+    vector<int> bucketAttempts(numBuckets, 0);  // 每个桶被尝试的次数（含已满后跳过的）
 
     while (attempts < maxAttempts) {
         attempts++;
         int numMoves = moveDist(rng) + minMoves;
+        int bucketIdx = numMoves - minMoves;
+        bucketAttempts[bucketIdx]++;
+
+        // 桶配额：该步数已达上限则跳过本次尝试（不浪费推理）
+        if (bucketCount[bucketIdx] >= bucketCap) continue;
 
         // 用 policy 引导落子
         Game game(boardSize);
@@ -147,30 +149,52 @@ void runGenerateOpenings() {
                 op.moves.emplace_back(p.x - center, p.y - center);
             }
             op.balanceScore = balanceScore;
+            op.numMoves = numMoves;
             candidates.push_back(op);
-            if (balanceScore < strictThreshold) {
-                strictCount++;
-                if (strictCount >= numOpenings) break;  // 最严档已够，提前退出
+            bucketCount[bucketIdx]++;
+
+            // 提前退出：所有桶都达到 bucketCap 即结束
+            bool allBucketsFull = true;
+            for (int b = 0; b < numBuckets; b++) {
+                if (bucketCount[b] < bucketCap) { allBucketsFull = false; break; }
             }
+            if (allBucketsFull) break;
         }
     }
 
-    // 按 balanceScore 排序，渐进选取
-    sort(candidates.begin(), candidates.end(),
-         [](const Opening& a, const Opening& b) { return a.balanceScore < b.balanceScore; });
+    // 按桶分组，桶内按 balanceScore 排序
+    vector<vector<Opening>> bucketCands(numBuckets);
+    for (auto& op : candidates) {
+        int idx = op.numMoves - minMoves;
+        if (idx >= 0 && idx < numBuckets) bucketCands[idx].push_back(op);
+    }
+    for (auto& bc : bucketCands) {
+        sort(bc.begin(), bc.end(),
+             [](const Opening& a, const Opening& b) { return a.balanceScore < b.balanceScore; });
+    }
 
+    // 每桶按 bucketCap 选取（已经按 score 排序，直接拿前 bucketCap 个）
+    int perBucketTarget = bucketCap;
     vector<Opening> balanced;
-    for (int t = 0; t < numThresholds && (int)balanced.size() < numOpenings; t++) {
-        float curThreshold = thresholds[t];
-        for (auto& op : candidates) {
-            if ((int)balanced.size() >= numOpenings) break;
-            if (op.balanceScore < curThreshold) {
-                bool dup = false;
-                for (auto& sel : balanced) {
-                    if (sel.moves == op.moves) { dup = true; break; }
-                }
-                if (!dup) balanced.push_back(op);
+    for (int b = 0; b < numBuckets; b++) {
+        int take = min((int)bucketCands[b].size(), perBucketTarget);
+        for (int i = 0; i < take; i++) balanced.push_back(bucketCands[b][i]);
+    }
+
+    // 不足补齐：若某桶凑不够，按总目标用其他桶的次优样本补
+    if ((int)balanced.size() < numOpenings) {
+        // 候选池里剩余的（每桶 perBucketTarget 之后的）
+        vector<Opening> spare;
+        for (int b = 0; b < numBuckets; b++) {
+            for (int i = perBucketTarget; i < (int)bucketCands[b].size(); i++) {
+                spare.push_back(bucketCands[b][i]);
             }
+        }
+        sort(spare.begin(), spare.end(),
+             [](const Opening& a, const Opening& b) { return a.balanceScore < b.balanceScore; });
+        int need = numOpenings - (int)balanced.size();
+        for (int i = 0; i < min(need, (int)spare.size()); i++) {
+            balanced.push_back(spare[i]);
         }
     }
 
@@ -179,10 +203,30 @@ void runGenerateOpenings() {
         return;
     }
 
-    shuffle(balanced.begin(), balanced.end(), rng);
+    // train/eval 切分：每个桶内按比例切，保证两集合都步数均匀
+    vector<vector<Opening>> finalBuckets(numBuckets);
+    for (auto& op : balanced) {
+        int idx = op.numMoves - minMoves;
+        if (idx >= 0 && idx < numBuckets) finalBuckets[idx].push_back(op);
+    }
+    // 每桶按 numTrain : numEval 比例切
+    vector<Opening> trainOpenings, evalOpenings;
     float totalTarget = (float)(numTrain + numEval);
-    int evalCount = min(numEval, max(1, (int)(balanced.size() * numEval / totalTarget)));
-    int trainCount = min(numTrain, (int)balanced.size() - evalCount);
+    for (int b = 0; b < numBuckets; b++) {
+        auto& bc = finalBuckets[b];
+        // 桶内打散（balanceScore 顺序无所谓了，结果两集合都要打散）
+        shuffle(bc.begin(), bc.end(), rng);
+        int evalCnt = (int)((float)bc.size() * numEval / totalTarget + 0.5f);
+        evalCnt = min(evalCnt, (int)bc.size());
+        int trainCnt = (int)bc.size() - evalCnt;
+        for (int i = 0; i < trainCnt; i++) trainOpenings.push_back(bc[i]);
+        for (int i = trainCnt; i < (int)bc.size(); i++) evalOpenings.push_back(bc[i]);
+    }
+    // 全集再打散一次（让不同桶混合）
+    shuffle(trainOpenings.begin(), trainOpenings.end(), rng);
+    shuffle(evalOpenings.begin(), evalOpenings.end(), rng);
+    int trainCount = (int)trainOpenings.size();
+    int evalCount = (int)evalOpenings.size();
 
     auto writeOpenings = [](const string& path, const vector<Opening>& openings) {
         string dir = path.substr(0, path.find_last_of('/'));
@@ -202,9 +246,6 @@ void runGenerateOpenings() {
         }
         file.close();
     };
-
-    vector<Opening> trainOpenings(balanced.begin(), balanced.begin() + trainCount);
-    vector<Opening> evalOpenings(balanced.begin() + trainCount, balanced.begin() + trainCount + evalCount);
 
     writeOpenings("openings/openings_train.txt", trainOpenings);
     writeOpenings("openings/openings_eval.txt", evalOpenings);
@@ -226,4 +267,39 @@ void runGenerateOpenings() {
          << "阈值 " << thresholds[0] << "/" << thresholds[1] << "/" << thresholds[2] << "/" << thresholds[3]
          << "，各档 " << tierInfo
          << "，耗时 " << elapsedSec << "s" << endl;
+
+    // 步数分布
+    string stepInfo;
+    for (int b = 0; b < numBuckets; b++) {
+        int trainCnt = 0, evalCnt = 0;
+        for (auto& op : trainOpenings) if (op.numMoves == minMoves + b) trainCnt++;
+        for (auto& op : evalOpenings) if (op.numMoves == minMoves + b) evalCnt++;
+        stepInfo += (b > 0 ? " " : "") + to_string(minMoves + b) + "步:" +
+                    to_string(trainCnt) + "/" + to_string(evalCnt);
+    }
+    cout << "[Openings] 步数分布（train/eval）：" << stepInfo << endl;
+
+    // 按步数桶细分：尝试次数（含跳过的）+ 通过候选数 + 各 value 档分布
+    cout << "[Openings] 按步数桶分档（尝试 / 候选 / 通过率 / <t1<t2<t3<t4）：" << endl;
+    for (int b = 0; b < numBuckets; b++) {
+        int totalInBucket = 0;
+        vector<int> tierCounts(numThresholds, 0);
+        for (auto& op : candidates) {
+            if (op.numMoves != minMoves + b) continue;
+            totalInBucket++;
+            for (int t = 0; t < numThresholds; t++) {
+                if (op.balanceScore < thresholds[t]) tierCounts[t]++;
+            }
+        }
+        float bucketPassRate = bucketAttempts[b] > 0
+                               ? (float)totalInBucket / bucketAttempts[b] * 100
+                               : 0.0f;
+        cout << "[Openings]   " << (minMoves + b) << "步：尝试=" << bucketAttempts[b]
+             << " 候选=" << totalInBucket
+             << " 通过率=" << bucketPassRate << "%";
+        for (int t = 0; t < numThresholds; t++) {
+            cout << (t == 0 ? " 各档=" : "/") << tierCounts[t];
+        }
+        cout << endl;
+    }
 }

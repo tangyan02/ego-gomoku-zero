@@ -227,11 +227,11 @@ def run_generate_openings(cpp_path, model_path):
         f.write(f"boardSize={ConfigReader.get('boardSize')}\n")
         f.write(f"modelPath={model_path}\n")
         f.write(f"genOpenings_trainCount=300\n")
-        f.write(f"genOpenings_evalCount=100\n")
+        f.write(f"genOpenings_evalCount=50\n")
         f.write(f"genOpenings_minMoves=1\n")
         f.write(f"genOpenings_maxMoves=4\n")
         f.write(f"genOpenings_threshold=0.5\n")
-        f.write(f"genOpenings_maxAttempts=40000\n")
+        f.write(f"genOpenings_maxAttempts=80000\n")
         f.write(f"genOpenings_nearCenter=9\n")
 
     env = os.environ.copy()
@@ -258,10 +258,10 @@ def run_generate_openings(cpp_path, model_path):
     # 统计生成结果并写日志
     train_count = sum(1 for _ in open(src_train)) if os.path.exists(src_train) and os.path.getsize(src_train) > 0 else 0
     eval_count = sum(1 for _ in open(src_eval)) if os.path.exists(src_eval) and os.path.getsize(src_eval) > 0 else 0
-    log_msg = f"开局生成完成: train={train_count}, eval={eval_count}"
-    if openings_output:
-        log_msg += f" | {openings_output[-1]}"
-    Logger.infoD(log_msg, "openings.log")
+    Logger.infoD(f"开局生成完成: train={train_count}, eval={eval_count}", "openings.log")
+    # 把 C++ 端的 [Openings] 所有详细日志逐行落到 openings.log（含尝试次数 / 通过率 / 各档 / 步数桶细分）
+    for line in openings_output:
+        Logger.infoD(line, "openings.log")
 
     # 目标目录列表：train/openings + 自对弈 C++ 目录（如果与 eval 不同）
     dst_dirs = ["openings"]

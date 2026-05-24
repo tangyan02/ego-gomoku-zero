@@ -782,6 +782,14 @@ function connectSSE() {
     });
     es.addEventListener('move', e => {
         const d = JSON.parse(e.data);
+        // 去重：基于 step 和坐标，避免 SSE 重连导致重复
+        if (d.step && d.step <= liveGame.moves.length) {
+            // 如果当前已经有这一步且坐标相同，跳过
+            const existing = liveGame.moves[d.step - 1];
+            if (existing && existing.row === d.move.row && existing.col === d.move.col) {
+                return;
+            }
+        }
         liveGame.moves.push(d.move);
         drawBoard();
         updateMoveInfo();
@@ -907,6 +915,10 @@ function connectSSE() {
     });
     es.addEventListener('elo', e => {
         const d = JSON.parse(e.data);
+        // 去重：相同 total_games 不重复 push（避免 SSE 重连导致重复事件）
+        if (eloData.some(x => x.total_games === d.total_games && x.elo_diff === d.elo_diff)) {
+            return;
+        }
         eloData.push(d);
         cumElo += (d.elo_diff || 0);
         evalState.active = false;

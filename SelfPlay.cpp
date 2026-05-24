@@ -71,8 +71,8 @@ Game randomGame(Game &game, const string &prefix) {
 
     // 开局策略：
     //   5%  空棋盘（训练第一手选点能力）
-    //  75%  生成开局库 (openings_train.txt)
-    //  20%  手工开局库 (openings_manual.txt)
+    //  95%  生成开局库 (openings_train.txt)
+    //   手工开局已废弃（评估/训练统一用生成开局做公平对比）
     if (randomNum < 0.05) {
         cout << prefix << "empty board start" << endl;
         return game;
@@ -87,22 +87,13 @@ Game randomGame(Game &game, const string &prefix) {
         return game;
     }
 
-    if (cache.generated.empty()) {
-        pool = &cache.manual;
-        poolName = "manual";
-    } else if (cache.manual.empty()) {
+    // 优先用生成开局；生成池为空时退化为手工（兜底）
+    if (!cache.generated.empty()) {
         pool = &cache.generated;
         poolName = "generated";
     } else {
-        // 剩余 95% 概率内：75/95 ≈ 0.789 给生成池，0.211 给手工池
-        // 等价：randomNum 在 [0.05, 0.05+0.75)=[0.05, 0.80) 走生成；[0.80, 1.0) 走手工
-        if (randomNum < 0.80) {
-            pool = &cache.generated;
-            poolName = "generated";
-        } else {
-            pool = &cache.manual;
-            poolName = "manual";
-        }
+        pool = &cache.manual;
+        poolName = "manual";
     }
 
     std::uniform_int_distribution<int> disInt(0, pool->size() - 1);
@@ -273,7 +264,14 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         // Tree Reuse：整局共用一棵树
         Node* rootNode = new Node();
 
+        // 提前终止标记（root selectActions win=true 时设置）
+        int winnerOverride = 0;
+
         while (!game.isGameOver()) {
+            // 在 MCTS 之前先做一次 selectActions（我方视角，game 还未 makeMove）
+            // win=true 表示 root 局面我方有快速路径必胜手（长5/活四/VCF）
+            auto [rootWin, rootMoves, rootLabel] = selectActions(game);
+
             // 补齐模拟次数
             int existingVisits = rootNode->visits;
             int targetSimulations = max(numSimulations - existingVisits, 1);
@@ -304,11 +302,27 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
 
             auto state = game.getState();
             float mcts_q = (rootNode->visits > 0) ? (float)(rootNode->value_sum / rootNode->visits) : 0.0f;
-            std::tuple record(state, game.currentPlayer, probs_matrix, mcts_q);
+            int currentPlayerBeforeMove = game.currentPlayer;
+            std::tuple record(state, currentPlayerBeforeMove, probs_matrix, mcts_q);
             game.makeMove(move);
             game_data.push_back(record);
 
             printGame(game, move, rate, prefix, rootNode->selectInfo);
+
+            // 1) 直接 5 连：严格必胜
+            bool currentWin = game.checkWin(game.lastAction.x, game.lastAction.y, currentPlayerBeforeMove);
+            if (currentWin) {
+                winnerOverride = currentPlayerBeforeMove;
+                break;
+            }
+
+            // 2) root selectActions win=true：MCTS 之前已证明我方有必胜手（长5/活四/VCF）
+            //    move 来自 max visit，且 MCTS 内部 children 仅限 rootMoves，所以走的就是必胜手
+            //    剩余 VCF 链交给后续 step 的 checkWin 自动收尾过于慢，这里直接终止
+            if (rootWin) {
+                winnerOverride = currentPlayerBeforeMove;
+                break;
+            }
 
             // Tree Reuse
             Node* selectedChild = nullptr;
@@ -352,18 +366,17 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         rootNode->release();
         delete rootNode;
 
-        int winner = 0;
-        if (game.lastAction.x >= 0) {
-            bool win = game.checkWin(game.lastAction.x, game.lastAction.y, game.getOtherPlayer());
-            if (win) {
-                winner = game.getOtherPlayer();
-            }
-        }
+        // winnerOverride 在每步 makeMove 后由 checkWin 即时设置；
+        // 走到这里时若仍为 0，说明循环是因棋盘下满或其它非胜负原因退出，视为平局。
+        int winner = winnerOverride;
 
         // n-step TD bootstrapping
         static int td_n = stoi(ConfigReader::getOrDefault("tdN", "5"));
         static float td_gamma = stof(ConfigReader::getOrDefault("tdGamma", "0.7"));
         float gamma_n = pow(td_gamma, td_n);
+        // 五子棋黑白严格交替，td_n 步后 player 是否反转由奇偶决定
+        // mcts_q 是 player[t+td_n] 视角，若与 player[t] 不同需翻转符号
+        float perspective_sign = (td_n % 2 == 0) ? 1.0f : -1.0f;
 
         int game_len = game_data.size();
         for (int t = 0; t < game_len; t++) {
@@ -372,7 +385,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
 
             float value;
             if (t + td_n < game_len) {
-                float mcts_q_tn = get<3>(game_data[t + td_n]);
+                float mcts_q_tn = perspective_sign * get<3>(game_data[t + td_n]);
                 value = gamma_n * mcts_q_tn + (1 - gamma_n) * final_value;
             } else {
                 value = final_value;

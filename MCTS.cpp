@@ -124,36 +124,49 @@ void MonteCarloTree::simulate(Game game) {
         auto [win, moves, selectInfo] = selectActions(game);
         node->selectInfo = selectInfo;
 
-        float eva_value;
-        std::vector<float> probs_metrix;
-
-        // Transposition Table 查询
-        uint64_t hash = game.zobristHash;
-        auto ttIt = transpositionTable.find(hash);
-        if (ttIt != transpositionTable.end()) {
-            // 命中缓存
-            eva_value = ttIt->second.value;
-            probs_metrix = ttIt->second.priors;
-        } else {
-            // 未命中，推理并缓存
-            const int channels = INPUT_CHANNELS;
-            float stateBuffer[channels * MAX_BOARD_SIZE * MAX_BOARD_SIZE];
-            game.getState(stateBuffer, channels);
-            auto result = model->evaluate_state(stateBuffer, channels, game.boardSize, game.boardSize);
-            eva_value = result.first;
-            probs_metrix = result.second;
-            transpositionTable[hash] = TTEntry{eva_value, probs_metrix};
-        }
-
-        value = eva_value;
         if (win) {
+            // 必胜局面：跳过推理，value=+1
             value = 1;
+            // 仅 root 第一次 expand（让 SelfPlay 能拿到 move）；非 root 永久 leaf
+            if (node == root && node->isLeaf()) {
+                // 用均匀 prior（不调推理）
+                std::vector<float> uniform_priors(game.boardSize * game.boardSize, 0.0f);
+                if (!moves.empty()) {
+                    float p = 1.0f / moves.size();
+                    for (auto& m : moves) {
+                        uniform_priors[m.x * game.boardSize + m.y] = p;
+                    }
+                }
+                node->expand(game, moves, uniform_priors);
+            }
         } else {
+            float eva_value;
+            std::vector<float> probs_metrix;
+
+            // Transposition Table 查询
+            uint64_t hash = game.zobristHash;
+            auto ttIt = transpositionTable.find(hash);
+            if (ttIt != transpositionTable.end()) {
+                // 命中缓存
+                eva_value = ttIt->second.value;
+                probs_metrix = ttIt->second.priors;
+            } else {
+                // 未命中，推理并缓存
+                const int channels = INPUT_CHANNELS;
+                float stateBuffer[channels * MAX_BOARD_SIZE * MAX_BOARD_SIZE];
+                game.getState(stateBuffer, channels);
+                auto result = model->evaluate_state(stateBuffer, channels, game.boardSize, game.boardSize);
+                eva_value = result.first;
+                probs_metrix = result.second;
+                transpositionTable[hash] = TTEntry{eva_value, probs_metrix};
+            }
+
+            value = eva_value;
             if (useNoice && node == root) {
                 add_dirichlet_noise(probs_metrix, 0.25, 0.03, rng);
             }
+            node->expand(game, moves, probs_metrix);
         }
-        node->expand(game, moves, probs_metrix);
     }
 
     backpropagate(node, -value);
@@ -220,14 +233,31 @@ void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, 
             leaves.push_back(selectLeafWithVirtualLoss(game));
         }
 
-        // 2. 收集需要网络评估的叶子：先查 TT，命中则直接标记为不需 eval
+        // 2. 收集需要网络评估的叶子：先调 selectActions 判 win，再查 TT
+        // win 叶子：跳过推理（value 强制 +1，仅 root leaf 时 expand 一次）
+        // TT 命中：跳过推理但用缓存值
+        // TT 未命中：进 batch 推理
         std::vector<int> eval_indices;       // leaves 中需要网络评估的索引
         std::vector<int> tt_hit_indices;     // leaves 中 TT 命中的索引
+        std::vector<int> win_indices;        // leaves 中 win=true 的索引
+        std::vector<bool> leaf_is_win(current_batch, false);
+        std::vector<std::vector<Point>> leaf_moves(current_batch);
+        std::vector<std::string> leaf_selectInfo(current_batch);
         std::vector<std::vector<float>> batch_states;
         eval_indices.reserve(current_batch);
 
         for (int i = 0; i < current_batch; i++) {
             if (leaves[i].leaf != nullptr && leaves[i].needs_eval) {
+                auto [win, moves, selectInfo] = selectActions(leaves[i].game);
+                leaf_is_win[i] = win;
+                leaf_moves[i] = moves;
+                leaf_selectInfo[i] = selectInfo;
+
+                if (win) {
+                    win_indices.push_back(i);
+                    continue;  // 跳过 TT 查询和推理
+                }
+
                 // 查 Transposition Table
                 uint64_t hash = leaves[i].game.zobristHash;
                 auto ttIt = transpositionTable.find(hash);
@@ -257,24 +287,49 @@ void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, 
                 flat_batch.data(), eval_indices.size(), channels, MAX_BOARD_SIZE, MAX_BOARD_SIZE);
         }
 
-        // 4. 处理 TT 命中的叶子
+        // 4. 处理 win 叶子（跳过推理，value=+1）
+        for (int idx : win_indices) {
+            Node *leaf = leaves[idx].leaf;
+            leaf->selectInfo = leaf_selectInfo[idx];
+            float value = 1.0f;
+
+            // 仅 root leaf 第一次 expand 一次（让 SelfPlay 能拿到 move）；非 root 永久 leaf
+            if (leaf == root && leaf->isLeaf()) {
+                auto& moves = leaf_moves[idx];
+                std::vector<float> uniform_priors(leaves[idx].game.boardSize * leaves[idx].game.boardSize, 0.0f);
+                if (!moves.empty()) {
+                    float p = 1.0f / moves.size();
+                    for (auto& m : moves) {
+                        uniform_priors[m.x * leaves[idx].game.boardSize + m.y] = p;
+                    }
+                }
+                leaf->expand(leaves[idx].game, moves, uniform_priors);
+            }
+
+            // backpropagate + 移除 virtual loss
+            Node *cur = leaf;
+            float v = -value;
+            while (cur != nullptr) {
+                cur->removeVirtualLoss();
+                cur->update(v);
+                cur = cur->parent;
+                v = -v;
+            }
+        }
+
+        // 5. 处理 TT 命中的叶子（非 win）
         for (int idx : tt_hit_indices) {
             Node *leaf = leaves[idx].leaf;
             uint64_t hash = leaves[idx].game.zobristHash;
             auto &ttEntry = transpositionTable[hash];
 
-            auto [win, moves, selectInfo] = selectActions(leaves[idx].game);
-            leaf->selectInfo = selectInfo;
+            leaf->selectInfo = leaf_selectInfo[idx];
             float value = ttEntry.value;
-            if (win) {
-                value = 1.0f;
-            } else {
-                auto probs_copy = ttEntry.priors;
-                if (useNoice && leaf == root) {
-                    add_dirichlet_noise(probs_copy, 0.25, 0.03, rng);
-                }
-                leaf->expand(leaves[idx].game, moves, probs_copy);
+            auto probs_copy = ttEntry.priors;
+            if (useNoice && leaf == root) {
+                add_dirichlet_noise(probs_copy, 0.25, 0.03, rng);
             }
+            leaf->expand(leaves[idx].game, leaf_moves[idx], probs_copy);
 
             // backpropagate + 移除 virtual loss
             Node *cur = leaf;
@@ -298,18 +353,14 @@ void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, 
             uint64_t hash = leaves[idx].game.zobristHash;
             transpositionTable[hash] = TTEntry{eva_value, probs_metrix};
 
-            auto [win, moves, selectInfo] = selectActions(leaves[idx].game);
-            leaf->selectInfo = selectInfo;
+            // selectInfo / moves 已在前面 selectActions 时拿到（保证 win=false，因为 win 已在前面处理）
+            leaf->selectInfo = leaf_selectInfo[idx];
             float value = eva_value;
-            if (win) {
-                value = 1.0f;
-            } else {
-                auto probs_copy = probs_metrix;
-                if (useNoice && leaf == root) {
-                    add_dirichlet_noise(probs_copy, 0.25, 0.03, rng);
-                }
-                leaf->expand(leaves[idx].game, moves, probs_copy);
+            auto probs_copy = probs_metrix;
+            if (useNoice && leaf == root) {
+                add_dirichlet_noise(probs_copy, 0.25, 0.03, rng);
             }
+            leaf->expand(leaves[idx].game, leaf_moves[idx], probs_copy);
 
             // backpropagate + 移除 virtual loss
             Node *cur = leaf;

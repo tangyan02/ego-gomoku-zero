@@ -23,15 +23,15 @@ static std::mt19937 evalRng(std::random_device{}());
 
 /**
  * 加载 openings 文件（只读一次）
- * 评估时：生成开局 40 条 + 手工开局 10 条 → 全开局模式 = 100 局（每条先后手各 1 局）
+ * 评估时：生成开局 50 条 → 全开局模式 = 100 局（每条先后手各 1 局）
+ * 手工开局已废弃（统一用生成开局做公平对比）
  */
 static std::vector<std::string>& getOpenings() {
     static std::vector<std::string> lines;
     static bool loaded = false;
     if (!loaded) {
         vector<tuple<string, vector<string>, int>> sources = {
-            {"generated_eval", {"openings/openings_eval.txt", "../train/openings/openings_eval.txt", "../openings/openings_eval.txt"}, 40},
-            {"manual",         {"openings/openings_manual.txt", "../train/openings/openings_manual.txt", "../openings/openings_manual.txt"}, 10},
+            {"generated_eval", {"openings/openings_eval.txt", "../train/openings/openings_eval.txt", "../openings/openings_eval.txt"}, 50},
         };
         for (auto& [label, paths, maxPerSource] : sources) {
             for (auto& path : paths) {
@@ -66,7 +66,7 @@ static int getGeneratedCount() {
     static int count = -1;
     if (count < 0) {
         count = 0;
-        const int cap = 40;  // 与 getOpenings 的 generated 上限一致
+        const int cap = 50;  // 与 getOpenings 的 generated 上限一致
         vector<string> paths = {"openings/openings_eval.txt", "../train/openings/openings_eval.txt", "../openings/openings_eval.txt"};
         for (auto& path : paths) {
             std::ifstream file(path);
