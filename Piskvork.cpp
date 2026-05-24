@@ -14,7 +14,7 @@
 #include "Utils.h"
 #include "Shape.h"
 
-const char* infotext = "name=\"Ego-Zero\", author=\"TangYan\", version=\"1.0\", country=\"China\", email=\"tangyan1412@foxmail.com\"";
+const char* infotext = "name=\"Ego-Zero\", author=\"TangYan\", version=\"2.0\", country=\"China\", email=\"tangyan1412@foxmail.com\"";
 
 static unsigned seed;
 static int boardSize;
