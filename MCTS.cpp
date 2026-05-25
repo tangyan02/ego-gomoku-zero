@@ -21,7 +21,10 @@ Node *Node::selectChild(double exploration_factor) {
 
     // FPU (First Play Urgency)：未访问子节点用父节点 Q 减去衰减值
     // 防止在优势局面下过度探索未访问节点
-    double parent_q = visits > 0 ? value_sum / visits : 0.0;
+    // 视角说明：value_sum 累积的是"this 父视角下选 this 的预期收益"，
+    //         而 fpu 估计的是 child 的 q（this 视角下选 child 的预期收益），
+    //         视角差一次翻转，因此 baseline 取 -value_sum/visits。
+    double parent_q = visits > 0 ? -value_sum / visits : 0.0;
     // 计算已访问子节点的 prior 总和，用于 FPU 衰减
     double visited_prior_sum = 0.0;
     for (const auto &[point, child] : children) {

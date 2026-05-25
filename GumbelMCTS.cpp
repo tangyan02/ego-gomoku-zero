@@ -44,7 +44,9 @@ Node* GumbelMCTS::selectInterior(Node* node) {
     // 内部节点：PUCT 式选择（和传统 MCTS 一致，保证搜索质量）
     double parentVisits = max(1, node->visits);
     double sqrtParent = sqrt(parentVisits);
-    double parentQ = node->visits > 0 ? node->value_sum / node->visits : 0.0;
+    // FPU baseline：value_sum 是 node 父视角下选 node 的预期收益，
+    // 而我们要估计的 fpu 是 node 视角下选未访问子的 q，差一次视角翻转，取负号。
+    double parentQ = node->visits > 0 ? -node->value_sum / node->visits : 0.0;
 
     // FPU
     double visitedPriorSum = 0.0;

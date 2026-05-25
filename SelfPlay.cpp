@@ -374,9 +374,14 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         static int td_n = stoi(ConfigReader::getOrDefault("tdN", "5"));
         static float td_gamma = stof(ConfigReader::getOrDefault("tdGamma", "0.7"));
         float gamma_n = pow(td_gamma, td_n);
-        // 五子棋黑白严格交替，td_n 步后 player 是否反转由奇偶决定
-        // mcts_q 是 player[t+td_n] 视角，若与 player[t] 不同需翻转符号
-        float perspective_sign = (td_n % 2 == 0) ? 1.0f : -1.0f;
+        // 视角推导：
+        //   root.value_sum 是 backpropagate(node, -value) 起始 + 沿途翻转累积出来的，
+        //   推导可得：root.value_sum/root.visits 视角 = root 玩家的对手视角（即 root 父视角）。
+        //   所以 mcts_q[t+td_n] 视角 = player[t+td_n] 的对手视角。
+        //   要 align 到 final_value 的视角（player[t] 视角）：
+        //     - player[t+td_n] == player[t]（td_n 偶）→ 对手视角 vs player[t] 视角 → 乘 -1
+        //     - player[t+td_n] != player[t]（td_n 奇）→ 对手视角 vs player[t] 视角恰好对齐 → 乘 +1
+        float perspective_sign = (td_n % 2 == 0) ? -1.0f : 1.0f;
 
         int game_len = game_data.size();
         for (int t = 0; t < game_len; t++) {

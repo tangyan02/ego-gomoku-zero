@@ -147,42 +147,6 @@ vector<vector<vector<float>>> Game::getState() {
         }
     }
 
-    // ch2 对方 VCF 点
-    auto oppVCF = getOppVCFMoves();
-    for (const auto &p : oppVCF) {
-        data[2][p.x][p.y] = 1;
-    }
-
-    // 棋型判定候选点（与 selectActions 对齐：附近 2 格，空盘则整盘）
-    auto basedMoves = historyMoves.empty() ? getAllEmptyPoints() : getNearEmptyPoints(2);
-
-    auto fillPlane = [&](int channel, const std::vector<Point> &pts) {
-        for (const auto &p : pts) data[channel][p.x][p.y] = 1;
-    };
-
-    // 活三点 / 冲四点（冲四 = 活四 ∪ 眠四）
-    auto myThree = getActiveThreeMoves(currentPlayer, *this, basedMoves);
-    fillPlane(3, myThree);
-    auto myActiveFour = getActiveFourMoves(currentPlayer, *this, basedMoves);
-    auto mySleepyFour = getSleepyFourMoves(currentPlayer, *this, basedMoves);
-    fillPlane(4, myActiveFour);
-    fillPlane(4, mySleepyFour);
-
-    auto oppThree = getActiveThreeMoves(otherPlayer, *this, basedMoves);
-    fillPlane(5, oppThree);
-    auto oppActiveFour = getActiveFourMoves(otherPlayer, *this, basedMoves);
-    auto oppSleepyFour = getSleepyFourMoves(otherPlayer, *this, basedMoves);
-    fillPlane(6, oppActiveFour);
-    fillPlane(6, oppSleepyFour);
-
-    // ch7: 对方双活三点（≥2 方向活三，强威胁，必须防守）
-    auto oppDoubleThree = getDoubleActiveThreeMoves(otherPlayer, *this, basedMoves);
-    fillPlane(7, oppDoubleThree);
-
-    // ch8: 我方双活三点（≥2 方向活三，落子后必胜）
-    auto myDoubleThree = getDoubleActiveThreeMoves(currentPlayer, *this, basedMoves);
-    fillPlane(8, myDoubleThree);
-
     return data;
 }
 
@@ -202,42 +166,6 @@ void Game::getState(float* buffer, int channels) {
             }
         }
     }
-
-    auto setCh = [&](int channel, const std::vector<Point> &pts) {
-        for (const auto &p : pts) buffer[channel * planeSize + p.x * boardSize + p.y] = 1.0f;
-    };
-
-    // ch2 对方 VCF
-    auto oppVCF = getOppVCFMoves();
-    setCh(2, oppVCF);
-
-    if (channels < 7) return;
-
-    auto basedMoves = historyMoves.empty() ? getAllEmptyPoints() : getNearEmptyPoints(2);
-
-    auto myThree = getActiveThreeMoves(currentPlayer, *this, basedMoves);
-    setCh(3, myThree);
-    auto myActiveFour = getActiveFourMoves(currentPlayer, *this, basedMoves);
-    auto mySleepyFour = getSleepyFourMoves(currentPlayer, *this, basedMoves);
-    setCh(4, myActiveFour);
-    setCh(4, mySleepyFour);
-
-    auto oppThree = getActiveThreeMoves(otherPlayer, *this, basedMoves);
-    setCh(5, oppThree);
-    auto oppActiveFour = getActiveFourMoves(otherPlayer, *this, basedMoves);
-    auto oppSleepyFour = getSleepyFourMoves(otherPlayer, *this, basedMoves);
-    setCh(6, oppActiveFour);
-    setCh(6, oppSleepyFour);
-
-    if (channels < 8) return;
-
-    auto oppDoubleThree = getDoubleActiveThreeMoves(otherPlayer, *this, basedMoves);
-    setCh(7, oppDoubleThree);
-
-    if (channels < 9) return;
-
-    auto myDoubleThree = getDoubleActiveThreeMoves(currentPlayer, *this, basedMoves);
-    setCh(8, myDoubleThree);
 }
 
 bool Game::isGameOver() {
@@ -302,12 +230,8 @@ bool Game::makeMove(Point p) {
     historyMoves.emplace_back(p);
 
     myVcfDone = false;
-    oppVcfDone = false;
     myVcfMoves.clear();
     myAllAttackMoves.clear();
-    oppVcfMoves.clear();
-    oppVcfAttackMoves.clear();
-    oppVcfDefenceMoves.clear();
 
     return true;
 }
@@ -324,7 +248,7 @@ bool Game::checkWin(int row, int col, int player) {
 
 // 私有方法：确保 VCF 结果已计算
 void Game::ensureVCFComputed() const {
-    if (myVcfDone && oppVcfDone) return;
+    if (myVcfDone) return;
 
     // 早期跳过：棋盘上子太少不可能有 VCF
     int pieceCount = boardSize * boardSize - emptyCount;
@@ -332,36 +256,17 @@ void Game::ensureVCFComputed() const {
         myVcfMoves.clear();
         myAllAttackMoves.clear();
         myVcfDone = true;
-        oppVcfMoves.clear();
-        oppVcfAttackMoves.clear();
-        oppVcfDefenceMoves.clear();
-        oppVcfDone = true;
         return;
     }
 
     // 计算 myVCF（dfsVCF 内部会临时修改 board 再 undo，不需要拷贝 Game）
-    if (!myVcfDone) {
-        myAllAttackMoves.clear();
-        auto myVCF = dfsVCF(currentPlayer, currentPlayer,
-                            const_cast<Game&>(*this), Point(), Point(), 0,
-                            nullptr, nullptr, &myAllAttackMoves);
-        myAllAttackMoves = removeDuplicates(myAllAttackMoves);
-        myVcfMoves = myVCF.second;
-        myVcfDone = true;
-    }
-
-    // 计算 oppVCF
-    if (!oppVcfDone) {
-        oppVcfDefenceMoves.clear();
-        oppVcfAttackMoves.clear();
-        auto oppVCF = dfsVCF(getOtherPlayer(), getOtherPlayer(),
-                             const_cast<Game&>(*this), Point(), Point(), 0,
-                             &oppVcfAttackMoves, &oppVcfDefenceMoves);
-        oppVcfDefenceMoves = removeDuplicates(oppVcfDefenceMoves);
-        oppVcfAttackMoves = removeDuplicates(oppVcfAttackMoves);
-        oppVcfMoves = oppVCF.second;
-        oppVcfDone = true;
-    }
+    myAllAttackMoves.clear();
+    auto myVCF = dfsVCF(currentPlayer, currentPlayer,
+                        const_cast<Game&>(*this), Point(), Point(), 0,
+                        nullptr, nullptr, &myAllAttackMoves);
+    myAllAttackMoves = removeDuplicates(myAllAttackMoves);
+    myVcfMoves = myVCF.second;
+    myVcfDone = true;
 }
 
 vector<Point> Game::getMyVCFMoves() const {
@@ -369,11 +274,4 @@ vector<Point> Game::getMyVCFMoves() const {
         ensureVCFComputed();
     }
     return myVcfMoves;
-}
-
-vector<Point> Game::getOppVCFMoves() const {
-    if (!oppVcfDone) {
-        ensureVCFComputed();
-    }
-    return oppVcfMoves;
 }

@@ -210,8 +210,12 @@ def run_evaluate(cpp_path, model_path1, model_path2, eval_games, eval_simulation
     return result
 
 
-def run_generate_openings(cpp_path, model_path):
-    """调用 C++ generate_openings 模式生成平衡开局库"""
+def run_generate_openings(cpp_path, model_path, threshold=0.5, max_attempts=80000):
+    """调用 C++ generate_openings 模式生成平衡开局库
+
+    threshold: |v| 阈值（实际通过阈值 = threshold * 0.2）。g0 全随机网络的 value 偏离 0 较大，
+               用 5.0 让噪声 value 大概率通过；网络成熟后用 0.5（默认）严格过滤。
+    """
     model_path = os.path.abspath(model_path)
     cpp_dir = os.path.dirname(os.path.abspath(cpp_path))
     conf_path = os.path.join(cpp_dir, "application.conf")
@@ -230,8 +234,8 @@ def run_generate_openings(cpp_path, model_path):
         f.write(f"genOpenings_evalCount=50\n")
         f.write(f"genOpenings_minMoves=1\n")
         f.write(f"genOpenings_maxMoves=4\n")
-        f.write(f"genOpenings_threshold=0.5\n")
-        f.write(f"genOpenings_maxAttempts=80000\n")
+        f.write(f"genOpenings_threshold={threshold}\n")
+        f.write(f"genOpenings_maxAttempts={max_attempts}\n")
         f.write(f"genOpenings_nearCenter=9\n")
 
     env = os.environ.copy()
@@ -352,8 +356,13 @@ if __name__ == "__main__":
     Logger.infoD(f"经验回放池已初始化，容量 {replay_buffer_size}")
 
     # 启动时立即生成平衡开局（确保自对弈第一局就用生成开局）
+    # g0 阶段网络全随机，value 噪声偏离 0 较大，用宽阈值 + 少尝试快速通过
     Logger.infoD("启动时生成平衡开局库...")
-    run_generate_openings(cppPathEval, latest_path)
+    if total_games_count < 5000:
+        Logger.infoD(f"g{total_games_count} 阶段网络未成熟，开局生成放宽阈值")
+        run_generate_openings(cppPathEval, latest_path, threshold=5.0, max_attempts=10000)
+    else:
+        run_generate_openings(cppPathEval, latest_path)
 
     for i_episode in range(1, episode + 1):
 
@@ -511,7 +520,10 @@ if __name__ == "__main__":
         if current_openings_point > last_openings_refresh and current_openings_point > 0:
             last_openings_refresh = current_openings_point
             Logger.infoD(f"开始刷新开局库（g{total_games_count}）...")
-            run_generate_openings(cppPathEval, latest_path)
+            if total_games_count < 5000:
+                run_generate_openings(cppPathEval, latest_path, threshold=5.0, max_attempts=10000)
+            else:
+                run_generate_openings(cppPathEval, latest_path)
 
         Logger.infoD(f"episode {i_episode} 完成")
 

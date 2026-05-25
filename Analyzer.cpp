@@ -246,61 +246,6 @@ getQuickWinMoves(int player, Game &game, vector<Point> &myBasedMoves) {
     return {};
 }
 
-vector<Point> getVCFDefenceMoves(Game &game, std::vector<Point> &basedMoves) {
-    //如果对手有VCF点，考虑对手的进攻点，和我防防守点形成进攻点
-    auto otherVCFMoves = game.getOppVCFMoves();
-    std::vector<Point> defenceMoves;
-    if (!otherVCFMoves.empty()) {
-
-        //记录所有VCF进攻点和防守点
-        vector<Point> vcfPoints;
-        for (const auto &item: game.oppVcfAttackMoves) {
-            if (existPoints(basedMoves, item)) {
-                vcfPoints.emplace_back(item);
-            }
-        }
-        for (const auto &item: game.oppVcfDefenceMoves) {
-            if (existPoints(basedMoves, item)) {
-                vcfPoints.emplace_back(item);
-            }
-        }
-        defenceMoves.insert(defenceMoves.end(),
-                            vcfPoints.begin(),
-                            vcfPoints.end());
-
-        //假设防御点都下了，再找冲4和长5点
-        for (const auto &item: game.oppVcfDefenceMoves) {
-            game.board[item.x][item.y] = game.currentPlayer;
-        }
-
-//        game.printBoard();
-
-        //计算新的可选点，但要在原来的范围内
-        auto nearsNew = game.getEmptyPoints();
-        vector<Point> nearsInRange;
-        for (const auto &item: nearsNew) {
-            if (existPoints(basedMoves, item)) {
-                nearsInRange.emplace_back(item);
-            }
-        }
-
-        auto mySleepFourMoves_more = getSleepyFourMoves(game.currentPlayer, game, nearsInRange);
-        auto myActiveFourMoves_more = getActiveFourMoves(game.currentPlayer, game, nearsInRange);
-        auto myFiveMoves_more = getWinningMoves(game.currentPlayer, game, nearsInRange);
-
-
-        defenceMoves.insert(defenceMoves.end(), myActiveFourMoves_more.begin(), myActiveFourMoves_more.end());
-        defenceMoves.insert(defenceMoves.end(), mySleepFourMoves_more.begin(), mySleepFourMoves_more.end());
-        defenceMoves.insert(defenceMoves.end(), myFiveMoves_more.begin(), myFiveMoves_more.end());
-
-
-        for (const auto &item: game.oppVcfDefenceMoves) {
-            game.board[item.x][item.y] = 0;
-        }
-    }
-    return removeDuplicates(defenceMoves);
-}
-
 vector<Point> getThreeDefenceMoves(int player, Game &game, std::vector<Point> &basedMoves, bool onlyDefence) {
     //自己的冲4点，和对手的活4。再从对手眠4里面选.如果下了之后活4活眠4没有了，则视为防御点
     std::vector<Point> defenceMoves;
@@ -738,12 +683,5 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
     }
 
     string msg;
-
-//    //对方VCF点判断
-//    auto otherVCFMoves = game.getOppVCFMoves();
-//    if (!otherVCFMoves.empty()) {
-//        msg += " Opp VCF!";
-//    }
-
     return make_tuple(false, emptyPoints, msg);
 }

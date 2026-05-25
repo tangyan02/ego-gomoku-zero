@@ -42,17 +42,10 @@ struct PointEqual {
 
 const int MAX_BOARD_SIZE = 20;
 const int CONNECT = 5;
-// 9 通道特征
+// 2 通道特征（极简 AlphaZero 风格，所有棋型由网络自学）
 //   ch0 我方棋子 (0/1)
 //   ch1 对方棋子 (0/1)
-//   ch2 对方 VCF 点 (0/1)
-//   ch3 我方活三点
-//   ch4 我方冲四点（活四 ∪ 眠四）
-//   ch5 对方活三点
-//   ch6 对方冲四点
-//   ch7 对方双活三点（落子后 ≥2 方向形成活三）
-//   ch8 我方双活三点
-const int INPUT_CHANNELS = 9;
+const int INPUT_CHANNELS = 2;
 
 #define NONE_P 0
 #define BLACK 1
@@ -83,12 +76,8 @@ public:
     uint64_t zobristHash = 0;  // 局面的 Zobrist hash，makeMove 时增量更新
 
     mutable bool myVcfDone = false;
-    mutable bool oppVcfDone = false;
     mutable vector<Point> myVcfMoves;
     mutable vector<Point> myAllAttackMoves;
-    mutable vector<Point> oppVcfMoves;
-    mutable vector<Point> oppVcfAttackMoves;
-    mutable vector<Point> oppVcfDefenceMoves;
 
 
     Game(int boardSize);
@@ -120,8 +109,6 @@ public:
     bool checkWin(int row, int col, int player);
 
     vector<Point> getMyVCFMoves() const;
-
-    vector<Point> getOppVCFMoves() const;
 
 private:
     void ensureVCFComputed() const;
