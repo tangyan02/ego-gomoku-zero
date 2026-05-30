@@ -42,10 +42,12 @@ struct PointEqual {
 
 const int MAX_BOARD_SIZE = 20;
 const int CONNECT = 5;
-// 2 通道特征（极简 AlphaZero 风格，所有棋型由网络自学）
+// 4 通道特征
 //   ch0 我方棋子 (0/1)
 //   ch1 对方棋子 (0/1)
-const int INPUT_CHANNELS = 2;
+//   ch2 我方双活三点（落子后 ≥2 方向形成活三 = 必胜进攻点）
+//   ch3 对方双活三点（必须防守）
+const int INPUT_CHANNELS = 4;
 
 #define NONE_P 0
 #define BLACK 1

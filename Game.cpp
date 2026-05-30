@@ -147,6 +147,17 @@ vector<vector<vector<float>>> Game::getState() {
         }
     }
 
+    // 棋型判定候选点（与 selectActions 对齐：附近 2 格，空盘则整盘）
+    auto basedMoves = historyMoves.empty() ? getAllEmptyPoints() : getNearEmptyPoints(2);
+
+    // ch2 我方双活三点（落子后 ≥2 方向活三 → 必胜进攻点）
+    auto myDoubleThree = getDoubleActiveThreeMoves(currentPlayer, *this, basedMoves);
+    for (const auto &p : myDoubleThree) data[2][p.x][p.y] = 1;
+
+    // ch3 对方双活三点（必须防守）
+    auto oppDoubleThree = getDoubleActiveThreeMoves(otherPlayer, *this, basedMoves);
+    for (const auto &p : oppDoubleThree) data[3][p.x][p.y] = 1;
+
     return data;
 }
 
@@ -166,6 +177,20 @@ void Game::getState(float* buffer, int channels) {
             }
         }
     }
+
+    if (channels < 3) return;
+
+    auto basedMoves = historyMoves.empty() ? getAllEmptyPoints() : getNearEmptyPoints(2);
+
+    // ch2 我方双活三点
+    auto myDoubleThree = getDoubleActiveThreeMoves(currentPlayer, *this, basedMoves);
+    for (const auto &p : myDoubleThree) buffer[2 * planeSize + p.x * boardSize + p.y] = 1.0f;
+
+    if (channels < 4) return;
+
+    // ch3 对方双活三点
+    auto oppDoubleThree = getDoubleActiveThreeMoves(otherPlayer, *this, basedMoves);
+    for (const auto &p : oppDoubleThree) buffer[3 * planeSize + p.x * boardSize + p.y] = 1.0f;
 }
 
 bool Game::isGameOver() {

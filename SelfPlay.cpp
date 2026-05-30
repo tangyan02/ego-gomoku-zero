@@ -15,13 +15,13 @@ using namespace std;
 // 线程局部随机数生成器，避免多线程竞态
 static thread_local std::mt19937 gen(std::random_device{}());
 
-void printGame(Game &game, Point action, float rate,
+void printGame(Game &game, Point action, float rate, float temperature,
                const std::string &prefix, const string selectInfo) {
     std::string pic = (game.getOtherPlayer() == 1) ? "x" : "o";
     cout << prefix << " " << pic << " " << action.x << ","
             << action.y
             << " rate=" << round(rate * 1000) / 1000
-            << " T=0"
+            << " T=" << temperature
             << selectInfo
             << endl;
 }
@@ -149,11 +149,27 @@ Game randomGame(Game &game, const string &prefix) {
     return game;
 }
 
-tuple<float, Point, float, bool> getNextMove(MonteCarloTree& mcts)
+tuple<float, Point, float, bool> getNextMove(MonteCarloTree& mcts, int step)
 {
-    // 全程贪心（temperature=0），生成最高质量对局
-    // 原因：温度采样会导致松散开局，模型无法学会防守VCT
-    // 参考AlphaZero最终策略：自对弈用纯贪心，确保对局质量
+    // 配置项 temperatureSteps：前 N 步用 T=1.0 按 visit 分布采样（增加开局多样性，缓解平局率上升）
+    // N 步后用 T=0 贪心（保证对局质量）
+    // 注意：selectActions 已强制必胜手作为唯一 child，T=1 在这种情况退化为唯一选择，不会破坏战术
+    static int temperature_steps = stoi(ConfigReader::getOrDefault("temperatureSteps", "10"));
+    if (step < temperature_steps) {
+        float temperature = 1.0f;
+        auto [moves, probs] = mcts.get_action_probabilities(temperature);
+        if (moves.empty()) {
+            return tuple(temperature, Point(), 1.0f, false);
+        }
+        // 按 probs 采样
+        static thread_local std::mt19937 rng(std::random_device{}());
+        std::discrete_distribution<int> dist(probs.begin(), probs.end());
+        int idx = dist(rng);
+        Point move = moves[idx];
+        return tuple(temperature, move, probs[idx], false);
+    }
+
+    // 后续：贪心
     float temperature = 0;
     Point move = mcts.get_max_visit_move();
     float rate = 1;
@@ -267,6 +283,9 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         // 提前终止标记（root selectActions win=true 时设置）
         int winnerOverride = 0;
 
+        // 网络决策步数（开局后从 0 开始计数；前 6 步用 T=1 采样增加多样性）
+        int decisionStep = 0;
+
         while (!game.isGameOver()) {
             // 在 MCTS 之前先做一次 selectActions（我方视角，game 还未 makeMove）
             // win=true 表示 root 局面我方有快速路径必胜手（长5/活四/VCF）
@@ -290,7 +309,8 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
 
             tie(moves, move_probs)= mcts.get_action_probabilities();
 
-            auto [temperature, move, rate, forced] = getNextMove(mcts);
+            auto [temperature, move, rate, forced] = getNextMove(mcts, decisionStep);
+            decisionStep++;
 
             vector<float> probs_matrix(game.boardSize * game.boardSize, 0);
             if (!moves[0].isNull()) {
@@ -307,7 +327,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             game.makeMove(move);
             game_data.push_back(record);
 
-            printGame(game, move, rate, prefix, rootNode->selectInfo);
+            printGame(game, move, rate, temperature, prefix, rootNode->selectInfo);
 
             // 1) 直接 5 连：严格必胜
             bool currentWin = game.checkWin(game.lastAction.x, game.lastAction.y, currentPlayerBeforeMove);
@@ -383,6 +403,17 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         //     - player[t+td_n] != player[t]（td_n 奇）→ 对手视角 vs player[t] 视角恰好对齐 → 乘 +1
         float perspective_sign = (td_n % 2 == 0) ? -1.0f : 1.0f;
 
+        cout << prefix << "winner is " << winner << endl;
+
+        // 丢弃平局对局：value target 全是 0，对 value head 无监督信号；
+        // policy 也是双方互防到棋盘满的低质量数据。
+        // 配置项 skipDrawGames=true 时跳过；默认 true。
+        static bool skip_draw = ConfigReader::getOrDefault("skipDrawGames", "true") == "true";
+        if (skip_draw && winner == 0) {
+            cout << prefix << "draw game discarded" << endl;
+            continue;
+        }
+
         int game_len = game_data.size();
         for (int t = 0; t < game_len; t++) {
             const auto &[state, player, mcts_probs, mcts_q] = game_data[t];
@@ -398,8 +429,6 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
 
             training_data.emplace_back(state, mcts_probs, std::vector<float>{value});
         }
-
-        cout << prefix << "winner is " << winner << endl;
     }
     return training_data;
 }

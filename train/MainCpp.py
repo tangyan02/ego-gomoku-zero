@@ -210,11 +210,13 @@ def run_evaluate(cpp_path, model_path1, model_path2, eval_games, eval_simulation
     return result
 
 
-def run_generate_openings(cpp_path, model_path, threshold=0.5, max_attempts=80000):
+def run_generate_openings(cpp_path, model_path, threshold=1.0, max_attempts=80000):
     """调用 C++ generate_openings 模式生成平衡开局库
 
-    threshold: |v| 阈值（实际通过阈值 = threshold * 0.2）。g0 全随机网络的 value 偏离 0 较大，
-               用 5.0 让噪声 value 大概率通过；网络成熟后用 0.5（默认）严格过滤。
+    threshold: 实际通过阈值 = threshold * 0.2（C++ 端 thresholds[3] 设计）。
+               threshold=1.0 → |v| < 0.2（默认放宽，2ch 网络早期通过率提高）
+               threshold=0.5 → |v| < 0.1（严格平衡）
+               threshold=5.0 → |v| < 1.0（g0 全随机网络兜底）
     """
     model_path = os.path.abspath(model_path)
     cpp_dir = os.path.dirname(os.path.abspath(cpp_path))
