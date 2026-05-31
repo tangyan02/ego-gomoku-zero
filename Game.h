@@ -42,12 +42,14 @@ struct PointEqual {
 
 const int MAX_BOARD_SIZE = 20;
 const int CONNECT = 5;
-// 4 通道特征
+// 6 通道特征
 //   ch0 我方棋子 (0/1)
 //   ch1 对方棋子 (0/1)
 //   ch2 我方双活三点（落子后 ≥2 方向形成活三 = 必胜进攻点）
 //   ch3 对方双活三点（必须防守）
-const int INPUT_CHANNELS = 4;
+//   ch4 我方VCF点（必胜威胁）
+//   ch5 对方VCF点（必须防守）
+const int INPUT_CHANNELS = 6;
 
 #define NONE_P 0
 #define BLACK 1
@@ -81,6 +83,10 @@ public:
     mutable vector<Point> myVcfMoves;
     mutable vector<Point> myAllAttackMoves;
 
+    // 对方 VCF 缓存（ch5）
+    mutable bool oppVcfDone = false;
+    mutable vector<Point> oppVcfMoves;
+
 
     Game(int boardSize);
 
@@ -112,7 +118,10 @@ public:
 
     vector<Point> getMyVCFMoves() const;
 
+    vector<Point> getOppVCFMoves() const;
+
 private:
+    void ensureOppVCFComputed() const;
     void ensureVCFComputed() const;
 
 };

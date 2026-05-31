@@ -31,7 +31,7 @@ static std::vector<std::string>& getOpenings() {
     static bool loaded = false;
     if (!loaded) {
         vector<tuple<string, vector<string>, int>> sources = {
-            {"generated_eval", {"openings/openings_eval.txt", "../train/openings/openings_eval.txt", "../openings/openings_eval.txt"}, 50},
+            {"generated_eval", {"openings/openings_eval.txt", "../train/openings/openings_eval.txt", "../openings/openings_eval.txt"}, 25},
         };
         for (auto& [label, paths, maxPerSource] : sources) {
             for (auto& path : paths) {
@@ -66,7 +66,7 @@ static int getGeneratedCount() {
     static int count = -1;
     if (count < 0) {
         count = 0;
-        const int cap = 50;  // 与 getOpenings 的 generated 上限一致
+        const int cap = 25;  // 与 getOpenings 的 generated 上限一致（25 开局 × 2 sides = 50 局）
         vector<string> paths = {"openings/openings_eval.txt", "../train/openings/openings_eval.txt", "../openings/openings_eval.txt"};
         for (auto& path : paths) {
             std::ifstream file(path);

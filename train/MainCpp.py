@@ -477,45 +477,69 @@ if __name__ == "__main__":
                     # 安全阀：连续 N 次 Elo 评估为负（胜率 < 50%），回滚到最后一个正 Elo 的 checkpoint
                     # 每次判定前重读 application.conf，支持运行时热调阈值
                     ConfigReader.init()
-                    rollback_threshold = int(
-                        ConfigReader.get('eloRollbackThreshold')
-                        if 'eloRollbackThreshold' in ConfigReader.config else 6
+                    # 开关：eloRollbackEnabled=false 时跳过自动回退（默认 false，2026-05-31 改为默认关闭）
+                    rollback_enabled = (
+                        ConfigReader.get('eloRollbackEnabled').lower() == 'true'
+                        if 'eloRollbackEnabled' in ConfigReader.config else False
                     )
-                    consecutive_decline = 0
-                    rollback_target = None
-                    for entry in reversed(elo_history):
-                        if entry["elo_diff"] < 0:
-                            consecutive_decline += 1
-                        else:
-                            rollback_target = entry["total_games"]
-                            break
-                    if consecutive_decline >= rollback_threshold and rollback_target is not None:
-                        rollback_onnx = f"model/checkpoint_g{rollback_target}.onnx"
-                        rollback_pt = f"model/checkpoint_g{rollback_target}.pt"
-                        rollback_pth = f"model/checkpoint_g{rollback_target}.pth"
-                        if os.path.exists(rollback_onnx):
-                            Logger.infoD(
-                                f"⚠️ 安全阀触发：连续 {consecutive_decline} 次 Elo 下降，"
-                                f"回滚到 g{rollback_target}",
-                                "elo.log"
-                            )
-                            # 写入回退标记，前端据此标黄
-                            rollback_info = {
-                                "rollback": True,
-                                "rollback_target": rollback_target
-                            }
-                            Logger.infoD(json.dumps(rollback_info), "elo.log")
-                            shutil.copy2(rollback_onnx, latest_path)
-                            shutil.copy2(rollback_onnx, best_path)
-                            if os.path.exists(rollback_pt):
-                                shutil.copy2(rollback_pt, latest_path.replace('.onnx', '.pt'))
-                                shutil.copy2(rollback_pt, best_path.replace('.onnx', '.pt'))
-                            if os.path.exists(rollback_pth):
-                                shutil.copy2(rollback_pth, "model/checkpoint.pth")
-                                # 重新加载模型权重
-                                model, optimizer = get_model(device, lr, wd)
-                                Logger.infoD(f"模型已回滚到 g{rollback_target}，训练继续")
-                            elo_history.clear()  # 清空历史，重新开始追踪
+                    if rollback_enabled:
+                        rollback_threshold = int(
+                            ConfigReader.get('eloRollbackThreshold')
+                            if 'eloRollbackThreshold' in ConfigReader.config else 6
+                        )
+                        consecutive_decline = 0
+                        rollback_target = None
+                        for entry in reversed(elo_history):
+                            if entry["elo_diff"] < 0:
+                                consecutive_decline += 1
+                            else:
+                                rollback_target = entry["total_games"]
+                                break
+                        if consecutive_decline >= rollback_threshold and rollback_target is not None:
+                            rollback_onnx = f"model/checkpoint_g{rollback_target}.onnx"
+                            rollback_pt = f"model/checkpoint_g{rollback_target}.pt"
+                            rollback_pth = f"model/checkpoint_g{rollback_target}.pth"
+                            if os.path.exists(rollback_onnx):
+                                Logger.infoD(
+                                    f"⚠️ 安全阀触发：连续 {consecutive_decline} 次 Elo 下降，"
+                                    f"回滚到 g{rollback_target}",
+                                    "elo.log"
+                                )
+                                # 写入回退标记，前端据此标黄
+                                rollback_info = {
+                                    "rollback": True,
+                                    "rollback_target": rollback_target
+                                }
+                                Logger.infoD(json.dumps(rollback_info), "elo.log")
+                                shutil.copy2(rollback_onnx, latest_path)
+                                shutil.copy2(rollback_onnx, best_path)
+                                if os.path.exists(rollback_pt):
+                                    shutil.copy2(rollback_pt, latest_path.replace('.onnx', '.pt'))
+                                    shutil.copy2(rollback_pt, best_path.replace('.onnx', '.pt'))
+                                if os.path.exists(rollback_pth):
+                                    shutil.copy2(rollback_pth, "model/checkpoint.pth")
+                                    # 重新加载模型权重
+                                    model, optimizer = get_model(device, lr, wd)
+                                    Logger.infoD(f"模型已回滚到 g{rollback_target}，训练继续")
+                                # 同步回调 count.txt 到 rollback_target，避免后续 checkpoint 编号与权重训练历史脱节
+                                # （之前的 bug：回滚权重但 count 继续增加，导致 g26100/g26200... 实际是从回滚点训出来的版本）
+                                with open("model/count.txt", "w") as f:
+                                    f.write(str(rollback_target))
+                                total_games_count = rollback_target
+                                # 删除 rollback_target 之后的 stale checkpoint，避免误用
+                                import glob as _glob
+                                for stale in _glob.glob("model/checkpoint_g*.onnx"):
+                                    try:
+                                        g = int(stale.replace("model/checkpoint_g", "").replace(".onnx", ""))
+                                        if g > rollback_target:
+                                            os.remove(stale)
+                                            pt = stale.replace(".onnx", ".pt")
+                                            if os.path.exists(pt):
+                                                os.remove(pt)
+                                    except Exception:
+                                        pass
+                                Logger.infoD(f"已删除 g>{rollback_target} 的 stale checkpoint，count.txt 已回调")
+                                elo_history.clear()  # 清空历史，重新开始追踪
 
         # 开局库自动刷新：每 openings_refresh_interval 局用 best 模型重新生成平衡开局
         current_openings_point = (total_games_count // openings_refresh_interval) * openings_refresh_interval

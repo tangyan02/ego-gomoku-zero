@@ -158,6 +158,14 @@ vector<vector<vector<float>>> Game::getState() {
     auto oppDoubleThree = getDoubleActiveThreeMoves(otherPlayer, *this, basedMoves);
     for (const auto &p : oppDoubleThree) data[3][p.x][p.y] = 1;
 
+    // ch4 我方 VCF 点（必胜威胁）
+    auto myVCF = getMyVCFMoves();
+    for (const auto &p : myVCF) data[4][p.x][p.y] = 1;
+
+    // ch5 对方 VCF 点（必须防守）
+    auto oppVCF = getOppVCFMoves();
+    for (const auto &p : oppVCF) data[5][p.x][p.y] = 1;
+
     return data;
 }
 
@@ -191,6 +199,18 @@ void Game::getState(float* buffer, int channels) {
     // ch3 对方双活三点
     auto oppDoubleThree = getDoubleActiveThreeMoves(otherPlayer, *this, basedMoves);
     for (const auto &p : oppDoubleThree) buffer[3 * planeSize + p.x * boardSize + p.y] = 1.0f;
+
+    if (channels < 5) return;
+
+    // ch4 我方 VCF 点
+    auto myVCF = getMyVCFMoves();
+    for (const auto &p : myVCF) buffer[4 * planeSize + p.x * boardSize + p.y] = 1.0f;
+
+    if (channels < 6) return;
+
+    // ch5 对方 VCF 点
+    auto oppVCF = getOppVCFMoves();
+    for (const auto &p : oppVCF) buffer[5 * planeSize + p.x * boardSize + p.y] = 1.0f;
 }
 
 bool Game::isGameOver() {
@@ -258,6 +278,9 @@ bool Game::makeMove(Point p) {
     myVcfMoves.clear();
     myAllAttackMoves.clear();
 
+    oppVcfDone = false;
+    oppVcfMoves.clear();
+
     return true;
 }
 
@@ -299,4 +322,30 @@ vector<Point> Game::getMyVCFMoves() const {
         ensureVCFComputed();
     }
     return myVcfMoves;
+}
+
+vector<Point> Game::getOppVCFMoves() const {
+    if (!oppVcfDone) {
+        ensureOppVCFComputed();
+    }
+    return oppVcfMoves;
+}
+
+// 私有方法：确保对方 VCF 结果已计算
+void Game::ensureOppVCFComputed() const {
+    if (oppVcfDone) return;
+
+    int pieceCount = boardSize * boardSize - emptyCount;
+    if (pieceCount < 6) {
+        oppVcfMoves.clear();
+        oppVcfDone = true;
+        return;
+    }
+
+    int otherPlayer = 3 - currentPlayer;
+    // 计算对方 VCF（checkPlayer=otherPlayer, currentPlayer=otherPlayer）
+    auto oppVCF = dfsVCF(otherPlayer, otherPlayer,
+                          const_cast<Game&>(*this), Point(), Point(), 0);
+    oppVcfMoves = oppVCF.second;
+    oppVcfDone = true;
 }

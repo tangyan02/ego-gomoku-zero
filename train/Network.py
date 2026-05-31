@@ -53,8 +53,9 @@ class ResidualBlock(nn.Module):
 class PolicyValueNetwork(nn.Module):
     def __init__(self):
         self.board_size = 20
-        # 4 通道：ch0 我方棋子 / ch1 对方棋子 / ch2 我方双活三点 / ch3 对方双活三点
-        self.input_channels = 4
+        # 6 通道：ch0 我方棋子 / ch1 对方棋子 / ch2 我方双活三 / ch3 对方双活三
+        #          ch4 我方VCF点 / ch5 对方VCF点
+        self.input_channels = 6
         self.residual_channels = 128
         super(PolicyValueNetwork, self).__init__()
 

@@ -13,10 +13,13 @@ AlphaZero 风格的五子棋（20×20）自我对弈训练系统。
 ## 网络结构
 
 ```
-输入: 4ch × 20 × 20 (己方棋子, 对方棋子, 我方VCF点, 对方VCF点)
+输入: 6ch × 20 × 20
+  ch0 己方棋子, ch1 对方棋子
+  ch2 我方双活三点, ch3 对方双活三点
+  ch4 我方VCF点, ch5 对方VCF点
   → Conv3×3 + BN → 128ch
   → 10× ResBlock (后2块带 SE 注意力)
-  → Policy Head: Conv1×1→8ch, FC→256→400, log_softmax
+  → Policy Head: Conv1×1→16ch, FC→512→400, log_softmax
   → Value Head: Conv1×1→32ch, GAP→32→1, tanh
 ```
 
