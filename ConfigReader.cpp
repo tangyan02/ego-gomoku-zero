@@ -3,14 +3,14 @@
 #include <iostream>
 
 ConfigReader::ConfigReader() {
-    this->map = readConfigFile();
+    this->configMap = readConfigFile();
 }
 
 string ConfigReader::get(const string &key) {
-    if (getInstance().map.find(key) == getInstance().map.end()) {
+    if (getInstance().configMap.find(key) == getInstance().configMap.end()) {
         cout << "Key " << key << " not found" << endl;
     }
-    return getInstance().map.at(key);
+    return getInstance().configMap.at(key);
 }
 
 std::map<std::string, std::string> ConfigReader::readConfigFile(const std::string &filename) {

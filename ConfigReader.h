@@ -7,7 +7,7 @@
 using namespace std;
 
 class ConfigReader {
-    map<string, string> map;
+    map<string, string> configMap;
 
     ConfigReader(const ConfigReader &) = delete;
 
@@ -26,7 +26,7 @@ public:
     static string get(const string &key);
 
     static string getOrDefault(const string &key, const string &defaultValue) {
-        auto &m = getInstance().map;
+        auto &m = getInstance().configMap;
         auto it = m.find(key);
         if (it != m.end()) return it->second;
         return defaultValue;

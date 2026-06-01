@@ -1,6 +1,7 @@
 #include "Game.h"
 #include "Analyzer.h"
 #include <random>
+#include <cstring>
 
 using namespace std;
 

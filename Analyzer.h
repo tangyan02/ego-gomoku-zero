@@ -4,6 +4,7 @@
 #include "Game.h"
 #include "Utils.h"
 #include <algorithm>
+#include <atomic>
 #include "Shape.h"
 #include <string>
 
