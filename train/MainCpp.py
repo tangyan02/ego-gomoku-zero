@@ -164,8 +164,12 @@ def run_evaluate(cpp_path, model_path1, model_path2, eval_games, eval_simulation
         f.write(f"evalSimulation={eval_simulation}\n")
 
     # 运行 evaluate（在 C++ 目录下执行，确保读到 evaluate 配置）
+    import platform
     env = os.environ.copy()
-    env['DYLD_LIBRARY_PATH'] = os.path.join(os.path.dirname(os.path.abspath(cpp_path)), '..', 'onnxruntime', 'lib')
+    lib_dir = os.path.join(os.path.dirname(os.path.abspath(cpp_path)), '..', 'onnxruntime', 'lib')
+    lib_key = 'DYLD_LIBRARY_PATH' if platform.system() == 'Darwin' else 'LD_LIBRARY_PATH'
+    extra = lib_dir + (':/usr/local/cuda/lib64' if platform.system() == 'Linux' else '')
+    env[lib_key] = extra + ':' + env.get(lib_key, '')
     process = subprocess.Popen([os.path.abspath(cpp_path)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                cwd=cpp_dir, env=env)
     output_lines = []
@@ -210,12 +214,12 @@ def run_evaluate(cpp_path, model_path1, model_path2, eval_games, eval_simulation
     return result
 
 
-def run_generate_openings(cpp_path, model_path, threshold=1.0, max_attempts=80000):
+def run_generate_openings(cpp_path, model_path, threshold=0.5, max_attempts=80000):
     """调用 C++ generate_openings 模式生成平衡开局库
 
     threshold: 实际通过阈值 = threshold * 0.2（C++ 端 thresholds[3] 设计）。
-               threshold=1.0 → |v| < 0.2（默认放宽，2ch 网络早期通过率提高）
-               threshold=0.5 → |v| < 0.1（严格平衡）
+               threshold=0.5 → |v| < 0.1（严格平衡，默认）
+               threshold=1.0 → |v| < 0.2（放宽）
                threshold=5.0 → |v| < 1.0（g0 全随机网络兜底）
     """
     model_path = os.path.abspath(model_path)

@@ -42,7 +42,15 @@ def getFileData(shard_num):
 
 def run_program(cppPath):
     # 执行可执行程序，传入参数shard
-    process = subprocess.Popen([cppPath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    import os, platform
+    env = os.environ.copy()
+    lib_dir = os.path.join(os.path.dirname(os.path.abspath(cppPath)), '..', 'onnxruntime', 'lib')
+    lib_key = 'DYLD_LIBRARY_PATH' if platform.system() == 'Darwin' else 'LD_LIBRARY_PATH'
+    extra_paths = lib_dir
+    if platform.system() == 'Linux':
+        extra_paths += ':/usr/local/cuda/lib64'
+    env[lib_key] = extra_paths + ':' + env.get(lib_key, '')
+    process = subprocess.Popen([cppPath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
 
     # 持续打印输出
     for line in process.stdout:

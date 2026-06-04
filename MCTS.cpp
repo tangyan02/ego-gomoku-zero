@@ -3,6 +3,7 @@
 #include <random>
 #include <numeric>
 #include <cstring>
+#include <chrono>
 //#include <__random/random_device.h>
 
 using namespace std;
@@ -213,6 +214,40 @@ MonteCarloTree::LeafInfo MonteCarloTree::selectLeafWithVirtualLoss(Game game) {
     return LeafInfo{node, game, 0.0f, true};
 }
 
+// 性能统计（累计）
+static long long perf_selectLeaf_us = 0;
+static long long perf_selectActions_us = 0;
+static long long perf_getState_us = 0;
+static long long perf_inference_us = 0;
+static long long perf_expand_us = 0;
+static long long perf_total_us = 0;
+static int perf_call_count = 0;
+static int perf_total_inferences = 0;
+
+void MonteCarloTree::printPerfStats() {
+    if (perf_call_count == 0) return;
+    double total = perf_total_us / 1000.0;
+    double sel = perf_selectLeaf_us / 1000.0;
+    double sa = perf_selectActions_us / 1000.0;
+    double gs = perf_getState_us / 1000.0;
+    double inf = perf_inference_us / 1000.0;
+    double exp = perf_expand_us / 1000.0;
+    double other = total - sel - sa - gs - inf - exp;
+    cout << "[Perf] " << perf_call_count << " steps | total " << (int)total << "ms"
+         << " | selectLeaf " << (int)sel << "ms(" << (int)(sel/total*100) << "%)"
+         << " | selectActions " << (int)sa << "ms(" << (int)(sa/total*100) << "%)"
+         << " | getState " << (int)gs << "ms(" << (int)(gs/total*100) << "%)"
+         << " | inference " << (int)inf << "ms(" << (int)(inf/total*100) << "%)"
+         << " | expand " << (int)exp << "ms(" << (int)(exp/total*100) << "%)"
+         << " | other " << (int)other << "ms(" << (int)(other/total*100) << "%)"
+         << " | inferences=" << perf_total_inferences
+         << endl;
+    perf_selectLeaf_us = perf_selectActions_us = perf_getState_us = 0;
+    perf_inference_us = perf_expand_us = perf_total_us = 0;
+    perf_call_count = 0;
+    perf_total_inferences = 0;
+}
+
 // 批量搜索：用 Virtual Loss + 批推理加速
 void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, int batch_size) {
     root = node;
@@ -222,6 +257,7 @@ void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, 
         return;
     }
 
+    auto perf_start = chrono::high_resolution_clock::now();
     int simulations_done = 0;
     const int channels = INPUT_CHANNELS;
 
@@ -232,23 +268,24 @@ void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, 
         leaves.reserve(current_batch);
 
         // 1. 并行走多条路径到叶子，沿途加 virtual loss
+        auto t_sel0 = chrono::high_resolution_clock::now();
         for (int i = 0; i < current_batch; i++) {
             leaves.push_back(selectLeafWithVirtualLoss(game));
         }
+        auto t_sel1 = chrono::high_resolution_clock::now();
+        perf_selectLeaf_us += chrono::duration_cast<chrono::microseconds>(t_sel1 - t_sel0).count();
 
         // 2. 收集需要网络评估的叶子：先调 selectActions 判 win，再查 TT
-        // win 叶子：跳过推理（value 强制 +1，仅 root leaf 时 expand 一次）
-        // TT 命中：跳过推理但用缓存值
-        // TT 未命中：进 batch 推理
-        std::vector<int> eval_indices;       // leaves 中需要网络评估的索引
-        std::vector<int> tt_hit_indices;     // leaves 中 TT 命中的索引
-        std::vector<int> win_indices;        // leaves 中 win=true 的索引
+        std::vector<int> eval_indices;
+        std::vector<int> tt_hit_indices;
+        std::vector<int> win_indices;
         std::vector<bool> leaf_is_win(current_batch, false);
         std::vector<std::vector<Point>> leaf_moves(current_batch);
         std::vector<std::string> leaf_selectInfo(current_batch);
         std::vector<std::vector<float>> batch_states;
         eval_indices.reserve(current_batch);
 
+        auto t_sa0 = chrono::high_resolution_clock::now();
         for (int i = 0; i < current_batch; i++) {
             if (leaves[i].leaf != nullptr && leaves[i].needs_eval) {
                 auto [win, moves, selectInfo] = selectActions(leaves[i].game);
@@ -258,28 +295,36 @@ void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, 
 
                 if (win) {
                     win_indices.push_back(i);
-                    continue;  // 跳过 TT 查询和推理
+                    continue;
                 }
 
                 // 查 Transposition Table
                 uint64_t hash = leaves[i].game.zobristHash;
                 auto ttIt = transpositionTable.find(hash);
                 if (ttIt != transpositionTable.end()) {
-                    // TT 命中：记录索引，跳过网络推理
                     tt_hit_indices.push_back(i);
                 } else {
                     eval_indices.push_back(i);
-                    std::vector<float> state(channels * MAX_BOARD_SIZE * MAX_BOARD_SIZE);
-                    leaves[i].game.getState(state.data(), channels);
-                    batch_states.push_back(std::move(state));
                 }
             }
         }
+        auto t_sa1 = chrono::high_resolution_clock::now();
+        perf_selectActions_us += chrono::duration_cast<chrono::microseconds>(t_sa1 - t_sa0).count();
 
-        // 3. 批量推理（仅 TT 未命中的部分）—— 直接拼接连续 float 数组，零拷贝传入
+        // getState（TT 未命中的部分）
+        auto t_gs0 = chrono::high_resolution_clock::now();
+        for (int idx : eval_indices) {
+            std::vector<float> state(channels * MAX_BOARD_SIZE * MAX_BOARD_SIZE);
+            leaves[idx].game.getState(state.data(), channels);
+            batch_states.push_back(std::move(state));
+        }
+        auto t_gs1 = chrono::high_resolution_clock::now();
+        perf_getState_us += chrono::duration_cast<chrono::microseconds>(t_gs1 - t_gs0).count();
+
+        // 3. 批量推理
+        auto t_inf0 = chrono::high_resolution_clock::now();
         std::vector<std::pair<float, std::vector<float>>> batch_results;
         if (!batch_states.empty()) {
-            // 将所有状态拼接为一个连续 float 数组 [batch * channels * H * W]
             int single_size = channels * MAX_BOARD_SIZE * MAX_BOARD_SIZE;
             std::vector<float> flat_batch(eval_indices.size() * single_size);
             for (size_t b = 0; b < batch_states.size(); b++) {
@@ -288,7 +333,10 @@ void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, 
             }
             batch_results = model->evaluate_state_batch_flat(
                 flat_batch.data(), eval_indices.size(), channels, MAX_BOARD_SIZE, MAX_BOARD_SIZE);
+            perf_total_inferences += eval_indices.size();
         }
+        auto t_inf1 = chrono::high_resolution_clock::now();
+        perf_inference_us += chrono::duration_cast<chrono::microseconds>(t_inf1 - t_inf0).count();
 
         // 4. 处理 win 叶子（跳过推理，value=+1）
         for (int idx : win_indices) {
@@ -395,6 +443,10 @@ void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, 
 
         simulations_done += current_batch;
     }
+
+    auto perf_end = chrono::high_resolution_clock::now();
+    perf_total_us += chrono::duration_cast<chrono::microseconds>(perf_end - perf_start).count();
+    perf_call_count++;
 }
 
 void MonteCarloTree::backpropagate(Node *node, float value) {

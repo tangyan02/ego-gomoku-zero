@@ -60,6 +60,9 @@ public:
     // 批量搜索：使用 Virtual Loss + 批推理加速 (默认 batch_size=8)
     void searchBatched(Game &game, Node *node, int num_simulations, int batch_size = 8);
 
+    // 打印性能统计并重置计数器
+    static void printPerfStats();
+
     void backpropagate(Node *node, float value);
 
     pair<vector<Point>, vector<float> > get_action_probabilities(float temperature);

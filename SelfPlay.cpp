@@ -404,6 +404,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         float perspective_sign = (td_n % 2 == 0) ? -1.0f : 1.0f;
 
         cout << prefix << "winner is " << winner << endl;
+        MonteCarloTree::printPerfStats();
 
         // 丢弃平局对局：value target 全是 0，对 value head 无监督信号；
         // policy 也是双方互防到棋盘满的低质量数据。
