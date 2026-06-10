@@ -181,6 +181,12 @@ int min(int a, int b) {
     return b;
 }
 
+int max(int a, int b) {
+    if (a > b)
+        return a;
+    return b;
+}
+
 bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum, int searchThreadCount) {
     int total = node->visits;
 	if (passTime / (float)thisTimeOut > 0.25) {
@@ -230,7 +236,12 @@ void brain_turn()
 
     piskvorkMessageEnable = true;
 
-    int thisTimeOut = info_time_left / 20;
+    // 动态时间分配：基于预估剩余步数
+    int movesPlayed = boardSize * boardSize - game->emptyCount;
+    int myMoves = (movesPlayed + 1) / 2;
+    int estimatedRemaining = max(10, 40 - myMoves);
+    float bonus = (myMoves < 5) ? 1.5f : 1.0f;
+    int thisTimeOut = (int)(info_time_left / estimatedRemaining * bonus);
     thisTimeOut = min(info_timeout_turn, thisTimeOut);
 
     if (firstCost == -1) {

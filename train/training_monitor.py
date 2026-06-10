@@ -528,7 +528,14 @@ async function loadHistory() {
 function updateStats() {
     const last = episodes.length > 0 ? episodes[episodes.length - 1] : {};
     document.getElementById('statGames').textContent = last.total_games_count || 0;
-    document.getElementById('statElo').textContent = '+' + Math.round(cumElo);
+    // 计算最新绝对 Elo（与图表逻辑一致）
+    let statBaseElo = 0, statAbsElo = 0;
+    const statEntries = eloData.filter(e => e.elo_diff !== undefined && !e.rollback);
+    statEntries.forEach((e, i) => {
+        if (i > 0 && statEntries[i-1].baseline_upgraded) statBaseElo = statAbsElo;
+        statAbsElo = statBaseElo + e.elo_diff;
+    });
+    document.getElementById('statElo').textContent = '+' + Math.round(statAbsElo);
     document.getElementById('statLoss').textContent = (last.loss || 0).toFixed(3);
     document.getElementById('statRecord').textContent = last.record_count || 0;
     document.getElementById('statSpeed').textContent = (last.speed || 0).toFixed(0);
@@ -614,48 +621,39 @@ function addToHistory(game) {
 }
 
 function updateCharts() {
-    // 过滤 rollback 标记，计算累计 Elo（不做补偿，忠实记录）
+    // 过滤有效条目
     const eloEntries = eloData.filter(e => e.elo_diff !== undefined && !e.rollback);
     const eLabels = eloEntries.map(e => 'g'+e.total_games);
-    const eCum = []; let s = 0;
-    eloEntries.forEach(e => { s += e.elo_diff; eCum.push(s); });
     const eDiff = eloEntries.map(e => e.elo_diff);
+
+    // 绝对 Elo：基准 Elo + 本次 elo_diff，升格时基准 Elo 提升
+    const eCum = []; let baselineElo = 0;
+    eloEntries.forEach((e, i) => {
+        if (i > 0 && eloEntries[i-1].baseline_upgraded) {
+            baselineElo = eCum[i-1];  // 升格点的绝对 Elo 成为新基准
+        }
+        eCum.push(baselineElo + e.elo_diff);
+    });
 
     if (eloChart) eloChart.destroy();
 
     const ctx = document.getElementById('eloChart').getContext('2d');
 
-    // 标记被回退撤销的点（rollback_target 之后、rollback 之前的 entry）
-    const rolledBackGames = new Set();
-    eloData.forEach((e, i) => {
-        if (e.rollback && e.rollback_target) {
-            for (let j = i - 1; j >= 0; j--) {
-                const d = eloData[j];
-                if (d.elo_diff !== undefined && !d.rollback) {
-                    if (d.total_games > e.rollback_target) {
-                        rolledBackGames.add(d.total_games);
-                    } else {
-                        break;
-                    }
-                }
-            }
-        }
-    });
-    // 映射到当前显示的 eloEntries 索引
-    const rolledBack = new Set();
-    eloEntries.forEach((e, i) => {
-        if (rolledBackGames.has(e.total_games)) rolledBack.add(i);
-    });
+    // 基准升格节点集合
+    const upgradedSet = new Set();
+    eloEntries.forEach((e, i) => { if (e.baseline_upgraded) upgradedSet.add(i); });
 
-    // 点颜色：被撤销=黄色，上升=红，下降=绿
+    // 点颜色：升格=金色，涨=红，跌=绿
     const pointColors = eCum.map((v, i) => {
-        if (rolledBack.has(i)) return '#f9ca24';
-        if (i === 0) return v >= 0 ? '#e94560' : '#4ecdc4';
+        if (upgradedSet.has(i)) return '#FFD700';
+        if (i === 0) return '#e94560';
         return v >= eCum[i-1] ? '#e94560' : '#4ecdc4';
     });
-    // 线段颜色：被撤销=黄色，上升=红，下降=绿
+    // 点大小：升格节点更大
+    const pointRadius = eCum.map((v, i) => upgradedSet.has(i) ? 6 : 3);
+    // 线段颜色
     const segmentColor = (ctx) => {
-        if (rolledBack.has(ctx.p1DataIndex) || rolledBack.has(ctx.p0DataIndex)) return '#f9ca24';
+        if (upgradedSet.has(ctx.p1DataIndex)) return '#FFD700';
         const curr = eCum[ctx.p1DataIndex];
         const prev = eCum[ctx.p0DataIndex];
         return curr >= prev ? '#e94560' : '#4ecdc4';
@@ -666,13 +664,13 @@ function updateCharts() {
         data: {
             labels: eLabels,
             datasets: [{
-                label: '累计 Elo',
+                label: '累计 Elo (基准内)',
                 data: eCum,
                 segment: { borderColor: segmentColor },
                 pointBackgroundColor: pointColors,
                 pointBorderColor: pointColors,
-                pointRadius: 2.5,
-                pointHoverRadius: 4,
+                pointRadius: pointRadius,
+                pointHoverRadius: 6,
                 borderWidth: 2.5,
                 tension: 0.1,
                 fill: {
@@ -690,10 +688,14 @@ function updateCharts() {
                     callbacks: {
                         label: function(ctx) {
                             const i = ctx.dataIndex;
+                            const e = eloEntries[i];
                             const cum = eCum[i];
                             const diff = eDiff[i];
-                            const arrow = diff >= 0 ? '▲' : '▼';
-                            return `累计: +${cum}  ${arrow} ${diff >= 0 ? '+' : ''}${diff}`;
+                            const wr = e.win_rate !== undefined ? (e.win_rate * 100).toFixed(0) + '%' : '';
+                            let tip = `累计${cum >= 0 ? '+' : ''}${cum}  本次${diff >= 0 ? '+' : ''}${diff}  胜率${wr}`;
+                            if (e.vs_baseline !== undefined) tip += `  vs g${e.vs_baseline}`;
+                            if (e.baseline_upgraded) tip += ' ★升格';
+                            return tip;
                         }
                     }
                 },
