@@ -27,8 +27,12 @@ void runGenerateOpenings() {
     int minMoves = stoi(ConfigReader::getOrDefault("genOpenings_minMoves", "1"));
     int maxMoves = stoi(ConfigReader::getOrDefault("genOpenings_maxMoves", "4"));
     float threshold = stof(ConfigReader::getOrDefault("genOpenings_threshold", "0.5"));
+    float evalThreshold = stof(ConfigReader::getOrDefault("genOpenings_evalThreshold", "-1"));
     int maxAttempts = stoi(ConfigReader::getOrDefault("genOpenings_maxAttempts", "20000"));
     int nearCenter = stoi(ConfigReader::getOrDefault("genOpenings_nearCenter", "6"));
+    // evalThreshold: eval 开局的独立阈值（实际 |v| 上限 = evalThreshold * 0.2）
+    // -1 = 不独立控制，跟 train 一样
+    float evalMaxScore = (evalThreshold > 0) ? evalThreshold * 0.2f : -1.0f;
 
     int numOpenings = numTrain + numEval;
 
@@ -203,26 +207,56 @@ void runGenerateOpenings() {
         return;
     }
 
-    // train/eval 切分：每个桶内按比例切，保证两集合都步数均匀
-    vector<vector<Opening>> finalBuckets(numBuckets);
-    for (auto& op : balanced) {
-        int idx = op.numMoves - minMoves;
-        if (idx >= 0 && idx < numBuckets) finalBuckets[idx].push_back(op);
-    }
-    // 每桶按 numTrain : numEval 比例切
+    // train/eval 切分
     vector<Opening> trainOpenings, evalOpenings;
-    float totalTarget = (float)(numTrain + numEval);
-    for (int b = 0; b < numBuckets; b++) {
-        auto& bc = finalBuckets[b];
-        // 桶内打散（balanceScore 顺序无所谓了，结果两集合都要打散）
-        shuffle(bc.begin(), bc.end(), rng);
-        int evalCnt = (int)((float)bc.size() * numEval / totalTarget + 0.5f);
-        evalCnt = min(evalCnt, (int)bc.size());
-        int trainCnt = (int)bc.size() - evalCnt;
-        for (int i = 0; i < trainCnt; i++) trainOpenings.push_back(bc[i]);
-        for (int i = trainCnt; i < (int)bc.size(); i++) evalOpenings.push_back(bc[i]);
+    if (evalMaxScore > 0) {
+        // eval 独立阈值：从候选中优先取 balanceScore < evalMaxScore 的作为 eval
+        // 候选已按 balanceScore 排序（balanced 内的桶内排序），重新按 score 全局排序取 eval
+        vector<Opening> evalPool;
+        for (auto& op : balanced) {
+            if (op.balanceScore < evalMaxScore) evalPool.push_back(op);
+        }
+        // eval 每桶均匀取
+        vector<vector<Opening>> evalBuckets(numBuckets);
+        for (auto& op : evalPool) {
+            int idx = op.numMoves - minMoves;
+            if (idx >= 0 && idx < numBuckets) evalBuckets[idx].push_back(op);
+        }
+        int evalPerBucket = numEval / numBuckets;
+        for (int b = 0; b < numBuckets; b++) {
+            shuffle(evalBuckets[b].begin(), evalBuckets[b].end(), rng);
+            int take = min((int)evalBuckets[b].size(), evalPerBucket);
+            for (int i = 0; i < take; i++) evalOpenings.push_back(evalBuckets[b][i]);
+        }
+        // 剩余全部给 train
+        // 用 set 标记 eval 已用的（简单做法：eval 和 train 可能有重叠坐标，但概率低）
+        for (auto& op : balanced) {
+            bool isEval = false;
+            for (auto& eop : evalOpenings) {
+                if (op.moves == eop.moves) { isEval = true; break; }
+            }
+            if (!isEval) trainOpenings.push_back(op);
+        }
+        cout << "[Openings] eval 独立阈值 |v|<" << evalMaxScore << "，eval 候选池 " << evalPool.size()
+             << "，实际选取 " << evalOpenings.size() << " 个" << endl;
+    } else {
+        // 无独立阈值：按比例切分
+        vector<vector<Opening>> finalBuckets(numBuckets);
+        for (auto& op : balanced) {
+            int idx = op.numMoves - minMoves;
+            if (idx >= 0 && idx < numBuckets) finalBuckets[idx].push_back(op);
+        }
+        float totalTarget = (float)(numTrain + numEval);
+        for (int b = 0; b < numBuckets; b++) {
+            auto& bc = finalBuckets[b];
+            shuffle(bc.begin(), bc.end(), rng);
+            int evalCnt = (int)((float)bc.size() * numEval / totalTarget + 0.5f);
+            evalCnt = min(evalCnt, (int)bc.size());
+            int trainCnt = (int)bc.size() - evalCnt;
+            for (int i = 0; i < trainCnt; i++) trainOpenings.push_back(bc[i]);
+            for (int i = trainCnt; i < (int)bc.size(); i++) evalOpenings.push_back(bc[i]);
+        }
     }
-    // 全集再打散一次（让不同桶混合）
     shuffle(trainOpenings.begin(), trainOpenings.end(), rng);
     shuffle(evalOpenings.begin(), evalOpenings.end(), rng);
     int trainCount = (int)trainOpenings.size();

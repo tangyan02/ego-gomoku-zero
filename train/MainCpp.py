@@ -214,38 +214,37 @@ def run_evaluate(cpp_path, model_path1, model_path2, eval_games, eval_simulation
     return result
 
 
-def run_generate_openings(cpp_path, model_path, threshold=0.5, max_attempts=80000):
-    """调用 C++ generate_openings 模式生成平衡开局库
-
-    threshold: 实际通过阈值 = threshold * 0.2（C++ 端 thresholds[3] 设计）。
-               threshold=0.5 → |v| < 0.1（严格平衡，默认）
-               threshold=1.0 → |v| < 0.2（放宽）
-               threshold=5.0 → |v| < 1.0（g0 全随机网络兜底）
-    """
+def _run_openings_once(cpp_path, model_path, count, threshold, max_attempts, output_file):
+    """单次调用 C++ 生成开局，输出到指定文件"""
+    import platform
     model_path = os.path.abspath(model_path)
     cpp_dir = os.path.dirname(os.path.abspath(cpp_path))
     conf_path = os.path.join(cpp_dir, "application.conf")
 
-    # 备份原配置
     backup_conf = conf_path + ".bak"
     if os.path.exists(conf_path):
         shutil.copy2(conf_path, backup_conf)
 
     with open(conf_path, 'w') as f:
         f.write(f"mode=generate_openings\n")
-        f.write(f"coreType={ConfigReader.get('coreType')}\n")  # 跟随训练配置（macOS 用 apple CoreML 加速）
+        f.write(f"coreType={ConfigReader.get('coreType')}\n")
         f.write(f"boardSize={ConfigReader.get('boardSize')}\n")
         f.write(f"modelPath={model_path}\n")
-        f.write(f"genOpenings_trainCount=300\n")
-        f.write(f"genOpenings_evalCount=50\n")
+        f.write(f"genOpenings_trainCount={count}\n")
+        f.write(f"genOpenings_evalCount=0\n")
         f.write(f"genOpenings_minMoves=1\n")
         f.write(f"genOpenings_maxMoves=4\n")
         f.write(f"genOpenings_threshold={threshold}\n")
+        f.write(f"genOpenings_evalThreshold=-1\n")
         f.write(f"genOpenings_maxAttempts={max_attempts}\n")
         f.write(f"genOpenings_nearCenter=9\n")
 
     env = os.environ.copy()
-    env['DYLD_LIBRARY_PATH'] = os.path.join(os.path.dirname(os.path.abspath(cpp_path)), '..', 'onnxruntime', 'lib')
+    lib_dir = os.path.join(cpp_dir, '..', 'onnxruntime', 'lib')
+    lib_key = 'DYLD_LIBRARY_PATH' if platform.system() == 'Darwin' else 'LD_LIBRARY_PATH'
+    extra = lib_dir + (':/usr/local/cuda/lib64' if platform.system() == 'Linux' else '')
+    env[lib_key] = extra + ':' + env.get(lib_key, '')
+
     process = subprocess.Popen([os.path.abspath(cpp_path)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                cwd=cpp_dir, env=env)
     openings_output = []
@@ -256,38 +255,62 @@ def run_generate_openings(cpp_path, model_path, threshold=0.5, max_attempts=8000
             openings_output.append(decoded.strip())
     process.wait()
 
-    # 恢复原配置
     if os.path.exists(backup_conf):
         shutil.copy2(backup_conf, conf_path)
         os.remove(backup_conf)
 
-    # 把生成的开局文件复制到 train 目录和自对弈目录
-    src_train = os.path.join(cpp_dir, "openings", "openings_train.txt")
-    src_eval = os.path.join(cpp_dir, "openings", "openings_eval.txt")
+    # 复制生成的 train 文件到目标路径
+    src = os.path.join(cpp_dir, "openings", "openings_train.txt")
+    if os.path.exists(src) and os.path.getsize(src) > 0:
+        shutil.copy2(src, output_file)
 
-    # 统计生成结果并写日志
-    train_count = sum(1 for _ in open(src_train)) if os.path.exists(src_train) and os.path.getsize(src_train) > 0 else 0
-    eval_count = sum(1 for _ in open(src_eval)) if os.path.exists(src_eval) and os.path.getsize(src_eval) > 0 else 0
+    return openings_output
+
+
+def run_generate_openings(cpp_path, model_path, threshold=0.5, eval_threshold=0.25, max_attempts=80000):
+    """分别生成训练开局和评估开局（独立阈值、独立数量）
+
+    训练开局：300 个，|v| < threshold * 0.2（默认 |v| < 0.1）
+    评估开局：25 个，|v| < eval_threshold * 0.2（默认 |v| < 0.05）
+    """
+    cpp_dir = os.path.dirname(os.path.abspath(cpp_path))
+
+    # 1. 生成训练开局：300 个，阈值 0.1
+    Logger.infoD("生成训练开局 (300个, |v|<0.1)...")
+    train_output_file = os.path.join("openings", "openings_train.txt")
+    os.makedirs("openings", exist_ok=True)
+    train_logs = _run_openings_once(cpp_path, model_path, 300, threshold, max_attempts, train_output_file)
+
+    # 2. 生成评估开局：25 个，阈值 0.05
+    Logger.infoD("生成评估开局 (25个, |v|<0.05)...")
+    eval_output_file = os.path.join("openings", "openings_eval.txt")
+    eval_logs = _run_openings_once(cpp_path, model_path, 25, eval_threshold, max_attempts, eval_output_file)
+
+    # 统计
+    train_count = sum(1 for _ in open(train_output_file)) if os.path.exists(train_output_file) and os.path.getsize(train_output_file) > 0 else 0
+    eval_count = sum(1 for _ in open(eval_output_file)) if os.path.exists(eval_output_file) and os.path.getsize(eval_output_file) > 0 else 0
     Logger.infoD(f"开局生成完成: train={train_count}, eval={eval_count}", "openings.log")
-    # 把 C++ 端的 [Openings] 所有详细日志逐行落到 openings.log（含尝试次数 / 通过率 / 各档 / 步数桶细分）
-    for line in openings_output:
+    for line in train_logs + eval_logs:
         Logger.infoD(line, "openings.log")
 
-    # 目标目录列表：train/openings + 自对弈 C++ 目录（如果与 eval 不同）
-    dst_dirs = ["openings"]
-    cpp_path_train = ConfigReader.get("cppPath")
-    train_cpp_dir = os.path.dirname(os.path.abspath(cpp_path_train))
-    if os.path.normpath(train_cpp_dir) != os.path.normpath(cpp_dir):
-        dst_dirs.append(os.path.join(train_cpp_dir, "openings"))
+    # 复制到所有 C++ 目录（自对弈 + 评估）
+    dst_dirs = set()
+    for key in ["cppPath", "cppPathEval"]:
+        if key in ConfigReader.config:
+            d = os.path.dirname(os.path.abspath(ConfigReader.get(key)))
+            dst_dirs.add(os.path.normpath(d))
+    # 也包括 eval 用的 cpp_dir（run_generate_openings 的 cpp_path 参数所在目录）
+    dst_dirs.add(os.path.normpath(cpp_dir))
 
-    for dst_dir in dst_dirs:
-        os.makedirs(dst_dir, exist_ok=True)
-        if os.path.exists(src_train):
-            shutil.copy2(src_train, os.path.join(dst_dir, "openings_train.txt"))
-        if os.path.exists(src_eval):
-            shutil.copy2(src_eval, os.path.join(dst_dir, "openings_eval.txt"))
+    for d in dst_dirs:
+        dst = os.path.join(d, "openings")
+        os.makedirs(dst, exist_ok=True)
+        if os.path.exists(train_output_file):
+            shutil.copy2(train_output_file, os.path.join(dst, "openings_train.txt"))
+        if os.path.exists(eval_output_file):
+            shutil.copy2(eval_output_file, os.path.join(dst, "openings_eval.txt"))
 
-    return process.returncode == 0
+    return True
 
 
 def run_vct_labeling(cpp_path):
