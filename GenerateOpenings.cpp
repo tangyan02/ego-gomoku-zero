@@ -1,6 +1,7 @@
 #include "GenerateOpenings.h"
 #include "Game.h"
 #include "Model.h"
+#include "MCTS.h"
 #include "ConfigReader.h"
 #include <iostream>
 #include <fstream>
@@ -30,6 +31,8 @@ void runGenerateOpenings() {
     float evalThreshold = stof(ConfigReader::getOrDefault("genOpenings_evalThreshold", "-1"));
     int maxAttempts = stoi(ConfigReader::getOrDefault("genOpenings_maxAttempts", "20000"));
     int nearCenter = stoi(ConfigReader::getOrDefault("genOpenings_nearCenter", "6"));
+    int mctsSimulations = stoi(ConfigReader::getOrDefault("genOpenings_mctsSimulations", "0"));
+    float explorationFactor = stof(ConfigReader::getOrDefault("explorationFactor", "3"));
     // evalThreshold: eval 开局的独立阈值（实际 |v| 上限 = evalThreshold * 0.2）
     // -1 = 不独立控制，跟 train 一样
     float evalMaxScore = (evalThreshold > 0) ? evalThreshold * 0.2f : -1.0f;
@@ -39,7 +42,9 @@ void runGenerateOpenings() {
     // 加载模型
     Model model;
     model.init(modelPath, coreType);
-    cout << "[Openings] Model loaded: " << modelPath << endl;
+    cout << "[Openings] Model loaded: " << modelPath
+         << (mctsSimulations > 0 ? " (MCTS " + to_string(mctsSimulations) + " sims)" : " (raw value)")
+         << endl;
 
     auto startTime = chrono::steady_clock::now();
 
@@ -73,11 +78,22 @@ void runGenerateOpenings() {
     vector<int> bucketCount(numBuckets, 0);
     vector<int> bucketAttempts(numBuckets, 0);  // 每个桶被尝试的次数（含已满后跳过的）
 
+    int lastReportedCandidates = 0;
+
     while (attempts < maxAttempts) {
         attempts++;
         int numMoves = moveDist(rng) + minMoves;
         int bucketIdx = numMoves - minMoves;
         bucketAttempts[bucketIdx]++;
+
+        // 实时进度输出：每新增 10 个候选输出一次
+        if ((int)candidates.size() >= lastReportedCandidates + 10) {
+            lastReportedCandidates = (int)candidates.size();
+            auto now = chrono::steady_clock::now();
+            int elapsed = (int)chrono::duration_cast<chrono::seconds>(now - startTime).count();
+            cout << "[Openings] 进度: " << candidates.size() << "/" << numOpenings
+                 << " 候选, 尝试 " << attempts << " 次, 耗时 " << elapsed << "s" << endl;
+        }
 
         // 桶配额：该步数已达上限则跳过本次尝试（不浪费推理）
         if (bucketCount[bucketIdx] >= bucketCap) continue;
@@ -143,8 +159,21 @@ void runGenerateOpenings() {
         if (!valid || (int)absMoves.size() < minMoves) continue;
 
         // 当前行棋方视角评估（value 接近 0 = 均势）
-        game.getState(stateBuf.data(), INPUT_CHANNELS);
-        auto [v1, _] = model.evaluate_state(stateBuf.data(), INPUT_CHANNELS, boardSize, boardSize);
+        float v1;
+        if (mctsSimulations > 0) {
+            // 用 MCTS 搜索得到更准确的 value 估计
+            MonteCarloTree mcts(&model, explorationFactor, false);
+            Node* mctsRoot = new Node(nullptr);
+            mcts.search(game, mctsRoot, mctsSimulations);
+            v1 = (mctsRoot->visits > 0) ? (float)(mctsRoot->value_sum / mctsRoot->visits) : 0.0f;
+            mctsRoot->release();
+            delete mctsRoot;
+        } else {
+            // 裸网络单次推理
+            game.getState(stateBuf.data(), INPUT_CHANNELS);
+            auto [val, pol] = model.evaluate_state(stateBuf.data(), INPUT_CHANNELS, boardSize, boardSize);
+            v1 = val;
+        }
 
         float balanceScore = fabs(v1);
         if (balanceScore < maxThreshold) {

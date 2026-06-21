@@ -158,6 +158,41 @@ def tail_log():
             broadcast_sse("eval_start", {"info": line.strip()})
             continue
 
+        # 开局生成开始
+        if "生成训练开局" in line or "生成评估开局" in line:
+            info = line.split("]", 1)[-1].strip() if "]" in line else line
+            broadcast_sse("openings_start", {"info": info})
+            continue
+
+        # 开局生成完成
+        og = re.search(r'开局生成完成: train=(\d+), eval=(\d+)', line)
+        if og:
+            broadcast_sse("openings_done", {
+                "train": int(og.group(1)),
+                "eval": int(og.group(2))
+            })
+            continue
+
+        # 开局生成 C++ 实时进度
+        op_progress = re.search(r'\[Openings\] 进度: (\d+)/(\d+) 候选, 尝试 (\d+) 次, 耗时 (\d+)s', line)
+        if op_progress:
+            broadcast_sse("openings_progress", {
+                "current": int(op_progress.group(1)),
+                "total": int(op_progress.group(2)),
+                "attempts": int(op_progress.group(3)),
+                "elapsed": int(op_progress.group(4))
+            })
+            continue
+
+        # 开局生成 C++ 最终完成统计
+        op_final = re.search(r'\[Openings\] 生成 (\d+) 训练 \+ (\d+) 评估开局', line)
+        if op_final:
+            broadcast_sse("openings_done", {
+                "train": int(op_final.group(1)),
+                "eval": int(op_final.group(2))
+            })
+            continue
+
         # 训练 batch 进度
         tm = re.search(r'\[train\] batch (\d+)/(\d+) loss=([\d.]+)', line)
         if tm:
@@ -482,6 +517,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
             <h2 style="margin-bottom:2px;">📊 训练进度</h2>
             <div id="trainProgress" style="font-size:11px;color:#aaa;">等待数据...</div>
             <div style="height:1px;background:#2a2a4a;margin:4px 0;"></div>
+            <div id="openingsProgress" style="font-size:11px;color:#aaa;"></div>
             <div id="vctProgress" style="display:none;font-size:11px;color:#aaa;">VCT标注: 已废弃</div>
         </div>
         <div class="panel" style="flex: 1.2;">
@@ -836,6 +872,36 @@ function connectSSE() {
         const tp = document.getElementById('trainProgress');
         tp.innerHTML = `<div style="font-size:11px;">自对弈 ${d.games}局 ${d.records}条 ${d.speed}条/s (${d.time.toFixed(0)}s)</div>` +
             (tp.dataset.info || '');
+    });
+
+    // 开局生成进度
+    es.addEventListener('openings_start', e => {
+        const d = JSON.parse(e.data);
+        const op = document.getElementById('openingsProgress');
+        op.innerHTML =
+            `<div style="display:flex;align-items:center;gap:8px;">` +
+            `<div style="flex:1;background:#16213e;border-radius:4px;height:12px;overflow:hidden;">` +
+            `<div style="width:0%;height:100%;background:#3498db;transition:width 0.3s;" id="openingsBar"></div></div>` +
+            `<span style="color:#3498db;">🎲</span></div>` +
+            `<div style="color:#3498db;margin-top:2px;">${d.info}</div>`;
+    });
+    es.addEventListener('openings_progress', e => {
+        const d = JSON.parse(e.data);
+        const op = document.getElementById('openingsProgress');
+        const pct = Math.min(100, Math.round(d.current / d.total * 100));
+        op.innerHTML =
+            `<div style="display:flex;align-items:center;gap:8px;">` +
+            `<div style="flex:1;background:#16213e;border-radius:4px;height:12px;overflow:hidden;">` +
+            `<div style="width:${pct}%;height:100%;background:#3498db;transition:width 0.3s;"></div></div>` +
+            `<span style="color:#3498db;">${pct}%</span></div>` +
+            `<div style="color:#3498db;margin-top:2px;">🎲 开局生成: ${d.current}/${d.total} (尝试${d.attempts}次, ${d.elapsed}s)</div>`;
+    });
+    es.addEventListener('openings_done', e => {
+        const d = JSON.parse(e.data);
+        const op = document.getElementById('openingsProgress');
+        op.innerHTML =
+            `<div style="color:#3498db;">✓ 开局生成完成: train=${d.train}, eval=${d.eval}</div>`;
+        setTimeout(() => { op.innerHTML = ''; }, 30000);
     });
 
     // VCT 标注：独立区域展示，不与训练进度互相覆盖

@@ -229,6 +229,7 @@ def _run_openings_once(cpp_path, model_path, count, threshold, max_attempts, out
         f.write(f"mode=generate_openings\n")
         f.write(f"coreType={ConfigReader.get('coreType')}\n")
         f.write(f"boardSize={ConfigReader.get('boardSize')}\n")
+        f.write(f"explorationFactor={ConfigReader.get('explorationFactor')}\n")
         f.write(f"modelPath={model_path}\n")
         f.write(f"genOpenings_trainCount={count}\n")
         f.write(f"genOpenings_evalCount=0\n")
@@ -238,6 +239,7 @@ def _run_openings_once(cpp_path, model_path, count, threshold, max_attempts, out
         f.write(f"genOpenings_evalThreshold=-1\n")
         f.write(f"genOpenings_maxAttempts={max_attempts}\n")
         f.write(f"genOpenings_nearCenter=9\n")
+        f.write(f"genOpenings_mctsSimulations=50\n")
 
     env = os.environ.copy()
     lib_dir = os.path.join(cpp_dir, '..', 'onnxruntime', 'lib')
@@ -268,21 +270,21 @@ def _run_openings_once(cpp_path, model_path, count, threshold, max_attempts, out
 
 
 def run_generate_openings(cpp_path, model_path, threshold=0.5, eval_threshold=0.25, max_attempts=80000):
-    """分别生成训练开局和评估开局（独立阈值、独立数量）
+    """分别生成训练开局和评估开局（独立阈值、独立数量，MCTS 评估）
 
-    训练开局：300 个，|v| < threshold * 0.2（默认 |v| < 0.1）
-    评估开局：25 个，|v| < eval_threshold * 0.2（默认 |v| < 0.05）
+    训练开局：200 个，|v| < threshold * 0.2（默认 |v| < 0.1），MCTS 50 sims
+    评估开局：25 个，|v| < eval_threshold * 0.2（默认 |v| < 0.05），MCTS 50 sims
     """
     cpp_dir = os.path.dirname(os.path.abspath(cpp_path))
 
-    # 1. 生成训练开局：300 个，阈值 0.1
-    Logger.infoD("生成训练开局 (300个, |v|<0.1)...")
+    # 1. 生成训练开局：200 个，阈值 0.1
+    Logger.infoD("生成训练开局 (200个, |v|<0.1, MCTS 50 sims)...")
     train_output_file = os.path.join("openings", "openings_train.txt")
     os.makedirs("openings", exist_ok=True)
-    train_logs = _run_openings_once(cpp_path, model_path, 300, threshold, max_attempts, train_output_file)
+    train_logs = _run_openings_once(cpp_path, model_path, 200, threshold, max_attempts, train_output_file)
 
     # 2. 生成评估开局：25 个，阈值 0.05
-    Logger.infoD("生成评估开局 (25个, |v|<0.05)...")
+    Logger.infoD("生成评估开局 (25个, |v|<0.05, MCTS 50 sims)...")
     eval_output_file = os.path.join("openings", "openings_eval.txt")
     eval_logs = _run_openings_once(cpp_path, model_path, 25, eval_threshold, max_attempts, eval_output_file)
 
