@@ -1,5 +1,7 @@
 #include "Game.h"
 #include "Analyzer.h"
+#include "DfpnVCT.h"
+#include "ConfigReader.h"
 #include <random>
 #include <cstring>
 
@@ -148,16 +150,19 @@ vector<vector<vector<float>>> Game::getState() {
         }
     }
 
-    // 棋型判定候选点（与 selectActions 对齐：附近 2 格，空盘则整盘）
-    auto basedMoves = historyMoves.empty() ? getAllEmptyPoints() : getNearEmptyPoints(2);
+    // ch2 我方 VCT（整面标1 = 当前方有必胜连续威胁）
+    if (hasMyVCT()) {
+        for (int row = 0; row < boardSize; row++)
+            for (int col = 0; col < boardSize; col++)
+                data[2][row][col] = 1;
+    }
 
-    // ch2 我方双活三点（落子后 ≥2 方向活三 → 必胜进攻点）
-    auto myDoubleThree = getDoubleActiveThreeMoves(currentPlayer, *this, basedMoves);
-    for (const auto &p : myDoubleThree) data[2][p.x][p.y] = 1;
-
-    // ch3 对方双活三点（必须防守）
-    auto oppDoubleThree = getDoubleActiveThreeMoves(otherPlayer, *this, basedMoves);
-    for (const auto &p : oppDoubleThree) data[3][p.x][p.y] = 1;
+    // ch3 对方 VCT（整面标1 = 对方有必胜威胁，需紧急防守）
+    if (hasOppVCT()) {
+        for (int row = 0; row < boardSize; row++)
+            for (int col = 0; col < boardSize; col++)
+                data[3][row][col] = 1;
+    }
 
     // ch4 我方 VCF 点（必胜威胁）
     auto myVCF = getMyVCFMoves();
@@ -189,17 +194,19 @@ void Game::getState(float* buffer, int channels) {
 
     if (channels < 3) return;
 
-    auto basedMoves = historyMoves.empty() ? getAllEmptyPoints() : getNearEmptyPoints(2);
-
-    // ch2 我方双活三点
-    auto myDoubleThree = getDoubleActiveThreeMoves(currentPlayer, *this, basedMoves);
-    for (const auto &p : myDoubleThree) buffer[2 * planeSize + p.x * boardSize + p.y] = 1.0f;
+    // ch2 我方 VCT（整面标1）
+    if (hasMyVCT()) {
+        for (int i = 0; i < planeSize; i++)
+            buffer[2 * planeSize + i] = 1.0f;
+    }
 
     if (channels < 4) return;
 
-    // ch3 对方双活三点
-    auto oppDoubleThree = getDoubleActiveThreeMoves(otherPlayer, *this, basedMoves);
-    for (const auto &p : oppDoubleThree) buffer[3 * planeSize + p.x * boardSize + p.y] = 1.0f;
+    // ch3 对方 VCT（整面标1）
+    if (hasOppVCT()) {
+        for (int i = 0; i < planeSize; i++)
+            buffer[3 * planeSize + i] = 1.0f;
+    }
 
     if (channels < 5) return;
 
@@ -282,6 +289,12 @@ bool Game::makeMove(Point p) {
     oppVcfDone = false;
     oppVcfMoves.clear();
 
+    myVctDone = false;
+    myVctResult = false;
+
+    oppVctDone = false;
+    oppVctResult = false;
+
     return true;
 }
 
@@ -349,4 +362,79 @@ void Game::ensureOppVCFComputed() const {
                           const_cast<Game&>(*this), Point(), Point(), 0);
     oppVcfMoves = oppVCF.second;
     oppVcfDone = true;
+}
+
+// -------- VCT 缓存 --------
+
+void Game::ensureMyVCTComputed() const {
+    if (myVctDone) return;
+
+    int pieceCount = boardSize * boardSize - emptyCount;
+    if (pieceCount < 6) {
+        myVctResult = false;
+        myVctDone = true;
+        return;
+    }
+
+    // 如果已经有 VCF，直接判定有 VCT（VCF ⊂ VCT）
+    if (!myVcfDone) {
+        ensureVCFComputed();
+    }
+    if (!myVcfMoves.empty()) {
+        myVctResult = true;
+        myVctDone = true;
+        return;
+    }
+
+    // DFPN VCT 搜索（maxNodes 和 maxDepth 从配置读取，控制开销）
+    static int vctMaxNodes = stoi(ConfigReader::getOrDefault("vctMaxNodes", "50000"));
+    static int vctMaxDepth = stoi(ConfigReader::getOrDefault("vctMaxDepth", "8"));
+    std::atomic<bool> running(true);
+    auto result = dfpnVCT(currentPlayer, const_cast<Game&>(*this), running, vctMaxNodes, vctMaxDepth);
+    myVctResult = result.first;
+    myVctDone = true;
+}
+
+void Game::ensureOppVCTComputed() const {
+    if (oppVctDone) return;
+
+    int pieceCount = boardSize * boardSize - emptyCount;
+    if (pieceCount < 6) {
+        oppVctResult = false;
+        oppVctDone = true;
+        return;
+    }
+
+    // 如果对方已经有 VCF，直接判定有 VCT
+    if (!oppVcfDone) {
+        ensureOppVCFComputed();
+    }
+    if (!oppVcfMoves.empty()) {
+        oppVctResult = true;
+        oppVctDone = true;
+        return;
+    }
+
+    // DFPN VCT 搜索（以对方为进攻方，参数同 myVCT）
+    static int vctMaxNodes = stoi(ConfigReader::getOrDefault("vctMaxNodes", "50000"));
+    static int vctMaxDepth = stoi(ConfigReader::getOrDefault("vctMaxDepth", "8"));
+    int otherPlayer = 3 - currentPlayer;
+    std::atomic<bool> running(true);
+    auto result = dfpnVCT(otherPlayer, const_cast<Game&>(*this), running, vctMaxNodes, vctMaxDepth);
+    oppVctResult = result.first;
+    oppVctDone = true;
+}
+
+bool Game::hasMyVCT() const {
+    if (!myVctDone) {
+        ensureMyVCTComputed();
+    }
+    return myVctResult;
+}
+
+bool Game::hasOppVCT() const {
+    if (!oppVctDone) {
+        ensureOppVCTComputed();
+    }
+    return oppVctResult;
 }

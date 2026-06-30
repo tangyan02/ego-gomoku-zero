@@ -45,8 +45,8 @@ const int CONNECT = 5;
 // 6 通道特征
 //   ch0 我方棋子 (0/1)
 //   ch1 对方棋子 (0/1)
-//   ch2 我方双活三点（落子后 ≥2 方向形成活三 = 必胜进攻点）
-//   ch3 对方双活三点（必须防守）
+//   ch2 我方VCT点（有必胜连续威胁 = 必胜进攻信号）
+//   ch3 对方VCT点（对方有必胜威胁 = 必须防守信号）
 //   ch4 我方VCF点（必胜威胁）
 //   ch5 对方VCF点（必须防守）
 const int INPUT_CHANNELS = 6;
@@ -87,6 +87,14 @@ public:
     mutable bool oppVcfDone = false;
     mutable vector<Point> oppVcfMoves;
 
+    // 我方 VCT 缓存（ch2）
+    mutable bool myVctDone = false;
+    mutable bool myVctResult = false;  // 是否有 VCT
+
+    // 对方 VCT 缓存（ch3）
+    mutable bool oppVctDone = false;
+    mutable bool oppVctResult = false;
+
 
     Game(int boardSize);
 
@@ -120,9 +128,15 @@ public:
 
     vector<Point> getOppVCFMoves() const;
 
+    // VCT 判定（带缓存）
+    bool hasMyVCT() const;
+    bool hasOppVCT() const;
+
 private:
     void ensureOppVCFComputed() const;
     void ensureVCFComputed() const;
+    void ensureMyVCTComputed() const;
+    void ensureOppVCTComputed() const;
 
 };
 

@@ -3,6 +3,8 @@
 #include "AnalyzerTest.cpp"
 #include "ShapeTest.cpp"
 #include "MCTSTest.cpp"
+#include "DfpnVCTTest.cpp"
+#include "DfpnVCFTest.cpp"
 
 int startTest(int argc, char *argv[]) {
     // 运行 doctest 测试

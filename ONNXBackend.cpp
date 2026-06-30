@@ -104,26 +104,28 @@ ONNXBackend::evaluate_state_batch(const std::vector<std::vector<std::vector<std:
 
     std::vector<const char*> output_node_names = {"value", "act"};
 
-    auto output_tensors = session->Run(
-        Ort::RunOptions{nullptr}, input_node_names.data(), input_tensors.data(),
-        input_tensors.size(), output_node_names.data(), output_node_names.size());
-
-    float* value_data = output_tensors[0].GetTensorMutableData<float>();
-    float* act_data = output_tensors[1].GetTensorMutableData<float>();
-
-    std::vector<int64_t> act_shape = output_tensors[1].GetTensorTypeAndShapeInfo().GetShape();
-    int act_size_per_batch = std::accumulate(act_shape.begin() + 1, act_shape.end(), 1, std::multiplies<int64_t>());
-
     std::vector<std::pair<float, std::vector<float>>> results;
-    results.reserve(batch_size);
+    {
+        std::lock_guard<std::mutex> lock(inferenceMutex);
+        auto output_tensors = session->Run(
+            Ort::RunOptions{nullptr}, input_node_names.data(), input_tensors.data(),
+            input_tensors.size(), output_node_names.data(), output_node_names.size());
 
-    for (int b = 0; b < batch_size; b++) {
-        float value = value_data[b];
-        std::vector<float> prior_prob;
-        for (int i = 0; i < act_size_per_batch; i++) {
-            prior_prob.emplace_back(exp(act_data[b * act_size_per_batch + i]));
+        float* value_data = output_tensors[0].GetTensorMutableData<float>();
+        float* act_data = output_tensors[1].GetTensorMutableData<float>();
+
+        std::vector<int64_t> act_shape = output_tensors[1].GetTensorTypeAndShapeInfo().GetShape();
+        int act_size_per_batch = std::accumulate(act_shape.begin() + 1, act_shape.end(), 1, std::multiplies<int64_t>());
+
+        results.reserve(batch_size);
+        for (int b = 0; b < batch_size; b++) {
+            float value = value_data[b];
+            std::vector<float> prior_prob;
+            for (int i = 0; i < act_size_per_batch; i++) {
+                prior_prob.emplace_back(exp(act_data[b * act_size_per_batch + i]));
+            }
+            results.emplace_back(value, prior_prob);
         }
-        results.emplace_back(value, prior_prob);
     }
 
     return results;
@@ -148,26 +150,28 @@ ONNXBackend::evaluate_state_batch_flat(const float* data, int batch_size, int ch
 
     std::vector<const char*> output_node_names = {"value", "act"};
 
-    auto output_tensors = session->Run(
-        Ort::RunOptions{nullptr}, input_node_names.data(), input_tensors.data(),
-        input_tensors.size(), output_node_names.data(), output_node_names.size());
-
-    float* value_data = output_tensors[0].GetTensorMutableData<float>();
-    float* act_data = output_tensors[1].GetTensorMutableData<float>();
-
-    std::vector<int64_t> act_shape = output_tensors[1].GetTensorTypeAndShapeInfo().GetShape();
-    int act_size_per_batch = std::accumulate(act_shape.begin() + 1, act_shape.end(), 1, std::multiplies<int64_t>());
-
     std::vector<std::pair<float, std::vector<float>>> results;
-    results.reserve(batch_size);
+    {
+        std::lock_guard<std::mutex> lock(inferenceMutex);
+        auto output_tensors = session->Run(
+            Ort::RunOptions{nullptr}, input_node_names.data(), input_tensors.data(),
+            input_tensors.size(), output_node_names.data(), output_node_names.size());
 
-    for (int b = 0; b < batch_size; b++) {
-        float value = value_data[b];
-        std::vector<float> prior_prob;
-        for (int i = 0; i < act_size_per_batch; i++) {
-            prior_prob.emplace_back(exp(act_data[b * act_size_per_batch + i]));
+        float* value_data = output_tensors[0].GetTensorMutableData<float>();
+        float* act_data = output_tensors[1].GetTensorMutableData<float>();
+
+        std::vector<int64_t> act_shape = output_tensors[1].GetTensorTypeAndShapeInfo().GetShape();
+        int act_size_per_batch = std::accumulate(act_shape.begin() + 1, act_shape.end(), 1, std::multiplies<int64_t>());
+
+        results.reserve(batch_size);
+        for (int b = 0; b < batch_size; b++) {
+            float value = value_data[b];
+            std::vector<float> prior_prob;
+            for (int i = 0; i < act_size_per_batch; i++) {
+                prior_prob.emplace_back(exp(act_data[b * act_size_per_batch + i]));
+            }
+            results.emplace_back(value, prior_prob);
         }
-        results.emplace_back(value, prior_prob);
     }
 
     return results;
@@ -195,22 +199,28 @@ ONNXBackend::evaluate_state(const float* data, int channels, int height, int wid
 
     std::vector<const char*> output_node_names = {"value", "act"};
 
-    auto output_tensors = session->Run(
-        Ort::RunOptions{nullptr}, input_node_names.data(), input_tensors.data(),
-        input_tensors.size(), output_node_names.data(), output_node_names.size());
+    std::pair<float, std::vector<float>> result;
+    {
+        std::lock_guard<std::mutex> lock(inferenceMutex);
+        auto output_tensors = session->Run(
+            Ort::RunOptions{nullptr}, input_node_names.data(), input_tensors.data(),
+            input_tensors.size(), output_node_names.data(), output_node_names.size());
 
-    float value = output_tensors[0].GetTensorMutableData<float>()[0];
-    float* act_data = output_tensors[1].GetTensorMutableData<float>();
+        float value = output_tensors[0].GetTensorMutableData<float>()[0];
+        float* act_data = output_tensors[1].GetTensorMutableData<float>();
 
-    std::vector<int64_t> act_shape = output_tensors[1].GetTensorTypeAndShapeInfo().GetShape();
-    int act_size = std::accumulate(act_shape.begin() + 1, act_shape.end(), 1, std::multiplies<int64_t>());
+        std::vector<int64_t> act_shape = output_tensors[1].GetTensorTypeAndShapeInfo().GetShape();
+        int act_size = std::accumulate(act_shape.begin() + 1, act_shape.end(), 1, std::multiplies<int64_t>());
 
-    std::vector<float> prior_prob(act_size);
-    for (int i = 0; i < act_size; i++) {
-        prior_prob[i] = exp(act_data[i]);
+        std::vector<float> prior_prob(act_size);
+        for (int i = 0; i < act_size; i++) {
+            prior_prob[i] = exp(act_data[i]);
+        }
+
+        result = {value, prior_prob};
     }
 
-    return {value, prior_prob};
+    return result;
 }
 
 std::future<std::pair<float, std::vector<float>>>

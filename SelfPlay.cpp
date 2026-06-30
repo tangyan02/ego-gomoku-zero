@@ -2,18 +2,41 @@
 
 #include "ConfigReader.h"
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <algorithm>
 #include <random>
 #include <cmath>
 #include <chrono>
 #include <future>
+#include <mutex>
+#include <iomanip>
 #include "Analyzer.h"
 
 using namespace std;
 
 // 线程局部随机数生成器，避免多线程竞态
 static thread_local std::mt19937 gen(std::random_device{}());
+
+// 200 vs 400 sims 一致性统计
+static std::mutex simsLogMutex;
+static int simsTotal = 0;
+static int simsAgree = 0;
+
+// 调用时必须已持有 simsLogMutex
+static void logSimsConsistencyLocked(const std::string &logPath) {
+    if (simsTotal > 0 && simsTotal % 100 == 0) {
+        std::ofstream ofs(logPath, std::ios::app);
+        if (ofs.is_open()) {
+            double rate = 100.0 * simsAgree / simsTotal;
+            ofs << "[SimsCompare] total=" << simsTotal
+                << " agree=" << simsAgree
+                << " rate=" << std::fixed << std::setprecision(1) << rate << "%"
+                << std::endl;
+            ofs.close();
+        }
+    }
+}
 
 void printGame(Game &game, Point action, float rate, float temperature,
                const std::string &prefix, const string selectInfo) {
@@ -295,13 +318,41 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             int existingVisits = rootNode->visits;
             int targetSimulations = max(numSimulations - existingVisits, 1);
 
+            // 中间检查点：200 sims 时记录贪心选择
+            int halfSims = numSimulations / 2;  // 400 → 200
+            int halfTarget = max(halfSims - existingVisits, 0);
+            Point halfMove;
+            bool hasHalfCheck = (numSimulations > halfSims && halfTarget > 0);
+
             mcts.search(game, rootNode, 1);
             if (mcts.root->children.size() > 1)
             {
-                mcts.searchBatched(game, rootNode, targetSimulations - 1, 16);
+                if (hasHalfCheck) {
+                    // 先搜到 halfSims
+                    mcts.searchBatched(game, rootNode, halfTarget - 1, 16);
+                    halfMove = mcts.get_max_visit_move();
+                    // 继续搜剩余部分
+                    int remaining = targetSimulations - halfTarget;
+                    if (remaining > 0) {
+                        mcts.searchBatched(game, rootNode, remaining, 16);
+                    }
+                } else {
+                    mcts.searchBatched(game, rootNode, targetSimulations - 1, 16);
+                }
             } else
             {
                 mcts.search(game, rootNode, 1);
+            }
+
+            // 比对 200 vs 400 sims 的贪心选择
+            if (hasHalfCheck && mcts.root->children.size() > 1) {
+                Point fullMove = mcts.get_max_visit_move();
+                std::lock_guard<std::mutex> lock(simsLogMutex);
+                simsTotal++;
+                if (halfMove.x == fullMove.x && halfMove.y == fullMove.y) {
+                    simsAgree++;
+                }
+                logSimsConsistencyLocked("log/sims_consistency.log");
             }
 
             vector<Point> moves;

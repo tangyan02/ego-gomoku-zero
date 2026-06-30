@@ -129,9 +129,13 @@ def tail_log():
         if not line:
             continue
         
-        # 新局开始
-        m = re.match(r'^=+ \[(\d+-\d+)\]=+$', line)
+        # 新局开始（多线程时只跟踪 shard 0，避免交叉输出导致监控混乱）
+        m = re.match(r'^=+ \[(\d+)-(\d+)\]=+$', line)
         if m:
+            shard_id = m.group(1)
+            game_id = m.group(1) + "-" + m.group(2)
+            if shard_id != "0":
+                continue
             with live_lock:
                 if live_game["active"] and live_game["moves"]:
                     broadcast_sse("game_end", {
@@ -139,8 +143,8 @@ def tail_log():
                         "winner": live_game["winner"],
                         "total_moves": len(live_game["moves"])
                     })
-                live_game = {"id": m.group(1), "moves": [], "winner": 0, "opening": "", "active": True}
-                broadcast_sse("game_start", {"id": m.group(1)})
+                live_game = {"id": game_id, "moves": [], "winner": 0, "opening": "", "active": True}
+                broadcast_sse("game_start", {"id": game_id})
             continue
         
         # === 以下事件不依赖 live_game，任何时候都要解析 ===
@@ -334,7 +338,13 @@ def tail_log():
                     pass
             continue
         
-        # === 以下事件依赖 live_game ===
+        # === 以下事件依赖 live_game，且只跟踪 shard 0 ===
+        
+        # 多线程过滤：只处理 shard 0 的输出行（[0-xxx] 前缀）
+        # 非 shard 0 的行（如 [1-3]、[2-5]）直接跳过，避免交叉污染
+        shard_prefix = re.match(r'^\[(\d+)-', line)
+        if shard_prefix and shard_prefix.group(1) != "0":
+            continue
         
         with live_lock:
             if not live_game["active"]:
@@ -364,7 +374,7 @@ def tail_log():
                 broadcast_sse("move", {"id": gid, "move": move_data, "step": step + 1})
         
         # 正常落子
-        m2 = re.match(r'\[\d+-\d+\]\s+(x|o)\s+(\d+),(\d+)\s+rate=([\d.]+)\s+T=([\d.]+)(.*)', line)
+        m2 = re.match(r'\[0-\d+\]\s+(x|o)\s+(\d+),(\d+)\s+rate=([\d.]+)\s+T=([\d.]+)(.*)', line)
         if m2:
             move_data = {
                 "color": m2.group(1),

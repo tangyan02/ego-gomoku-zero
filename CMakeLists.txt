@@ -83,6 +83,8 @@ set(COMMON_SOURCES
     Bridge.cpp Bridge.h Evaluate.cpp Evaluate.h
     GenerateOpenings.cpp GenerateOpenings.h
     BenchSelectActions.cpp BenchSelectActions.h
+    DfpnVCT.cpp DfpnVCT.h
+    DfpnVCF.cpp DfpnVCF.h
 )
 
 # ========== libtorch + MPS 后端 ==========

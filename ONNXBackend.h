@@ -47,6 +47,7 @@ private:
     std::queue<DataPromisePair> dataQueue;
     std::thread batchThread;
     std::mutex queueMutex;
+    std::mutex inferenceMutex;  // 保护 session->Run() 的多线程并发调用
     std::condition_variable condition;
     bool stop;
     int modelBatchSize;
