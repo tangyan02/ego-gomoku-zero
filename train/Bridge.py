@@ -54,7 +54,7 @@ def run_program(cppPath):
 
     # 持续打印输出
     for line in process.stdout:
-        print(line.decode(), end='')
+        print(line.decode(errors='replace'), end='')
 
     # 等待命令执行完成
     process.wait()

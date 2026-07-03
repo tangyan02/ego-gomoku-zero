@@ -676,12 +676,8 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
         return make_tuple(true, myVCFMoves, " VCF!");
     }
 
-    //我方VCT（DFPN搜索，带缓存）
-    if (game.hasMyVCT()) {
-        // VCT 存在但没有明确首步 → 不缩减候选点，但标记必胜
-        // 实际首步由 MCTS 搜索决定，这里仅给 selectActions 调用方返回必胜信号
-        return make_tuple(true, emptyPoints, " VCT!");
-    }
+    // VCT 已移除：DFPN VCT 搜索太慢（占 selectActions 96%+ 时间），
+    // 且作为战术兜底效果不稳定。VCF 已足够覆盖必胜威胁。
 
     //防御活4点
     auto threeDefenceMoves = getThreeDefenceMoves(game.currentPlayer, game, emptyPoints);

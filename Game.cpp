@@ -150,19 +150,16 @@ vector<vector<vector<float>>> Game::getState() {
         }
     }
 
-    // ch2 我方 VCT（整面标1 = 当前方有必胜连续威胁）
-    if (hasMyVCT()) {
-        for (int row = 0; row < boardSize; row++)
-            for (int col = 0; col < boardSize; col++)
-                data[2][row][col] = 1;
-    }
+    // 棋型判定候选点（与 selectActions 对齐：附近 2 格，空盘则整盘）
+    auto basedMoves = historyMoves.empty() ? getAllEmptyPoints() : getNearEmptyPoints(2);
 
-    // ch3 对方 VCT（整面标1 = 对方有必胜威胁，需紧急防守）
-    if (hasOppVCT()) {
-        for (int row = 0; row < boardSize; row++)
-            for (int col = 0; col < boardSize; col++)
-                data[3][row][col] = 1;
-    }
+    // ch2 我方双活三点（落子后 ≥2 方向活三 → 必胜进攻点）
+    auto myDoubleThree = getDoubleActiveThreeMoves(currentPlayer, *this, basedMoves);
+    for (const auto &p : myDoubleThree) data[2][p.x][p.y] = 1;
+
+    // ch3 对方双活三点（必须防守）
+    auto oppDoubleThree = getDoubleActiveThreeMoves(otherPlayer, *this, basedMoves);
+    for (const auto &p : oppDoubleThree) data[3][p.x][p.y] = 1;
 
     // ch4 我方 VCF 点（必胜威胁）
     auto myVCF = getMyVCFMoves();
@@ -194,19 +191,17 @@ void Game::getState(float* buffer, int channels) {
 
     if (channels < 3) return;
 
-    // ch2 我方 VCT（整面标1）
-    if (hasMyVCT()) {
-        for (int i = 0; i < planeSize; i++)
-            buffer[2 * planeSize + i] = 1.0f;
-    }
+    auto basedMoves = historyMoves.empty() ? getAllEmptyPoints() : getNearEmptyPoints(2);
+
+    // ch2 我方双活三点
+    auto myDoubleThree = getDoubleActiveThreeMoves(currentPlayer, *this, basedMoves);
+    for (const auto &p : myDoubleThree) buffer[2 * planeSize + p.x * boardSize + p.y] = 1.0f;
 
     if (channels < 4) return;
 
-    // ch3 对方 VCT（整面标1）
-    if (hasOppVCT()) {
-        for (int i = 0; i < planeSize; i++)
-            buffer[3 * planeSize + i] = 1.0f;
-    }
+    // ch3 对方双活三点
+    auto oppDoubleThree = getDoubleActiveThreeMoves(otherPlayer, *this, basedMoves);
+    for (const auto &p : oppDoubleThree) buffer[3 * planeSize + p.x * boardSize + p.y] = 1.0f;
 
     if (channels < 5) return;
 
