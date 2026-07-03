@@ -13,6 +13,7 @@
 #include <iostream>
 #include "Utils.h"
 #include "Shape.h"
+#include "DfpnVCT.h"
 
 const char* infotext = "name=\"Ego-Zero\", author=\"TangYan\", version=\"2.0\", country=\"China\", email=\"tangyan1412@foxmail.com\"";
 
@@ -271,6 +272,26 @@ void brain_turn()
         pipeOut("MESSAGE : action %d,%d vcf!", p.x, p.y);
         do_mymove(p.x, p.y);
         return;
+    }
+
+    // VCT 搜索：如果找到 VCT 直接走首步，找不到则 fallback 到 MCTS
+    {
+        std::atomic<bool> vctRunning(true);
+        int vctMaxNodes = 200000;  // 限制节点数避免超时
+        auto vctStart = getSystemTime();
+        auto [hasVCT, vctMoves] = dfpnVCT(game->currentPlayer, *game, vctRunning, vctMaxNodes, 30);
+        auto vctCost = getSystemTime() - vctStart;
+        if (hasVCT && !vctMoves.empty()) {
+            auto p = vctMoves[0];
+            pipeOut("MESSAGE VCT found! cost %dms, action %d,%d", (int)vctCost, p.x, p.y);
+            do_mymove(p.x, p.y);
+            // 为下回合 tree reuse 建节点
+            mcts.search(*game, node, 1);
+            return;
+        }
+        pipeOut("MESSAGE no VCT, cost %dms", (int)vctCost);
+        thisTimeOut -= (int)vctCost;
+        if (thisTimeOut < 100) thisTimeOut = 100;  // 保底 100ms 给 MCTS
     }
 
     startTime = getSystemTime();
