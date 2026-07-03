@@ -274,24 +274,24 @@ void brain_turn()
         return;
     }
 
-    // VCT 搜索：如果找到 VCT 直接走首步，找不到则 fallback 到 MCTS
+    // VCT 搜索：拷贝 game 做判定，完全不影响原 game
     {
+        Game gameCopy = *game;
         std::atomic<bool> vctRunning(true);
-        int vctMaxNodes = 200000;  // 限制节点数避免超时
+        int vctMaxNodes = 200000;
         auto vctStart = getSystemTime();
-        auto [hasVCT, vctMoves] = dfpnVCT(game->currentPlayer, *game, vctRunning, vctMaxNodes, 30);
+        auto [hasVCT, vctMoves] = dfpnVCT(gameCopy.currentPlayer, gameCopy, vctRunning, vctMaxNodes, 30);
         auto vctCost = getSystemTime() - vctStart;
         if (hasVCT && !vctMoves.empty()) {
             auto p = vctMoves[0];
             pipeOut("MESSAGE VCT found! cost %dms, action %d,%d", (int)vctCost, p.x, p.y);
             do_mymove(p.x, p.y);
-            // 为下回合 tree reuse 建节点
             mcts.search(*game, node, 1);
             return;
         }
         pipeOut("MESSAGE no VCT, cost %dms", (int)vctCost);
         thisTimeOut -= (int)vctCost;
-        if (thisTimeOut < 100) thisTimeOut = 100;  // 保底 100ms 给 MCTS
+        if (thisTimeOut < 100) thisTimeOut = 100;
     }
 
     startTime = getSystemTime();
