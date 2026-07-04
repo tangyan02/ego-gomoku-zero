@@ -366,8 +366,7 @@ void brain_turn()
                 }
             }
             if (!isSaving) {
-                it->second->release();
-                delete it->second;
+                it->second->release();  // release() 内部已 delete this
                 it = node->children.erase(it);
             } else {
                 ++it;
