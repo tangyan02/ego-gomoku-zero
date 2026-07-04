@@ -181,13 +181,13 @@ void runBenchSelectActions() {
             Game gc = testGames[i];
             std::atomic<bool> running(true);
             auto t0 = chrono::steady_clock::now();
-            auto [hasVCT, moves] = dfpnVCT(gc.currentPlayer, gc, running, fixedMaxNodes, 30);
+            auto vctResult = dfpnVCT(gc.currentPlayer, gc, running, fixedMaxNodes, 30);
             auto t1 = chrono::steady_clock::now();
             double ms = chrono::duration<double, milli>(t1 - t0).count();
             totalMs += ms;
             latencies.push_back(ms);
             if (ms > maxMs) maxMs = ms;
-            if (hasVCT) vctCount++;
+            if (vctResult.found) vctCount++;
         }
         sort(latencies.begin(), latencies.end());
         auto pct = [&](double p) {
@@ -215,13 +215,13 @@ void runBenchSelectActions() {
             Game gc = testGames[i];
             std::atomic<bool> running(true);
             auto t0 = chrono::steady_clock::now();
-            auto [hasVCT, moves] = dfpnVCTIterDeepen(gc.currentPlayer, gc, running, 200000, budget);
+            auto vctResult = dfpnVCTIterDeepen(gc.currentPlayer, gc, running, 200000, budget);
             auto t1 = chrono::steady_clock::now();
             double ms = chrono::duration<double, milli>(t1 - t0).count();
             totalMs += ms;
             latencies.push_back(ms);
             if (ms > maxMs) maxMs = ms;
-            if (hasVCT) vctCount++;
+            if (vctResult.found) vctCount++;
         }
         sort(latencies.begin(), latencies.end());
         auto pct = [&](double p) {

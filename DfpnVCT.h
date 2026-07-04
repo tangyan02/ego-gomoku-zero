@@ -24,16 +24,20 @@ struct DfpnEntry {
 
 static const uint32_t DFPN_INF = 100000000;
 
+// VCT 搜索结果
+struct VCTResult {
+    bool found;          // 是否找到 VCT
+    bool exhaustive;     // 搜索是否完整（true=结论可靠，false=资源不足提前退出）
+    std::vector<Point> moves;  // VCT 首步
+};
+
 // df-pn VCT 搜索
-// 返回: (是否找到 VCT, 获胜首步)
-std::pair<bool, std::vector<Point>>
-dfpnVCT(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes = 2000000, int maxDepth = 40);
+VCTResult dfpnVCT(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes = 2000000, int maxDepth = 40);
 
 // df-pn VCT 迭代加深版（按活三数逐层放宽 + 时间控制）
 // threeLimits: 1→4→7→10→13→16（从1开始每次+3），逐步允许更多活三
 // timeLimitMs: 最大搜索时间（毫秒），超时即返回当前结果
-std::pair<bool, std::vector<Point>>
-dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes = 200000, int timeLimitMs = 2000);
+VCTResult dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes = 200000, int timeLimitMs = 2000);
 
 // 设置/恢复 VCT 搜索的活三次数上限（用于 bench 测试单独的 threeLimit）
 void dfpnVCTSetThreeLimit(int limit);

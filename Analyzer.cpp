@@ -683,9 +683,9 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
         if (pieceCount >= 6) {
             Game gameCopy = game;
             std::atomic<bool> vctRunning(true);
-            auto [hasVCT, vctMoves] = dfpnVCT(gameCopy.currentPlayer, gameCopy, vctRunning, 5000, 10);
-            if (hasVCT && !vctMoves.empty()) {
-                return make_tuple(true, vector<Point>{vctMoves[0]}, " VCT!");
+            auto vctResult = dfpnVCT(gameCopy.currentPlayer, gameCopy, vctRunning, 5000, 10);
+            if (vctResult.found && !vctResult.moves.empty()) {
+                return make_tuple(true, vector<Point>{vctResult.moves[0]}, " VCT!");
             }
         }
     }

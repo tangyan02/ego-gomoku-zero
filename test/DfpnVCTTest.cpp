@@ -342,7 +342,7 @@ static pair<bool, double> runDfpnVCT(Game& game, int timeout_ms = 5000) {
     auto end = chrono::high_resolution_clock::now();
     double ms = chrono::duration<double, milli>(end - start).count();
     
-    return {result.first, ms};
+    return {result.found, ms};
 }
 
 TEST_CASE("bench_dfpn_vs_dfs_vct") {
@@ -464,8 +464,8 @@ TEST_CASE("dfpn_vct_maxnodes_sweep") {
             atomic<bool> running(true);
             auto result = dfpnVCT(game.currentPlayer, game, running, maxN);
             
-            string res = result.first ? "VCT" : "---";
-            if (result.first != tc.expectedVCT) res += "!";
+            string res = result.found ? "VCT" : "---";
+            if (result.found != tc.expectedVCT) res += "!";
             cout << right << setw(8) << res;
         }
         cout << endl;
@@ -523,8 +523,8 @@ TEST_CASE("dfpn_vct_maxdepth_sweep") {
             atomic<bool> running(true);
             auto result = dfpnVCT(game.currentPlayer, game, running, 2000000, maxD);
             
-            string res = result.first ? "VCT" : "---";
-            if (result.first != tc.expectedVCT) res += "!";
+            string res = result.found ? "VCT" : "---";
+            if (result.found != tc.expectedVCT) res += "!";
             cout << right << setw(7) << res;
         }
         cout << endl;
@@ -623,7 +623,7 @@ TEST_CASE("dfpn_correctness_no_vct") {
     
     atomic<bool> running(true);
     auto result = dfpnVCT(game.currentPlayer, game, running, 100000);
-    CHECK(!result.first);
+    CHECK(!result.found);
 }
 
 // 正确性测试：简单 VCT 局面
@@ -638,7 +638,7 @@ TEST_CASE("dfpn_correctness_simple_vct") {
     
     atomic<bool> running(true);
     auto result = dfpnVCT(game.currentPlayer, game, running, 100000);
-    CHECK(result.first);
+    CHECK(result.found);
 }
 
 // ======== PV 验证测试 ========
@@ -720,7 +720,7 @@ static void verifyDfpnPV(const string& caseName, int boardSize,
     atomic<bool> running(true);
     auto result = dfpnVCT(attacker, game, running, 2000000);
     
-    if (!result.first) {
+    if (!result.found) {
         cout << "DFPN says: NO VCT" << endl;
         return;
     }
@@ -833,9 +833,9 @@ TEST_CASE("dfpn_pv_verify_complex1") {
         
         atomic<bool> running(true);
         auto result = dfpnVCT(game.currentPlayer, game, running, 2000000);
-        cout << "DFPN result: " << (result.first ? "VCT" : "NO VCT") << endl;
-        if (result.first && !result.second.empty()) {
-            cout << "DFPN first move: " << pointStr(result.second[0]) << endl;
+        cout << "DFPN result: " << (result.found ? "VCT" : "NO VCT") << endl;
+        if (result.found && !result.moves.empty()) {
+            cout << "DFPN first move: " << pointStr(result.moves[0]) << endl;
         }
         
         // PV 提取
@@ -846,7 +846,7 @@ TEST_CASE("dfpn_pv_verify_complex1") {
         }
         
         // 手动检查 (7,12) 子节点
-        if (result.first) {
+        if (result.found) {
             uint64_t rootHash = game.zobristHash;
             Point m712(7, 12);
             uint64_t child712Hash = rootHash
@@ -854,9 +854,6 @@ TEST_CASE("dfpn_pv_verify_complex1") {
                 ^ zobristTable.pieces[m712.x][m712.y][game.currentPlayer]
                 ^ zobristTable.currentPlayerHash;
             cout << "Child hash after (7,12): " << child712Hash << endl;
-            // 查转置表看这个子节点的状态
-            // 没法直接访问 ttable，但 PV 只有1步说明子节点没有 pn=0
-            // 那根节点的 pn=0 是怎么来的？
             cout << "Root pn=0 but PV only 1 step - checking root entry moves..." << endl;
         }
         
@@ -875,9 +872,9 @@ TEST_CASE("dfpn_pv_verify_complex1") {
             cout << "PV[0] is sleepy four: " << (isSF ? "YES" : "NO") << endl;
             cout << "PV[0] is active three: " << (isAT ? "YES" : "NO") << endl;
             
-            // 检查 DFPN result.second (first move from dfpnVCT)
-            if (result.first && !result.second.empty()) {
-                auto fm = result.second[0];
+            // 检查 DFPN result.moves (first move from dfpnVCT)
+            if (result.found && !result.moves.empty()) {
+                auto fm = result.moves[0];
                 bool fmSF = false, fmAT = false;
                 for (auto& p : sf) if (p.x == fm.x && p.y == fm.y) fmSF = true;
                 for (auto& p : at) if (p.x == fm.x && p.y == fm.y) fmAT = true;
@@ -1293,7 +1290,7 @@ TEST_CASE("debug_all_inconsistent_cases") {
         
         // DFPN maxNodes=5M
         auto dfpnR = dfpnVCT(attacker, game, run1, 5000000, 40);
-        cout << "DFPN 5M nodes: " << (dfpnR.first ? "VCT" : "NO") << endl;
+        cout << "DFPN 5M nodes: " << (dfpnR.found ? "VCT" : "NO") << endl;
     }
     
     // midgame_28（标注有VCT但d=8找不到）
@@ -1334,7 +1331,7 @@ TEST_CASE("debug_all_inconsistent_cases") {
         // 用大限制跑
         atomic<bool> run1(true);
         auto dfpnR = dfpnVCT(attacker, game, run1, 5000000, 40);
-        cout << "DFPN 5M/d=40: " << (dfpnR.first ? "VCT" : "NO") << endl;
+        cout << "DFPN 5M/d=40: " << (dfpnR.found ? "VCT" : "NO") << endl;
     }
     
     // midgame_13（标注有VCT但找不到）
@@ -1373,7 +1370,7 @@ TEST_CASE("debug_all_inconsistent_cases") {
         
         // DFPN 大限制
         auto dfpnR = dfpnVCT(attacker, game, run1, 5000000, 40);
-        cout << "DFPN 5M/d=40: " << (dfpnR.first ? "VCT" : "NO") << endl;
+        cout << "DFPN 5M/d=40: " << (dfpnR.found ? "VCT" : "NO") << endl;
     }
     
     // opening_9（标注有VCT但d=8找不到）
@@ -1408,7 +1405,7 @@ TEST_CASE("debug_all_inconsistent_cases") {
         cout << "dfsVCT L=30: " << (dfs30.first ? "VCT" : "NO") << endl;
         
         auto dfpnR = dfpnVCT(attacker, game, run1, 5000000, 40);
-        cout << "DFPN 5M/d=40: " << (dfpnR.first ? "VCT" : "NO") << endl;
+        cout << "DFPN 5M/d=40: " << (dfpnR.found ? "VCT" : "NO") << endl;
     }
     
     // midgame_23
@@ -1440,7 +1437,7 @@ TEST_CASE("debug_all_inconsistent_cases") {
         auto dfs30 = dfsVCT(attacker, attacker, c1, run1, Point(), Point(), Point(), false, 0, 0, 99, 30);
         cout << "dfsVCT L=30: " << (dfs30.first ? "VCT" : "NO") << endl;
         auto dfpnR = dfpnVCT(attacker, game, run1, 5000000, 40);
-        cout << "DFPN 5M/d=40: " << (dfpnR.first ? "VCT" : "NO") << endl;
+        cout << "DFPN 5M/d=40: " << (dfpnR.found ? "VCT" : "NO") << endl;
     }
     
     // long_endgame
@@ -1475,7 +1472,7 @@ TEST_CASE("debug_all_inconsistent_cases") {
         auto dfs30 = dfsVCT(attacker, attacker, c1, run1, Point(), Point(), Point(), false, 0, 0, 99, 30);
         cout << "dfsVCT L=30: " << (dfs30.first ? "VCT" : "NO") << endl;
         auto dfpnR = dfpnVCT(attacker, game, run1, 5000000, 40);
-        cout << "DFPN 5M/d=40: " << (dfpnR.first ? "VCT" : "NO") << endl;
+        cout << "DFPN 5M/d=40: " << (dfpnR.found ? "VCT" : "NO") << endl;
     }
     
     // endgame_37
@@ -1508,7 +1505,7 @@ TEST_CASE("debug_all_inconsistent_cases") {
         auto dfs30 = dfsVCT(attacker, attacker, c1, run1, Point(), Point(), Point(), false, 0, 0, 99, 30);
         cout << "dfsVCT L=30: " << (dfs30.first ? "VCT" : "NO") << endl;
         auto dfpnR = dfpnVCT(attacker, game, run1, 5000000, 40);
-        cout << "DFPN 5M/d=40: " << (dfpnR.first ? "VCT" : "NO") << endl;
+        cout << "DFPN 5M/d=40: " << (dfpnR.found ? "VCT" : "NO") << endl;
     }
 }
 
@@ -1590,11 +1587,11 @@ TEST_CASE("debug_no_vct_mid_false_positive") {
     cout << "\n--- DFPN VCT (maxNodes=2M, maxDepth=40) ---" << endl;
     atomic<bool> running(true);
     auto result = dfpnVCT(attacker, game, running, 2000000, 40);
-    cout << "Result: " << (result.first ? "VCT FOUND" : "NO VCT") << endl;
+    cout << "Result: " << (result.found ? "VCT FOUND" : "NO VCT") << endl;
     
-    if (result.first) {
+    if (result.found) {
         cout << "First move: ";
-        for (auto& p : result.second) cout << pointStr(p) << " ";
+        for (auto& p : result.moves) cout << pointStr(p) << " ";
         cout << endl;
         
         // 提取 PV 看全路径

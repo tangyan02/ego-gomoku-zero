@@ -285,10 +285,10 @@ void brain_turn()
         std::atomic<bool> vctRunning(true);
         int vctMaxNodes = 200000;
         auto vctStart = getSystemTime();
-        auto [hasVCT, vctMoves] = dfpnVCTIterDeepen(gameCopy.currentPlayer, gameCopy, vctRunning, vctMaxNodes, myVctBudget);
+        auto myVctResult = dfpnVCTIterDeepen(gameCopy.currentPlayer, gameCopy, vctRunning, vctMaxNodes, myVctBudget);
         auto vctCost = getSystemTime() - vctStart;
-        if (hasVCT && !vctMoves.empty()) {
-            auto p = vctMoves[0];
+        if (myVctResult.found && !myVctResult.moves.empty()) {
+            auto p = myVctResult.moves[0];
             pipeOut("MESSAGE VCT found! cost %dms, action %d,%d", (int)vctCost, p.x, p.y);
             do_mymove(p.x, p.y);
             mcts.search(*game, node, 1);
@@ -308,10 +308,10 @@ void brain_turn()
         Game gameCopy = *game;
         std::atomic<bool> vctRunning(true);
         int vctMaxNodes = 200000;
-        auto [oppHasVCT, oppMoves] = dfpnVCTIterDeepen(opponent, gameCopy, vctRunning, vctMaxNodes, oppVctBudget / 2);
+        auto oppResult = dfpnVCTIterDeepen(opponent, gameCopy, vctRunning, vctMaxNodes, oppVctBudget / 2);
         auto oppCheckCost = getSystemTime() - oppVctStart;
 
-        if (oppHasVCT) {
+        if (oppResult.found) {
             pipeOut("MESSAGE opponent has VCT! check cost %dms, finding saving moves...", (int)oppCheckCost);
             int savingBudget = oppVctBudget - (int)oppCheckCost;
 
@@ -319,6 +319,7 @@ void brain_turn()
             auto [win, candidateMoves, info] = selectActions(*game);
             if (!win && !candidateMoves.empty()) {
                 // 对每个候选落子，检查落子后对手是否还有 VCT
+                // 只有当搜索完整完成（exhaustive）且确认没有 VCT 时，才算救命解
                 int perMoveBudget = max(1, savingBudget / (int)candidateMoves.size());
                 for (auto& move : candidateMoves) {
                     if ((int)(getSystemTime() - oppVctStart) >= oppVctBudget) break;
@@ -326,8 +327,9 @@ void brain_turn()
                     Game testGame = *game;
                     testGame.makeMove(move);
                     std::atomic<bool> testRunning(true);
-                    auto [stillHasVCT, _] = dfpnVCTIterDeepen(opponent, testGame, testRunning, vctMaxNodes, perMoveBudget);
-                    if (!stillHasVCT) {
+                    auto testResult = dfpnVCTIterDeepen(opponent, testGame, testRunning, vctMaxNodes, perMoveBudget);
+                    // 只有搜索完整完成且确认没有 VCT，才认为是救命解
+                    if (!testResult.found && testResult.exhaustive) {
                         vctSavingMoves.push_back(move);
                     }
                 }

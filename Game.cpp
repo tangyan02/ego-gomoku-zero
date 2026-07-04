@@ -386,7 +386,7 @@ void Game::ensureMyVCTComputed() const {
     static int vctMaxDepth = stoi(ConfigReader::getOrDefault("vctMaxDepth", "8"));
     std::atomic<bool> running(true);
     auto result = dfpnVCT(currentPlayer, const_cast<Game&>(*this), running, vctMaxNodes, vctMaxDepth);
-    myVctResult = result.first;
+    myVctResult = result.found;
     myVctDone = true;
 }
 
@@ -416,7 +416,7 @@ void Game::ensureOppVCTComputed() const {
     int otherPlayer = 3 - currentPlayer;
     std::atomic<bool> running(true);
     auto result = dfpnVCT(otherPlayer, const_cast<Game&>(*this), running, vctMaxNodes, vctMaxDepth);
-    oppVctResult = result.first;
+    oppVctResult = result.found;
     oppVctDone = true;
 }
 

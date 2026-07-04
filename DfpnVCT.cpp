@@ -324,8 +324,7 @@ static void mid(int attacker, int currentPlayer, Game& game, std::atomic<bool>& 
 
 // -------- 公开接口 --------
 
-std::pair<bool, std::vector<Point>>
-dfpnVCT(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes, int maxDepth) {
+VCTResult dfpnVCT(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes, int maxDepth) {
     ttable.clear();
     ttable.reserve(std::min(maxNodes, 1000000));
     nodeCount = 0;
@@ -337,7 +336,7 @@ dfpnVCT(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes, 
         for (int c = 0; c < game.boardSize; c++)
             if (game.board[r][c] != 0) pieceCount++;
     if (pieceCount < 6) {
-        return {false, {}};
+        return {false, true, {}};  // 没有 VCT，结论可靠
     }
     
     // Hash 修正：如果 attackPlayer != game.currentPlayer，翻转 hash 的 currentPlayer 位
@@ -352,12 +351,14 @@ dfpnVCT(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes, 
         Point(), Point(),
         0, 0, maxDepth);
     
+    // 判断搜索是否完整（running 仍为 true 且节点未耗尽）
+    bool exhaustive = running.load() && (nodeCount < maxNodesLimit);
+    
     uint64_t hash = game.zobristHash;
     auto it = ttable.find(hash);
     if (it != ttable.end() && it->second.pn == 0) {
         // 找到 VCT
         if (!it->second.moves.empty()) {
-            // 从 moves 中找 pn=0 的第一步
             for (auto& m : it->second.moves) {
                 uint64_t childHash = hash
                     ^ zobristTable.pieces[m.x][m.y][0]
@@ -366,16 +367,16 @@ dfpnVCT(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes, 
                 auto cit = ttable.find(childHash);
                 if (cit != ttable.end() && cit->second.pn == 0) {
                     if (hashFlipped) game.zobristHash ^= zobristTable.currentPlayerHash;
-                    return {true, {m}};
+                    return {true, true, {m}};  // 找到 VCT，结论可靠
                 }
             }
         }
         if (hashFlipped) game.zobristHash ^= zobristTable.currentPlayerHash;
-        return {true, {}};
+        return {true, true, {}};  // 找到 VCT 但没提取到首步
     }
     
     if (hashFlipped) game.zobristHash ^= zobristTable.currentPlayerHash;
-    return {false, {}};
+    return {false, exhaustive, {}};  // 没找到：exhaustive 标记结论是否可靠
 }
 
 // -------- PV 提取（验证用）--------
@@ -473,8 +474,7 @@ std::vector<Point> dfpnExtractPV(int attackPlayer, Game& game, int maxDepth) {
 // 比按深度迭代更精准——因为搜索爆炸的根源是活三分支，不是深度
 // 跨轮复用 pn=0 的已证明条目，清除其余（证伪和走法与 threeLimit 绑定）
 
-std::pair<bool, std::vector<Point>>
-dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& running,
+VCTResult dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& running,
                   int maxNodes, int timeLimitMs) {
     // 少子局面快速返回
     int pieceCount = 0;
@@ -482,7 +482,7 @@ dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& running,
         for (int c = 0; c < game.boardSize; c++)
             if (game.board[r][c] != 0) pieceCount++;
     if (pieceCount < 6) {
-        return {false, {}};
+        return {false, true, {}};  // 没有 VCT，结论可靠
     }
 
     // Hash 修正：如果 attackPlayer != game.currentPlayer，搜索假设 attacker 先走，
@@ -502,11 +502,13 @@ dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& running,
     ttable.clear();
     ttable.reserve(std::min(maxNodes, 1000000));
 
+    bool lastLayerExhausted = false;  // 最后一层是否被节点限制截断
+
     for (int threeLimit : threeLimits) {
         // 检查时间
         int elapsed = (int)(getSystemTime() - startTime);
-        if (elapsed >= timeLimitMs) break;
-        if (!running.load()) break;
+        if (elapsed >= timeLimitMs) { lastLayerExhausted = true; break; }
+        if (!running.load()) { lastLayerExhausted = true; break; }
 
         // 保留 pn=0 的已证明条目（有 VCT 的结论不受 threeLimit 放宽影响）
         // 清除其余条目（dn=0 的证伪结论和中间状态的走法都与 threeLimit 绑定）
@@ -546,22 +548,37 @@ dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& running,
                     if (cit != ttable.end() && cit->second.pn == 0) {
                         maxThreeCountLimit = 99;
                         if (hashFlipped) game.zobristHash ^= zobristTable.currentPlayerHash;
-                        return {true, {m}};
+                        return {true, true, {m}};  // 找到 VCT，结论可靠
                     }
                 }
             }
             maxThreeCountLimit = 99;
             if (hashFlipped) game.zobristHash ^= zobristTable.currentPlayerHash;
-            return {true, {}};
+            return {true, true, {}};  // 找到 VCT 但没提取到首步
         }
         
-        // 如果 running 被 nodeLimit 置 false，重置它继续下一轮
-        running.store(true);
+        // 检查本层是否被 nodeLimit 打断
+        if (!running.load()) {
+            // 本层节点耗尽，记录截断状态
+            lastLayerExhausted = true;
+            running.store(true);
+        } else {
+            // 本层正常完成（未被节点限制打断）
+            lastLayerExhausted = false;
+        }
     }
+    
+    // 判断搜索是否完整（结论可靠）：
+    // 1. 根节点 dn=0 → 真正证伪（对手确实没有 VCT）
+    // 2. 所有层都正常完成（未被时间/节点限制截断）
+    uint64_t hash = game.zobristHash;
+    auto it = ttable.find(hash);
+    bool disproven = (it != ttable.end() && it->second.dn == 0);
+    bool exhaustive = disproven || !lastLayerExhausted;
     
     maxThreeCountLimit = 99;
     if (hashFlipped) game.zobristHash ^= zobristTable.currentPlayerHash;
-    return {false, {}};
+    return {false, exhaustive, {}};
 }
 
 // -------- threeLimit setter（供 bench 测试用）--------
