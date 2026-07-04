@@ -274,23 +274,106 @@ void brain_turn()
         return;
     }
 
-    // VCT 搜索（迭代加深版，按活三数逐层 1→4→7→10→13→16，用时 ≤1/8 总预算）
+    // VCT 搜索：1/16 总预算算自己，1/16 算对手 + 找救命解
+    int myVctBudget = vctTimeOut / 2;
+    int oppVctBudget = vctTimeOut - myVctBudget;
+    vector<Point> vctSavingMoves;  // 救命解集合
+
+    // (1) 自己的 VCT
     {
         Game gameCopy = *game;
         std::atomic<bool> vctRunning(true);
         int vctMaxNodes = 200000;
         auto vctStart = getSystemTime();
-        auto [hasVCT, vctMoves] = dfpnVCTIterDeepen(gameCopy.currentPlayer, gameCopy, vctRunning, vctMaxNodes, vctTimeOut);
+        auto [hasVCT, vctMoves] = dfpnVCTIterDeepen(gameCopy.currentPlayer, gameCopy, vctRunning, vctMaxNodes, myVctBudget);
         auto vctCost = getSystemTime() - vctStart;
         if (hasVCT && !vctMoves.empty()) {
             auto p = vctMoves[0];
-            pipeOut("MESSAGE VCT found! depth-iter cost %dms, action %d,%d", (int)vctCost, p.x, p.y);
+            pipeOut("MESSAGE VCT found! cost %dms, action %d,%d", (int)vctCost, p.x, p.y);
             do_mymove(p.x, p.y);
             mcts.search(*game, node, 1);
             return;
         }
-        pipeOut("MESSAGE no VCT (iter-deepen), cost %dms/%dms budget", (int)vctCost, vctTimeOut);
+        pipeOut("MESSAGE no my VCT, cost %dms/%dms budget", (int)vctCost, myVctBudget);
         thisTimeOut -= (int)vctCost;
+    }
+
+    // (2) 对手的 VCT + 寻找救命解（迭代加深：逐步放宽 threeLimit）
+    {
+        int opponent = 3 - game->currentPlayer;
+        auto oppVctStart = getSystemTime();
+
+        // 先检测对手是否有 VCT
+        Game gameCopy = *game;
+        std::atomic<bool> vctRunning(true);
+        int vctMaxNodes = 200000;
+        auto [oppHasVCT, oppMoves] = dfpnVCTIterDeepen(opponent, gameCopy, vctRunning, vctMaxNodes, oppVctBudget / 2);
+        auto oppCheckCost = getSystemTime() - oppVctStart;
+
+        if (oppHasVCT) {
+            pipeOut("MESSAGE opponent has VCT! check cost %dms, finding saving moves...", (int)oppCheckCost);
+            int savingBudget = oppVctBudget - (int)oppCheckCost;
+
+            // 获取所有候选落子
+            auto [win, candidateMoves, info] = selectActions(*game);
+            if (!win && !candidateMoves.empty()) {
+                // 对每个候选落子，检查落子后对手是否还有 VCT
+                int perMoveBudget = max(1, savingBudget / (int)candidateMoves.size());
+                for (auto& move : candidateMoves) {
+                    if ((int)(getSystemTime() - oppVctStart) >= oppVctBudget) break;
+
+                    Game testGame = *game;
+                    testGame.makeMove(move);
+                    std::atomic<bool> testRunning(true);
+                    auto [stillHasVCT, _] = dfpnVCTIterDeepen(opponent, testGame, testRunning, vctMaxNodes, perMoveBudget);
+                    if (!stillHasVCT) {
+                        vctSavingMoves.push_back(move);
+                    }
+                }
+            }
+
+            auto totalOppCost = getSystemTime() - oppVctStart;
+            thisTimeOut -= (int)totalOppCost;
+
+            if (vctSavingMoves.size() == 1) {
+                // 唯一救命解，直接走
+                auto p = vctSavingMoves[0];
+                pipeOut("MESSAGE unique saving move %d,%d (opp VCT defense), cost %dms", p.x, p.y, (int)totalOppCost);
+                do_mymove(p.x, p.y);
+                mcts.search(*game, node, 1);
+                return;
+            } else if (vctSavingMoves.empty()) {
+                pipeOut("MESSAGE no saving move found! opponent VCT unavoidable, cost %dms", (int)totalOppCost);
+            } else {
+                pipeOut("MESSAGE %d saving moves found, will restrict MCTS, cost %dms", (int)vctSavingMoves.size(), (int)totalOppCost);
+            }
+        } else {
+            pipeOut("MESSAGE no opponent VCT, cost %dms/%dms budget", (int)oppCheckCost, oppVctBudget);
+            thisTimeOut -= (int)oppCheckCost;
+        }
+    }
+
+    // 如果有多个救命解，先 expand root 然后删掉非救命解的分支
+    if (vctSavingMoves.size() > 1) {
+        mcts.search(*game, node, 1);  // 先 expand root
+        // 只保留救命解对应的 children
+        for (auto it = node->children.begin(); it != node->children.end(); ) {
+            bool isSaving = false;
+            for (auto& sm : vctSavingMoves) {
+                if (it->first.x == sm.x && it->first.y == sm.y) {
+                    isSaving = true;
+                    break;
+                }
+            }
+            if (!isSaving) {
+                it->second->release();
+                delete it->second;
+                it = node->children.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        pipeOut("MESSAGE MCTS restricted to %d saving moves", (int)node->children.size());
     }
 
     startTime = getSystemTime();
