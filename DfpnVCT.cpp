@@ -58,22 +58,25 @@ static bool generateMoves(int attacker, int currentPlayer, Game& game,
     
     if (isAttacker) {
         // ---- 进攻方 ----
+        // 五连/活四检测用 near2 范围（所有棋子附近2格，覆盖所有可能的五连/活四点）
+        auto allMovesAtk = game.getEmptyPoints();
+        
         // 我方五连
-        auto winMoves = getWinningMoves(attacker, game, nearMoves4);
+        auto winMoves = getWinningMoves(attacker, game, allMovesAtk);
         if (!winMoves.empty()) {
             entry.pn = 0; entry.dn = DFPN_INF;
             return true;
         }
         
         // 对方五连检查
-        auto oppWinMoves = getWinningMoves(defender, game, nearMoves4);
+        auto oppWinMoves = getWinningMoves(defender, game, allMovesAtk);
         if (oppWinMoves.size() > 1) {
             entry.pn = DFPN_INF; entry.dn = 0;
             return true;
         }
         
         // 我方活四
-        auto activeFourMoves = getActiveFourMoves(attacker, game, nearMoves4);
+        auto activeFourMoves = getActiveFourMoves(attacker, game, allMovesAtk);
         if (!activeFourMoves.empty()) {
             entry.pn = 0; entry.dn = DFPN_INF;
             return true;
@@ -85,7 +88,7 @@ static bool generateMoves(int attacker, int currentPlayer, Game& game,
             // 对方有一个五连点，必须下这里
             moves.push_back(oppWinMoves[0]);
         } else {
-            // 正常进攻：冲四 + 活三
+            // 正常进攻：冲四 + 活三（范围限制只用于走法生成，不用于胜负判定）
             if (!fourMode) {
                 auto activeThree = getActiveThreeMoves(attacker, game, nearMoves3);
                 moves.insert(moves.end(), activeThree.begin(), activeThree.end());
@@ -105,7 +108,9 @@ static bool generateMoves(int attacker, int currentPlayer, Game& game,
         
     } else {
         // ---- 防守方 ----
-        auto oppWinMoves = getWinningMoves(checkPlayer, game, nearMoves4);
+        // 五连/活四/防活三检测用 near2 范围（所有棋子附近2格，覆盖所有可能的五连/活四/堵点）
+        auto allMoves = game.getEmptyPoints();
+        auto oppWinMoves = getWinningMoves(checkPlayer, game, allMoves);
         
         // 进攻方有 2+ 个五连点 → 无法防守
         if (oppWinMoves.size() > 1) {
@@ -120,7 +125,6 @@ static bool generateMoves(int attacker, int currentPlayer, Game& game,
             moves.push_back(oppWinMoves[0]);
         } else {
             // 进攻方没有五连点
-            auto allMoves = game.getEmptyPoints();
             
             // 防守方有活四 → 防守成功
             auto myActiveFour = getActiveFourMoves(currentPlayer, game, allMoves);
@@ -136,9 +140,9 @@ static bool generateMoves(int attacker, int currentPlayer, Game& game,
                 return true;
             }
             
-            // 防活三
+            // 防活三：用全盘范围（防守方的最优堵点可能不在 lastLastMove 附近）
             if (!fourMode) {
-                auto threeDefence = getThreeDefenceMoves(currentPlayer, game, nearMoves4);
+                auto threeDefence = getThreeDefenceMoves(currentPlayer, game, allMoves);
                 moves.insert(moves.end(), threeDefence.begin(), threeDefence.end());
             }
         }
