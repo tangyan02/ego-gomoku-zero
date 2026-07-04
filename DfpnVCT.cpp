@@ -1,6 +1,7 @@
 #include "DfpnVCT.h"
 #include "Analyzer.h"
 #include "Shape.h"
+#include "Utils.h"
 #include <algorithm>
 #include <cstring>
 
@@ -475,7 +476,7 @@ dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& running,
         return {false, {}};
     }
 
-    auto startTime = std::chrono::steady_clock::now();
+    long long startTime = getSystemTime();
     
     // 活三数量限制序列：从1开始每次+3（1,4,7,10,13,16）
     // 实测天花板在 threeLimit=7（62%），后续层为安全冗余
@@ -487,8 +488,7 @@ dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& running,
 
     for (int threeLimit : threeLimits) {
         // 检查时间
-        auto now = std::chrono::steady_clock::now();
-        int elapsed = (int)std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
+        int elapsed = (int)(getSystemTime() - startTime);
         if (elapsed >= timeLimitMs) break;
         if (!running.load()) break;
 
