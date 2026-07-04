@@ -72,9 +72,20 @@ public:
     Point get_max_visit_move();
 
     static void add_dirichlet_noise(
-        std::vector<float> &priors, // 原始概率
+        std::vector<float> &priors, // 原始概率（长度 boardSize*boardSize，稀疏）
+        const std::vector<Point> &moves, // 合法落子点，只对这些点加噪
+        int boardSize,
         double epsilon, // 混合系数
         double alpha, // Dirichlet参数
+        std::mt19937 &rng
+    );
+
+    // 紧凑版：priors 已是合法点一一对应的数组（如 tree-reuse 后的 children priors），
+    // 直接对整个数组加噪，无稀释问题
+    static void add_dirichlet_noise(
+        std::vector<float> &priors,
+        double epsilon,
+        double alpha,
         std::mt19937 &rng
     );
 

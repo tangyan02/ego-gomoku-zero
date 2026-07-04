@@ -422,7 +422,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
                         childNodes[idx] = child;
                         idx++;
                     }
-                    MonteCarloTree::add_dirichlet_noise(priors, 0.25, 0.03, gen);
+                    MonteCarloTree::add_dirichlet_noise(priors, 0.25, 0.2, gen);
                     for (int i = 0; i < numChildren; i++) {
                         childNodes[i]->prior_prob = priors[i];
                     }

@@ -7,7 +7,7 @@ from SampleSet import SampleSet
 from Utils import getTimeStr
 
 
-def train(extended_data, network, device, optimizer, batch_size, i_episode):
+def train(extended_data, network, device, optimizer, batch_size, i_episode, value_weight=1.5):
     # 创建数据加载器
     sample_set = SampleSet(extended_data)
     dataloader = DataLoader(sample_set, batch_size=batch_size, shuffle=True)
@@ -22,7 +22,9 @@ def train(extended_data, network, device, optimizer, batch_size, i_episode):
     for batch_idx, batch_data in enumerate(dataloader):
         states = batch_data[0].float().to(device)
         mcts_probs = batch_data[1].float().to(device)
-        values = batch_data[2].float().to(device)
+        # 网络 value 头输出形状为 [B, 1]，target 需对齐成 [B, 1]，
+        # 否则 MSELoss([B,1], [B]) 会被广播成 [B,B]，逐样本信号被污染
+        values = batch_data[2].float().to(device).view(-1, 1)
 
         optimizer.zero_grad()
 
@@ -35,8 +37,8 @@ def train(extended_data, network, device, optimizer, batch_size, i_episode):
         # 计算交叉熵损失
         policy_loss = -torch.mean(torch.sum(mcts_probs * predicted_action_logits, 1))
 
-        # 总损失
-        loss = value_loss + policy_loss
+        # 总损失：value 头长期被 policy CE 压制，给 value_loss 加权平衡两者量级
+        loss = value_weight * value_loss + policy_loss
 
         # 反向传播和优化
         loss.backward()

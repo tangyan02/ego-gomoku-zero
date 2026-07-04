@@ -346,6 +346,7 @@ if __name__ == "__main__":
     arena_simulation = int(ConfigReader.get('arenaSimulation') if 'arenaSimulation' in ConfigReader.config else 100)
     arena_threshold = float(ConfigReader.get('arenaWinRateThreshold') if 'arenaWinRateThreshold' in ConfigReader.config else 0.55)
     arena_max_skip = int(ConfigReader.get('arenaMaxSkip') if 'arenaMaxSkip' in ConfigReader.config else 10)
+    value_weight = float(ConfigReader.get('valueWeight') if 'valueWeight' in ConfigReader.config else 1.5)
 
     total_games_count = update_count(0)
 
@@ -443,7 +444,7 @@ if __name__ == "__main__":
         total_value_loss = 0.0
         total_policy_loss = 0.0
         for epoch in range(train_epochs):
-            loss, v_loss, p_loss = train(sampled_data, model, device, optimizer, batch_size, i_episode)
+            loss, v_loss, p_loss = train(sampled_data, model, device, optimizer, batch_size, i_episode, value_weight)
             total_loss += loss
             total_value_loss += v_loss
             total_policy_loss += p_loss

@@ -167,7 +167,7 @@ void MonteCarloTree::simulate(Game game) {
 
             value = eva_value;
             if (useNoice && node == root) {
-                add_dirichlet_noise(probs_metrix, 0.25, 0.03, rng);
+                add_dirichlet_noise(probs_metrix, moves, game.boardSize, 0.25, 0.2, rng);
             }
             node->expand(game, moves, probs_metrix);
         }
@@ -378,7 +378,7 @@ void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, 
             float value = ttEntry.value;
             auto probs_copy = ttEntry.priors;
             if (useNoice && leaf == root) {
-                add_dirichlet_noise(probs_copy, 0.25, 0.03, rng);
+                add_dirichlet_noise(probs_copy, leaf_moves[idx], leaves[idx].game.boardSize, 0.25, 0.2, rng);
             }
             leaf->expand(leaves[idx].game, leaf_moves[idx], probs_copy);
 
@@ -409,7 +409,7 @@ void MonteCarloTree::searchBatched(Game &game, Node *node, int num_simulations, 
             float value = eva_value;
             auto probs_copy = probs_metrix;
             if (useNoice && leaf == root) {
-                add_dirichlet_noise(probs_copy, 0.25, 0.03, rng);
+                add_dirichlet_noise(probs_copy, leaf_moves[idx], leaves[idx].game.boardSize, 0.25, 0.2, rng);
             }
             leaf->expand(leaves[idx].game, leaf_moves[idx], probs_copy);
 
@@ -592,15 +592,41 @@ std::vector<double> MonteCarloTree::sample_dirichlet(int size, double alpha, std
     return samples;
 }
 
+void MonteCarloTree::add_dirichlet_noise(std::vector<float> &priors, const std::vector<Point> &moves,
+                                         int boardSize, double epsilon, double alpha, std::mt19937 &rng) {
+    // 只对合法落子点采样 Dirichlet 噪声。
+    // 若对整个 boardSize*boardSize 维加噪，合法点分到的噪声会被非法点稀释到近乎为 0，探索失效。
+    int n = (int)moves.size();
+    if (n == 0) return;
+    std::vector<double> noise = sample_dirichlet(n, alpha, rng);
+    double sum = 0.0;
+    for (int i = 0; i < n; ++i) {
+        int idx = moves[i].x * boardSize + moves[i].y;
+        priors[idx] = float((1 - epsilon) * priors[idx] + epsilon * noise[i]);
+        sum += priors[idx];
+    }
+    // 在合法点集合内归一化（非法点本就为 0，不参与）
+    if (sum > 0.0) {
+        for (int i = 0; i < n; ++i) {
+            int idx = moves[i].x * boardSize + moves[i].y;
+            priors[idx] /= float(sum);
+        }
+    }
+}
+
+// 紧凑版：priors 每个元素都对应一个合法点，直接整体加噪
 void MonteCarloTree::add_dirichlet_noise(std::vector<float> &priors, double epsilon, double alpha, std::mt19937 &rng) {
     int size = priors.size();
+    if (size == 0) return;
     std::vector<double> noise = sample_dirichlet(size, alpha, rng);
+    double sum = 0.0;
     for (int i = 0; i < size; ++i) {
         priors[i] = float((1 - epsilon) * priors[i] + epsilon * noise[i]);
+        sum += priors[i];
     }
-    // 可选：归一化，防止数值误差
-    double sum = std::accumulate(priors.begin(), priors.end(), 0.0);
-    for (int i = 0; i < size; ++i) {
-        priors[i] /= float(sum);
+    if (sum > 0.0) {
+        for (int i = 0; i < size; ++i) {
+            priors[i] /= float(sum);
+        }
     }
 }
