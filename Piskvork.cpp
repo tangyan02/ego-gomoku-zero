@@ -118,6 +118,7 @@ void tree_down(int x, int y) {
 
     if (select == nullptr && !game->historyMoves.empty()) {
         pipeOut("MESSAGE =====renew node====== ");
+        delete node;  // 释放旧 node（children 已在上面 release）
         node = new Node();
     }
 
@@ -278,6 +279,7 @@ bool searchOpponentVCT(MonteCarloTree& mcts, int oppVctBudget, int& thisTimeOut,
             pipeOut("MESSAGE opponent may have VCT (quick=%s), scanning candidates layer by layer...",
                     quickResult.found ? "proven" : "inconclusive");
 
+            // moveStatus: 0=未决, 1=banned(confirmed VCT), 2=safe(全深度证明无VCT)
             vector<int> moveStatus(candidateMoves.size(), 0);
             int vctMaxNodes = 200000;
             std::vector<int> threeLimits = {1, 4, 7, 10, 13, 16};
@@ -287,9 +289,10 @@ bool searchOpponentVCT(MonteCarloTree& mcts, int oppVctBudget, int& thisTimeOut,
 
                 dfpnVCTSetThreeLimit(threeLimit);
                 int layerBanned = 0;
+                bool isLastLayer = (threeLimit == threeLimits.back());
 
                 for (int i = 0; i < (int)candidateMoves.size(); i++) {
-                    if (moveStatus[i] != 0) continue;
+                    if (moveStatus[i] != 0) continue;  // 已确定（banned 或 safe），跳过
                     if ((int)(getSystemTime() - oppVctStart) >= oppVctBudget) break;
 
                     Game testGame = *game;
@@ -298,12 +301,16 @@ bool searchOpponentVCT(MonteCarloTree& mcts, int oppVctBudget, int& thisTimeOut,
                     auto testResult = dfpnVCT(opponent, testGame, testRunning, vctMaxNodes);
 
                     if (testResult.found) {
-                        moveStatus[i] = 1;
+                        moveStatus[i] = 1;  // banned: 对手确定有 VCT
                         vctBannedMoves.push_back(candidateMoves[i]);
                         layerBanned++;
-                    } else if (testResult.exhaustive) {
-                        moveStatus[i] = 2;
+                    } else if (testResult.exhaustive && isLastLayer) {
+                        // 只有最深层的 exhaustive 才能真正证明安全
+                        // 中间层 exhaustive 只说明"在当前 threeLimit 下搜完了"，
+                        // 更深的 threeLimit 可能有新的 VCT 路径
+                        moveStatus[i] = 2;  // safe
                     }
+                    // else: 未决，下一层继续（包括中间层 exhaustive 的情况）
                 }
 
                 int undecided = 0, safe = 0;
@@ -315,9 +322,9 @@ bool searchOpponentVCT(MonteCarloTree& mcts, int oppVctBudget, int& thisTimeOut,
                 pipeOut("MESSAGE layer threeLimit=%d: +%d banned, %d safe, %d undecided",
                         threeLimit, layerBanned, safe, undecided);
 
-                // 只剩 1 个非 banned 且全部已决 → 直接走
+                // 只剩 1 个非 banned → 直接走（不需要全部 decided，只要非 banned 唯一就行）
                 int remaining = (int)candidateMoves.size() - (int)vctBannedMoves.size();
-                if (remaining == 1 && undecided == 0) {
+                if (remaining == 1) {
                     for (int i = 0; i < (int)candidateMoves.size(); i++) {
                         if (moveStatus[i] != 1) {
                             auto totalCost = getSystemTime() - oppVctStart;
@@ -333,7 +340,8 @@ bool searchOpponentVCT(MonteCarloTree& mcts, int oppVctBudget, int& thisTimeOut,
                     }
                 }
 
-                if (undecided == 0) break;
+                // 如果本层没有新 ban，且是最深层所有都 exhaustive → 可提前结束
+                if (layerBanned == 0 && undecided == 0) break;
             }
 
             dfpnVCTResetThreeLimit();
@@ -384,6 +392,17 @@ void applyBannedMoves(MonteCarloTree& mcts, const vector<Point>& vctBannedMoves)
 
 // MCTS 搜索循环 + 选最优走法并落子
 void mctsSearchAndPlay(MonteCarloTree& mcts, int thisTimeOut) {
+    // selectActions 结果对同一局面不变，只查一次
+    auto [win, moves, selectInfo] = selectActions(*game);
+    if (win && !moves.empty()) {
+        // 已有必胜手，直接走（兜底，正常不会到这里因为前面 VCF/VCT 已拦截）
+        auto p = moves[0];
+        pipeOut("MESSAGE : action %d,%d win (selectActions fallback)!", p.x, p.y);
+        do_mymove(p.x, p.y);
+        mcts.search(*game, node, 1);
+        return;
+    }
+
     auto startTime = getSystemTime();
     int simiNum = 0;
     while (true) {
@@ -392,20 +411,17 @@ void mctsSearchAndPlay(MonteCarloTree& mcts, int thisTimeOut) {
         simiNum += 1;
         if (passTime > thisTimeOut) break;
         if (node->children.size() <= 1) break;
-
-        auto [win, moves, selectInfo] = selectActions(*game);
-        if (win) break;
         if (checkNeedBreak(passTime, thisTimeOut, simiNum, searchThreadCount)) break;
     }
 
     pipeOut("MESSAGE children size %d", node->children.size());
     int max = -1;
-    Point action;
+    Point action(-1, -1);
 
     if (node->children.size() == 0) {
-        auto selectAction = selectActions(*game);
-        if (get<0>(selectAction)) {
-            action = get<1>(selectAction)[0];
+        // fallback: 取 selectActions 结果（前面已经判过 win，这里只可能是 !win 的 moves）
+        if (!moves.empty()) {
+            action = moves[0];
             max = 1;
         }
     }
@@ -432,6 +448,13 @@ void mctsSearchAndPlay(MonteCarloTree& mcts, int thisTimeOut) {
                 score = item.second->value_sum / item.second->visits;
             }
         }
+    }
+
+    if (action.x < 0 || action.y < 0) {
+        // 极端 fallback：所有逻辑都失败，随便走一个空位
+        pipeOut("MESSAGE WARNING: no valid action found, picking random empty point");
+        auto emptyPts = game->getAllEmptyPoints();
+        if (!emptyPts.empty()) action = emptyPts[0];
     }
 
     auto p = action;
