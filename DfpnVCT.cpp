@@ -84,15 +84,6 @@ static bool generateMoves(int attacker, int currentPlayer, Game& game,
             }
         }
         
-        // 防守方有 VCF → 进攻方 VCT 失败
-        // （对方有五连时不检查：五连必须堵，后续递归自然处理）
-        if (oppWinMoves.empty()) {
-            auto defVCF = dfsVCF(defender, defender, game, Point(), Point());
-            if (defVCF.first) {
-                entry.pn = DFPN_INF; entry.dn = 0;
-                return true;
-            }
-        }
         
         std::vector<Point> moves;
         

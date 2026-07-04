@@ -274,12 +274,10 @@ void brain_turn()
         return;
     }
 
-    // VCT 搜索：1/16 总预算算自己，1/16 算对手 + 找救命解
-    int myVctBudget = vctTimeOut / 2;
-    int oppVctBudget = vctTimeOut - myVctBudget;
-    vector<Point> vctBannedMoves;  // 确认必死的落子（落子后对手仍有 VCT）
+    // VCT 搜索：己方 VCT
+    int myVctBudget = vctTimeOut;
 
-    // (1) 自己的 VCT
+    // 自己的 VCT
     {
         Game gameCopy = *game;
         std::atomic<bool> vctRunning(true);
@@ -304,109 +302,7 @@ void brain_turn()
         thisTimeOut -= (int)vctCost;
     }
 
-    // (2) 对手的 VCT + 寻找救命解（迭代加深：逐步放宽 threeLimit）
-    {
-        int opponent = 3 - game->currentPlayer;
-        auto oppVctStart = getSystemTime();
 
-        // 先获取候选落子，用于分配时间预算
-        auto [win, candidateMoves, info] = selectActions(*game);
-        int numCandidates = max(1, (int)candidateMoves.size());
-
-        // 首次 VCT 检测预算 = 总预算 / (候选数+1)，保守分配留更多给 banned 检测
-        int firstCheckBudget = max(1, oppVctBudget / (numCandidates + 1));
-
-        // 检测对手是否有 VCT
-        // dfpnVCTIterDeepen 内部自动处理 attackPlayer != currentPlayer 时的 hash 修正
-        Game gameCopy = *game;
-        std::atomic<bool> vctRunning(true);
-        int vctMaxNodes = 200000;
-        auto oppResult = dfpnVCTIterDeepen(opponent, gameCopy, vctRunning, vctMaxNodes, firstCheckBudget);
-        auto oppCheckCost = getSystemTime() - oppVctStart;
-
-        if (oppResult.found) {
-            pipeOut("MESSAGE opponent has VCT! check cost %dms/%dms budget, finding banned moves...",
-                    (int)oppCheckCost, firstCheckBudget);
-            int savingBudget = oppVctBudget - (int)oppCheckCost;
-
-            int testedCount = 0;
-            if (!win && !candidateMoves.empty()) {
-                // 对每个候选落子，检查落子后对手是否还有 VCT
-                // found=true → 这个点必死，加入 banned（确定性结论，增量安全）
-                int perMoveBudget = max(1, savingBudget / (int)candidateMoves.size());
-                for (auto& move : candidateMoves) {
-                    if ((int)(getSystemTime() - oppVctStart) >= oppVctBudget) break;
-
-                    Game testGame = *game;
-                    testGame.makeMove(move);
-                    std::atomic<bool> testRunning(true);
-                    auto testResult = dfpnVCTIterDeepen(opponent, testGame, testRunning, vctMaxNodes, perMoveBudget);
-                    testedCount++;
-                    // found=true 是确定性结论（证明有 VCT），这个点必死
-                    if (testResult.found) {
-                        vctBannedMoves.push_back(move);
-                    }
-                }
-            }
-            bool allTested = (testedCount == (int)candidateMoves.size());
-
-            auto totalOppCost = getSystemTime() - oppVctStart;
-            thisTimeOut -= (int)totalOppCost;
-
-            int remaining = (int)candidateMoves.size() - (int)vctBannedMoves.size();
-            if (allTested && remaining == 1) {
-                // 全部测试完，只剩唯一非 banned 点 → 直接走
-                for (auto& move : candidateMoves) {
-                    bool banned = false;
-                    for (auto& bm : vctBannedMoves) {
-                        if (move.x == bm.x && move.y == bm.y) { banned = true; break; }
-                    }
-                    if (!banned) {
-                        pipeOut("MESSAGE unique saving move %d,%d (%d banned), cost %dms",
-                                move.x, move.y, (int)vctBannedMoves.size(), (int)totalOppCost);
-                        do_mymove(move.x, move.y);
-                        mcts.search(*game, node, 1);
-                        return;
-                    }
-                }
-            } else if (allTested && remaining == 0) {
-                pipeOut("MESSAGE all %d moves banned! opponent VCT unavoidable, cost %dms",
-                        (int)candidateMoves.size(), (int)totalOppCost);
-                vctBannedMoves.clear();  // 全部必死，不限制 MCTS（让它选最不差的）
-            } else if (vctBannedMoves.empty()) {
-                pipeOut("MESSAGE tested %d/%d, no banned moves found, cost %dms",
-                        testedCount, (int)candidateMoves.size(), (int)totalOppCost);
-            } else {
-                pipeOut("MESSAGE %d banned moves (tested %d/%d), will exclude from MCTS, cost %dms",
-                        (int)vctBannedMoves.size(), testedCount, (int)candidateMoves.size(), (int)totalOppCost);
-            }
-        } else {
-            pipeOut("MESSAGE no opponent VCT, cost %dms/%dms budget", (int)oppCheckCost, oppVctBudget);
-            thisTimeOut -= (int)oppCheckCost;
-        }
-    }
-
-    // 如果有 banned moves，先 expand root 然后从 MCTS 中排除 banned 分支
-    if (!vctBannedMoves.empty()) {
-        mcts.search(*game, node, 1);  // 先 expand root
-        // 删除 banned 对应的 children
-        for (auto it = node->children.begin(); it != node->children.end(); ) {
-            bool isBanned = false;
-            for (auto& bm : vctBannedMoves) {
-                if (it->first.x == bm.x && it->first.y == bm.y) {
-                    isBanned = true;
-                    break;
-                }
-            }
-            if (isBanned) {
-                it->second->release();
-                it = node->children.erase(it);
-            } else {
-                ++it;
-            }
-        }
-        pipeOut("MESSAGE MCTS: %d branches remaining after banning", (int)node->children.size());
-    }
 
     startTime = getSystemTime();
     int simiNum = 0;
