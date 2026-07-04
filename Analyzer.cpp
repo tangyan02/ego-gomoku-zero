@@ -1,5 +1,6 @@
 
 #include "Analyzer.h"
+#include "DfpnVCT.h"
 #include <atomic>
 #include <chrono>
 
@@ -676,8 +677,18 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
         return make_tuple(true, myVCFMoves, " VCF!");
     }
 
-    // VCT 已移除：DFPN VCT 搜索太慢（占 selectActions 96%+ 时间），
-    // 且作为战术兜底效果不稳定。VCF 已足够覆盖必胜威胁。
+    //我方VCT（轻量 DFPN，maxNodes=5000, maxDepth=10）
+    {
+        int pieceCount = game.boardSize * game.boardSize - game.emptyCount;
+        if (pieceCount >= 6) {
+            Game gameCopy = game;
+            std::atomic<bool> vctRunning(true);
+            auto [hasVCT, vctMoves] = dfpnVCT(gameCopy.currentPlayer, gameCopy, vctRunning, 5000, 10);
+            if (hasVCT && !vctMoves.empty()) {
+                return make_tuple(true, vector<Point>{vctMoves[0]}, " VCT!");
+            }
+        }
+    }
 
     //防御活4点
     auto threeDefenceMoves = getThreeDefenceMoves(game.currentPlayer, game, emptyPoints);

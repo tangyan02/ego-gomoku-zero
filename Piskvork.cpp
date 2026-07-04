@@ -251,7 +251,7 @@ void brain_turn()
         firstCost = 0;
     }
 
-    int vctTimeOut = thisTimeOut / 5;
+    int vctTimeOut = thisTimeOut / 8;
  
 
     pipeOut("MESSAGE time limit %d", thisTimeOut);
@@ -274,24 +274,23 @@ void brain_turn()
         return;
     }
 
-    // VCT 搜索：拷贝 game 做判定，完全不影响原 game
+    // VCT 搜索（迭代加深版，按活三数逐层 1→4→7→10→13→16，用时 ≤1/8 总预算）
     {
         Game gameCopy = *game;
         std::atomic<bool> vctRunning(true);
         int vctMaxNodes = 200000;
         auto vctStart = getSystemTime();
-        auto [hasVCT, vctMoves] = dfpnVCT(gameCopy.currentPlayer, gameCopy, vctRunning, vctMaxNodes, 30);
+        auto [hasVCT, vctMoves] = dfpnVCTIterDeepen(gameCopy.currentPlayer, gameCopy, vctRunning, vctMaxNodes, vctTimeOut);
         auto vctCost = getSystemTime() - vctStart;
         if (hasVCT && !vctMoves.empty()) {
             auto p = vctMoves[0];
-            pipeOut("MESSAGE VCT found! cost %dms, action %d,%d", (int)vctCost, p.x, p.y);
+            pipeOut("MESSAGE VCT found! depth-iter cost %dms, action %d,%d", (int)vctCost, p.x, p.y);
             do_mymove(p.x, p.y);
             mcts.search(*game, node, 1);
             return;
         }
-        pipeOut("MESSAGE no VCT, cost %dms", (int)vctCost);
+        pipeOut("MESSAGE no VCT (iter-deepen), cost %dms/%dms budget", (int)vctCost, vctTimeOut);
         thisTimeOut -= (int)vctCost;
-        if (thisTimeOut < 100) thisTimeOut = 100;
     }
 
     startTime = getSystemTime();

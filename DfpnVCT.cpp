@@ -12,6 +12,7 @@
 // 线程局部存储：每个线程独立的搜索状态，避免多线程竞争
 static thread_local int nodeCount = 0;
 static thread_local int maxNodesLimit = 2000000;
+static thread_local int maxThreeCountLimit = 99;  // 活三次数上限，>=此值进入 fourMode
 
 // -------- 转置表（线程局部）--------
 static thread_local std::unordered_map<uint64_t, DfpnEntry> ttable;
@@ -29,7 +30,7 @@ static bool generateMoves(int attacker, int currentPlayer, Game& game,
     bool isAttacker = (currentPlayer == attacker);
     int defender = 3 - attacker;
     int checkPlayer = attacker;  // VCT 检查方始终是进攻方
-    bool fourMode = (threeCount >= 9);
+    bool fourMode = (threeCount >= maxThreeCountLimit);
     
     // 搜索范围：与 dfsVCT 一致
     // dfsVCT 用 lastLastMove（上上步）和 attackPoint 来确定搜索范围
@@ -454,4 +455,100 @@ std::vector<Point> dfpnExtractPV(int attackPlayer, Game& game, int maxDepth) {
     }
     
     return pv;
+}
+
+// -------- 迭代加深版 DFPN VCT（按活三数逐层放宽 + 时间控制）--------
+// 策略：限制进攻方允许的活三次数，从少到多逐步放宽搜索空间
+// 序列 1→4→7→10→13→16（从1开始每次+3）
+// 比按深度迭代更精准——因为搜索爆炸的根源是活三分支，不是深度
+// 跨轮复用 pn=0 的已证明条目，清除其余（证伪和走法与 threeLimit 绑定）
+
+std::pair<bool, std::vector<Point>>
+dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& running,
+                  int maxNodes, int timeLimitMs) {
+    // 少子局面快速返回
+    int pieceCount = 0;
+    for (int r = 0; r < game.boardSize; r++)
+        for (int c = 0; c < game.boardSize; c++)
+            if (game.board[r][c] != 0) pieceCount++;
+    if (pieceCount < 6) {
+        return {false, {}};
+    }
+
+    auto startTime = std::chrono::steady_clock::now();
+    
+    // 活三数量限制序列：从1开始每次+3（1,4,7,10,13,16）
+    // 实测天花板在 threeLimit=7（62%），后续层为安全冗余
+    std::vector<int> threeLimits = {1, 4, 7, 10, 13, 16};
+    int maxDepth = 30;  // 深度固定为 30，由活三数控制搜索量
+    
+    ttable.clear();
+    ttable.reserve(std::min(maxNodes, 1000000));
+
+    for (int threeLimit : threeLimits) {
+        // 检查时间
+        auto now = std::chrono::steady_clock::now();
+        int elapsed = (int)std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
+        if (elapsed >= timeLimitMs) break;
+        if (!running.load()) break;
+
+        // 保留 pn=0 的已证明条目（有 VCT 的结论不受 threeLimit 放宽影响）
+        // 清除其余条目（dn=0 的证伪结论和中间状态的走法都与 threeLimit 绑定）
+        for (auto it = ttable.begin(); it != ttable.end(); ) {
+            if (it->second.pn == 0) {
+                ++it;  // 保留已证明有 VCT 的节点
+            } else {
+                it = ttable.erase(it);
+            }
+        }
+
+        // 设置本轮的活三上限
+        maxThreeCountLimit = threeLimit;
+
+        // 重置节点计数
+        nodeCount = 0;
+        maxNodesLimit = maxNodes;
+        
+        // MID 搜索
+        mid(attackPlayer, attackPlayer, game, running,
+            DFPN_INF, DFPN_INF,
+            Point(), Point(),
+            0, 0, maxDepth);
+        
+        // 检查结果
+        uint64_t hash = game.zobristHash;
+        auto it = ttable.find(hash);
+        if (it != ttable.end() && it->second.pn == 0) {
+            // 找到 VCT！提取首步
+            if (!it->second.moves.empty()) {
+                for (auto& m : it->second.moves) {
+                    uint64_t childHash = hash
+                        ^ zobristTable.pieces[m.x][m.y][0]
+                        ^ zobristTable.pieces[m.x][m.y][attackPlayer]
+                        ^ zobristTable.currentPlayerHash;
+                    auto cit = ttable.find(childHash);
+                    if (cit != ttable.end() && cit->second.pn == 0) {
+                        maxThreeCountLimit = 99;  // 恢复默认
+                        return {true, {m}};
+                    }
+                }
+            }
+            maxThreeCountLimit = 99;  // 恢复默认
+            return {true, {}};
+        }
+        
+        // 如果 running 被 nodeLimit 置 false，重置它继续下一轮
+        running.store(true);
+    }
+    
+    maxThreeCountLimit = 99;  // 恢复默认
+    return {false, {}};
+}
+
+// -------- threeLimit setter（供 bench 测试用）--------
+void dfpnVCTSetThreeLimit(int limit) {
+    maxThreeCountLimit = limit;
+}
+void dfpnVCTResetThreeLimit() {
+    maxThreeCountLimit = 99;
 }

@@ -3,6 +3,7 @@
 #include "ConfigReader.h"
 #include "Game.h"
 #include "Analyzer.h"
+#include "DfpnVCT.h"
 
 #include <iostream>
 #include <fstream>
@@ -125,140 +126,111 @@ static BenchResult benchOne(const string& name, const vector<Game>& games, Fn ch
     return r;
 }
 
-// 运行 dfsVCT（迭代加深，从 L2 开始到 maxLevel）
-// 返回：是否存在 VCT 必胜
-static bool checkVCT(Game& game, int maxLevel) {
-    atomic<bool> running(true);
-    // 迭代加深：L2 → L4 → ... → maxLevel（复刻 dfsVCTIter 行为，但允许自定义 maxLevel）
-    for (int level = 2; level <= maxLevel; level += 2) {
-        auto result = dfsVCT(game.currentPlayer, game.currentPlayer, game, running,
-                             game.lastAction, game.lastLastAction, Point(),
-                             /*fourMode=*/false, 0, 0, /*maxThreeCount=*/99,
-                             level);
-        if (result.first) return true;
-        if (!running.load()) break;
-    }
-    return false;
-}
+
 
 void runBenchSelectActions() {
     int boardSize = stoi(ConfigReader::getOrDefault("boardSize", "20"));
     string openingsPath = ConfigReader::getOrDefault("benchOpeningsPath", "openings/openings_train.txt");
     int maxLoad = stoi(ConfigReader::getOrDefault("benchMaxLoad", "200"));
-    int extraMoves = stoi(ConfigReader::getOrDefault("benchExtraMoves", "8"));
+    int extraMoves = stoi(ConfigReader::getOrDefault("benchExtraMoves", "16"));
     int samplesPerBase = stoi(ConfigReader::getOrDefault("benchSamplesPerBase", "3"));
 
     cout << "[Bench] 加载开局: " << openingsPath << endl;
     auto base = loadOpenings(openingsPath, boardSize, maxLoad);
-    cout << "[Bench] 读取 " << base.size() << " 条开局" << endl;
+    // 也加载 manual 开局增加多样性
+    string manualPath = ConfigReader::getOrDefault("benchManualPath", "openings/openings_manual.txt");
+    auto baseManual = loadOpenings(manualPath, boardSize, maxLoad);
+    base.insert(base.end(), baseManual.begin(), baseManual.end());
+    cout << "[Bench] 读取 " << base.size() << " 条开局（train + manual）" << endl;
 
     cout << "[Bench] 扩展为中盘局面：每个开局继续随机走 " << extraMoves
          << " 步，采样 " << samplesPerBase << " 次" << endl;
     auto games = expandGames(base, extraMoves, samplesPerBase);
     cout << "[Bench] 生成 " << games.size() << " 个测试局面" << endl;
 
+    // 统计平均棋子数
+    double avgPieces = 0;
+    for (auto& g : games) avgPieces += (g.boardSize * g.boardSize - g.emptyCount);
+    avgPieces /= games.size();
+    cout << "[Bench] 平均棋子数: " << avgPieces << endl;
+
     if (games.empty()) {
         cout << "[Bench] ERROR: 没有可测试的局面" << endl;
         return;
     }
 
-    cout << "\n========== 开始基准测试 ==========\n" << endl;
+    // 取前 200 局测试（中盘局面）
+    int testCount = stoi(ConfigReader::getOrDefault("benchTestCount", "200"));
+    auto testGames = vector<Game>(games.begin(), games.begin() + std::min((int)games.size(), testCount));
+    cout << "[Bench] 实际测试局面数: " << testGames.size() << endl;
 
-    // 基线：selectActions 本身
-    auto r0 = benchOne("selectActions (baseline)", games, [](Game& g) {
-        auto [win, dummy1, dummy2] = selectActions(g);
-        return win;
-    });
+    // ===== 对比1: 固定 threeLimit 各自的发现率 (细粒度) =====
+    cout << "\n===== 固定 threeLimit (maxNodes=200000, depth=30) =====\n";
+    vector<int> threeLimits = {1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 99};
+    int fixedMaxNodes = 200000;
 
-    // 基线 + 5 层 VCT
-    auto r5 = benchOne("selectActions + VCT L5", games, [](Game& g) {
-        auto [win, dummy1, dummy2] = selectActions(g);
-        if (win) return true;
-        return checkVCT(g, 5);
-    });
+    for (int threeLimit : threeLimits) {
+        cout << "\n--- threeLimit=" << threeLimit << " ---" << endl;
+        dfpnVCTSetThreeLimit(threeLimit);
+        double totalMs = 0;
+        int vctCount = 0;
+        double maxMs = 0;
+        vector<double> latencies;
 
-    // 基线 + 7 层 VCT
-    auto r7 = benchOne("selectActions + VCT L7", games, [](Game& g) {
-        auto [win, dummy1, dummy2] = selectActions(g);
-        if (win) return true;
-        return checkVCT(g, 7);
-    });
-
-    // 基线 + 9 层 VCT
-    auto r9 = benchOne("selectActions + VCT L9", games, [](Game& g) {
-        auto [win, dummy1, dummy2] = selectActions(g);
-        if (win) return true;
-        return checkVCT(g, 9);
-    });
-
-    // 输出
-    auto printRow = [](const BenchResult& r) {
-        double avgMs = r.total > 0 ? r.totalMs / r.total : 0.0;
-        cout << "  " << r.name << endl
-             << "    avg=" << avgMs << "ms"
-             << "  P50=" << r.medianMs << "ms"
-             << "  P75=" << r.p75Ms << "ms"
-             << "  P95=" << r.p95Ms << "ms"
-             << "  P99=" << r.p99Ms << "ms"
-             << "  Max=" << r.maxMs << "ms" << endl
-             << "    WinsFound=" << r.winsFound << "/" << r.total
-             << "  (必胜发现率=" << (100.0 * r.winsFound / std::max(1, r.total)) << "%)"
-             << endl;
-    };
-
-    cout.precision(3);
-    cout << fixed;
-    printRow(r0);
-    printRow(r5);
-    printRow(r7);
-    printRow(r9);
-
-    cout << "\n========== 增量对比（相对 baseline）==========\n" << endl;
-    auto compare = [&](const BenchResult& r, int level) {
-        double avg0 = r0.total > 0 ? r0.totalMs / r0.total : 0.0;
-        double avg = r.total > 0 ? r.totalMs / r.total : 0.0;
-        double delta = avg - avg0;
-        int extraWins = r.winsFound - r0.winsFound;
-        cout << "  VCT L" << level << ": 每次调用额外耗时 +" << delta << "ms"
-             << "   额外发现必胜 +" << extraWins
-             << " (" << (100.0 * extraWins / std::max(1, r.total)) << "%)" << endl;
-    };
-    compare(r5, 5);
-    compare(r7, 7);
-    compare(r9, 9);
-
-    // MCTS 每步 200 次模拟，估算实际拖慢幅度
-    cout << "\n========== MCTS 影响估算（每步 200 次模拟）==========\n" << endl;
-    double baseOverhead = r0.totalMs / r0.total * 200.0;  // 基线 200 次 selectActions
-    cout << "  基线：每步 " << baseOverhead << "ms" << endl;
-    for (auto& [r, lv] : vector<pair<BenchResult*, int>>{{&r5, 5}, {&r7, 7}, {&r9, 9}}) {
-        double overhead = r->totalMs / r->total * 200.0;
-        cout << "  VCT L" << lv << "：每步 " << overhead << "ms"
-             << "  (增加 +" << (overhead - baseOverhead) << "ms)" << endl;
-    }
-
-    // ========== getState 性能（4ch vs 6ch）==========
-    cout << "\n========== getState 性能（INPUT_CHANNELS=" << INPUT_CHANNELS << "）==========\n" << endl;
-    {
-        const int planeSize = boardSize * boardSize;
-        vector<float> buffer(INPUT_CHANNELS * planeSize, 0.0f);
-
-        auto rGet = benchOne("getState (flat)", games, [&](Game& g) {
-            g.getState(buffer.data(), INPUT_CHANNELS);
-            return false;
-        });
-        auto print = [](const string& name, const BenchResult& r) {
-            double avg = r.total > 0 ? r.totalMs / r.total : 0.0;
-            cout << "  " << name << endl
-                 << "    avg=" << avg << "ms"
-                 << "  P50=" << r.medianMs << "ms"
-                 << "  P95=" << r.p95Ms << "ms"
-                 << "  P99=" << r.p99Ms << "ms"
-                 << "  Max=" << r.maxMs << "ms" << endl;
+        for (int i = 0; i < (int)testGames.size(); i++) {
+            Game gc = testGames[i];
+            std::atomic<bool> running(true);
+            auto t0 = chrono::steady_clock::now();
+            auto [hasVCT, moves] = dfpnVCT(gc.currentPlayer, gc, running, fixedMaxNodes, 30);
+            auto t1 = chrono::steady_clock::now();
+            double ms = chrono::duration<double, milli>(t1 - t0).count();
+            totalMs += ms;
+            latencies.push_back(ms);
+            if (ms > maxMs) maxMs = ms;
+            if (hasVCT) vctCount++;
+        }
+        sort(latencies.begin(), latencies.end());
+        auto pct = [&](double p) {
+            int idx = std::min((int)latencies.size() - 1, (int)(latencies.size() * p));
+            return latencies[idx];
         };
-        print("getState (flat)", rGet);
-
-        double overheadPerStep = rGet.totalMs / rGet.total * 200.0;
-        cout << "  → MCTS 每步 200 次 getState 总耗时 ≈ " << overheadPerStep << "ms" << endl;
+        double avgMs = totalMs / testGames.size();
+        cout << "  VCT=" << vctCount << "/" << testGames.size() << " (" << (100.0*vctCount/testGames.size()) << "%)"
+             << "  avg=" << avgMs << "ms  P50=" << pct(0.50) << "ms  P95=" << pct(0.95) << "ms  Max=" << maxMs << "ms" << endl;
     }
+    dfpnVCTResetThreeLimit();
+
+    // ===== 对比2: 迭代加深版 (threeCount 策略，不同时间预算) =====
+    cout << "\n\n===== 迭代加深 dfpnVCTIterDeepen [threeCount策略] (maxNodes=200000) =====\n";
+    vector<int> timeBudgets = {50, 100, 200, 500, 1000, 2000};
+
+    for (int budget : timeBudgets) {
+        cout << "\n--- timeBudget=" << budget << "ms ---" << endl;
+        double totalMs = 0;
+        int vctCount = 0;
+        double maxMs = 0;
+        vector<double> latencies;
+
+        for (int i = 0; i < (int)testGames.size(); i++) {
+            Game gc = testGames[i];
+            std::atomic<bool> running(true);
+            auto t0 = chrono::steady_clock::now();
+            auto [hasVCT, moves] = dfpnVCTIterDeepen(gc.currentPlayer, gc, running, 200000, budget);
+            auto t1 = chrono::steady_clock::now();
+            double ms = chrono::duration<double, milli>(t1 - t0).count();
+            totalMs += ms;
+            latencies.push_back(ms);
+            if (ms > maxMs) maxMs = ms;
+            if (hasVCT) vctCount++;
+        }
+        sort(latencies.begin(), latencies.end());
+        auto pct = [&](double p) {
+            int idx = std::min((int)latencies.size() - 1, (int)(latencies.size() * p));
+            return latencies[idx];
+        };
+        double avgMs = totalMs / testGames.size();
+        cout << "  VCT=" << vctCount << "/" << testGames.size() << " (" << (100.0*vctCount/testGames.size()) << "%)"
+             << "  avg=" << avgMs << "ms  P50=" << pct(0.50) << "ms  P95=" << pct(0.95) << "ms  Max=" << maxMs << "ms" << endl;
+    }
+
 }
