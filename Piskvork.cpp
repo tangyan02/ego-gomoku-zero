@@ -231,107 +231,176 @@ bool checkNeedBreak(long long passTime, long long thisTimeOut, int simiNum, int 
     return false;
 }
 
-void brain_turn()
-{
-    MonteCarloTree mcts = MonteCarloTree(model, exp_factor);
+// ============ brain_turn 辅助函数 ============
 
-    piskvorkMessageEnable = true;
-
-    // 动态时间分配：基于预估剩余步数
-    int movesPlayed = boardSize * boardSize - game->emptyCount;
-    int myMoves = (movesPlayed + 1) / 2;
-    int estimatedRemaining = max(10, 40 - myMoves);
-    float bonus = (myMoves < 5) ? 1.5f : 1.0f;
-    int thisTimeOut = (int)(info_time_left / estimatedRemaining * bonus);
-    thisTimeOut = min(info_timeout_turn, thisTimeOut);
-
-    if (firstCost == -1) {
-        firstCost = info_timeout_match - info_time_left;
-        thisTimeOut -= firstCost;
-        firstCost = 0;
-    }
-
-    int vctTimeOut = thisTimeOut / 8;
- 
-
-    pipeOut("MESSAGE time limit %d", thisTimeOut);
-    //pipeOut("MESSAGE vctTimeOut limit %d", vctTimeOut);
-    pipeOut("MESSAGE current player %d", game->currentPlayer);
-
-    auto startTime = getSystemTime();
-    //mcts.search(*game, node, 1);
-    //game->vctTimeOut = vctTimeOut;
-    //pruning(node, *game, "MESSAGE ");
-    //auto vctCost = getSystemTime() - startTime;
-    //thisTimeOut -= vctCost;
-    pipeOut("MESSAGE time limit updated %d", thisTimeOut);
-    
-    auto vcfMoves = game->getMyVCFMoves();
-    if (!vcfMoves.empty()) {
-        auto p = vcfMoves[0];
-        pipeOut("MESSAGE : action %d,%d vcf!", p.x, p.y);
+// 搜索己方 VCT，找到则直接走并返回 true
+bool searchMyVCT(MonteCarloTree& mcts, int myVctBudget, int& thisTimeOut) {
+    Game gameCopy = *game;
+    std::atomic<bool> vctRunning(true);
+    int vctMaxNodes = 200000;
+    auto vctStart = getSystemTime();
+    auto myVctResult = dfpnVCTIterDeepen(gameCopy.currentPlayer, gameCopy, vctRunning, vctMaxNodes, myVctBudget);
+    auto vctCost = getSystemTime() - vctStart;
+    if (myVctResult.found && !myVctResult.moves.empty()) {
+        auto p = myVctResult.moves[0];
+        std::string pvStr;
+        for (size_t i = 0; i < myVctResult.moves.size() && i < 20; i++) {
+            if (i > 0) pvStr += " ";
+            pvStr += std::to_string(myVctResult.moves[i].x) + "," + std::to_string(myVctResult.moves[i].y);
+        }
+        pipeOut("MESSAGE VCT found! cost %dms, action %d,%d, pv: %s", (int)vctCost, p.x, p.y, pvStr.c_str());
         do_mymove(p.x, p.y);
-        return;
+        mcts.search(*game, node, 1);
+        return true;
     }
+    pipeOut("MESSAGE no my VCT, cost %dms/%dms budget", (int)vctCost, myVctBudget);
+    thisTimeOut -= (int)vctCost;
+    return false;
+}
 
-    // VCT 搜索：己方 VCT
-    int myVctBudget = vctTimeOut;
+// 搜索对手 VCT，逐层迭代 ban 掉必死点。找到唯一活路则直接走并返回 true
+bool searchOpponentVCT(MonteCarloTree& mcts, int oppVctBudget, int& thisTimeOut, vector<Point>& vctBannedMoves) {
+    int opponent = 3 - game->currentPlayer;
+    auto oppVctStart = getSystemTime();
 
-    // 自己的 VCT
-    {
+    auto [win, candidateMoves, info] = selectActions(*game);
+
+    if (!win && !candidateMoves.empty()) {
+        // 快速预判对手是否有 VCT
         Game gameCopy = *game;
         std::atomic<bool> vctRunning(true);
-        int vctMaxNodes = 200000;
-        auto vctStart = getSystemTime();
-        auto myVctResult = dfpnVCTIterDeepen(gameCopy.currentPlayer, gameCopy, vctRunning, vctMaxNodes, myVctBudget);
-        auto vctCost = getSystemTime() - vctStart;
-        if (myVctResult.found && !myVctResult.moves.empty()) {
-            auto p = myVctResult.moves[0];
-            // 输出完整 VCT 路径用于调试
-            std::string pvStr;
-            for (size_t i = 0; i < myVctResult.moves.size() && i < 20; i++) {
-                if (i > 0) pvStr += " ";
-                pvStr += std::to_string(myVctResult.moves[i].x) + "," + std::to_string(myVctResult.moves[i].y);
+        int quickNodes = 50000;
+        dfpnVCTSetThreeLimit(1);
+        auto quickResult = dfpnVCT(opponent, gameCopy, vctRunning, quickNodes);
+        dfpnVCTResetThreeLimit();
+
+        if (quickResult.found || !quickResult.exhaustive) {
+            pipeOut("MESSAGE opponent may have VCT (quick=%s), scanning candidates layer by layer...",
+                    quickResult.found ? "proven" : "inconclusive");
+
+            vector<int> moveStatus(candidateMoves.size(), 0);
+            int vctMaxNodes = 200000;
+            std::vector<int> threeLimits = {1, 4, 7, 10, 13, 16};
+
+            for (int threeLimit : threeLimits) {
+                if ((int)(getSystemTime() - oppVctStart) >= oppVctBudget) break;
+
+                dfpnVCTSetThreeLimit(threeLimit);
+                int layerBanned = 0;
+
+                for (int i = 0; i < (int)candidateMoves.size(); i++) {
+                    if (moveStatus[i] != 0) continue;
+                    if ((int)(getSystemTime() - oppVctStart) >= oppVctBudget) break;
+
+                    Game testGame = *game;
+                    testGame.makeMove(candidateMoves[i]);
+                    std::atomic<bool> testRunning(true);
+                    auto testResult = dfpnVCT(opponent, testGame, testRunning, vctMaxNodes);
+
+                    if (testResult.found) {
+                        moveStatus[i] = 1;
+                        vctBannedMoves.push_back(candidateMoves[i]);
+                        layerBanned++;
+                    } else if (testResult.exhaustive) {
+                        moveStatus[i] = 2;
+                    }
+                }
+
+                int undecided = 0, safe = 0;
+                for (int s : moveStatus) {
+                    if (s == 0) undecided++;
+                    else if (s == 2) safe++;
+                }
+
+                pipeOut("MESSAGE layer threeLimit=%d: +%d banned, %d safe, %d undecided",
+                        threeLimit, layerBanned, safe, undecided);
+
+                // 只剩 1 个非 banned 且全部已决 → 直接走
+                int remaining = (int)candidateMoves.size() - (int)vctBannedMoves.size();
+                if (remaining == 1 && undecided == 0) {
+                    for (int i = 0; i < (int)candidateMoves.size(); i++) {
+                        if (moveStatus[i] != 1) {
+                            auto totalCost = getSystemTime() - oppVctStart;
+                            thisTimeOut -= (int)totalCost;
+                            dfpnVCTResetThreeLimit();
+                            pipeOut("MESSAGE unique saving move %d,%d (%d banned), cost %dms",
+                                    candidateMoves[i].x, candidateMoves[i].y,
+                                    (int)vctBannedMoves.size(), (int)totalCost);
+                            do_mymove(candidateMoves[i].x, candidateMoves[i].y);
+                            mcts.search(*game, node, 1);
+                            return true;
+                        }
+                    }
+                }
+
+                if (undecided == 0) break;
             }
-            pipeOut("MESSAGE VCT found! cost %dms, action %d,%d, pv: %s", (int)vctCost, p.x, p.y, pvStr.c_str());
-            do_mymove(p.x, p.y);
-            mcts.search(*game, node, 1);
-            return;
+
+            dfpnVCTResetThreeLimit();
+        } else {
+            pipeOut("MESSAGE no opponent VCT (quick proven), cost %dms",
+                    (int)(getSystemTime() - oppVctStart));
         }
-        pipeOut("MESSAGE no my VCT, cost %dms/%dms budget", (int)vctCost, myVctBudget);
-        thisTimeOut -= (int)vctCost;
     }
 
+    auto totalOppCost = getSystemTime() - oppVctStart;
+    thisTimeOut -= (int)totalOppCost;
 
+    // 后处理
+    if (!vctBannedMoves.empty()) {
+        int remaining = (int)candidateMoves.size() - (int)vctBannedMoves.size();
+        if (remaining == 0) {
+            pipeOut("MESSAGE all %d moves banned! opponent VCT unavoidable, cost %dms",
+                    (int)candidateMoves.size(), (int)totalOppCost);
+            vctBannedMoves.clear();
+        } else {
+            pipeOut("MESSAGE %d banned moves, %d remaining, cost %dms",
+                    (int)vctBannedMoves.size(), remaining, (int)totalOppCost);
+        }
+    }
+    return false;
+}
 
-    startTime = getSystemTime();
+// 从 MCTS 树中剪除 banned 分支
+void applyBannedMoves(MonteCarloTree& mcts, const vector<Point>& vctBannedMoves) {
+    mcts.search(*game, node, 1);  // 先 expand root
+    for (auto it = node->children.begin(); it != node->children.end(); ) {
+        bool isBanned = false;
+        for (auto& bm : vctBannedMoves) {
+            if (it->first.x == bm.x && it->first.y == bm.y) {
+                isBanned = true;
+                break;
+            }
+        }
+        if (isBanned) {
+            it->second->release();
+            it = node->children.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    pipeOut("MESSAGE MCTS: %d branches remaining after banning", (int)node->children.size());
+}
+
+// MCTS 搜索循环 + 选最优走法并落子
+void mctsSearchAndPlay(MonteCarloTree& mcts, int thisTimeOut) {
+    auto startTime = getSystemTime();
     int simiNum = 0;
     while (true) {
-		mcts.search(*game, node, 1);
+        mcts.search(*game, node, 1);
         auto passTime = getSystemTime() - startTime;
         simiNum += 1;
-        if (passTime > thisTimeOut) {
-            break;
-        }
-
-        if (node->children.size() <= 1) {
-            break;
-        }
+        if (passTime > thisTimeOut) break;
+        if (node->children.size() <= 1) break;
 
         auto [win, moves, selectInfo] = selectActions(*game);
-        if (win) {
-            break;
-        }
-
-        if (checkNeedBreak(passTime, thisTimeOut, simiNum, searchThreadCount)) {
-            break;
-        }
+        if (win) break;
+        if (checkNeedBreak(passTime, thisTimeOut, simiNum, searchThreadCount)) break;
     }
 
     pipeOut("MESSAGE children size %d", node->children.size());
     int max = -1;
     Point action;
-
 
     if (node->children.size() == 0) {
         auto selectAction = selectActions(*game);
@@ -340,7 +409,6 @@ void brain_turn()
             max = 1;
         }
     }
-
 
     string info = node->selectInfo;
     int total = node->visits;
@@ -367,11 +435,63 @@ void brain_turn()
     }
 
     auto p = action;
-
-    pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %.2f score %.2f last simi %d info %s", p.x, p.y, max, total, (float)max / total, score, total - simiNum, info.c_str());
+    pipeOut("MESSAGE : action %d,%d, max %d, total %d rate %.2f score %.2f last simi %d info %s",
+            p.x, p.y, max, total, (float)max / total, score, total - simiNum, info.c_str());
     do_mymove(p.x, p.y);
-
     mcts.search(*game, node, 1);
+}
+
+// ============ brain_turn 主函数 ============
+
+void brain_turn()
+{
+    MonteCarloTree mcts = MonteCarloTree(model, exp_factor);
+    piskvorkMessageEnable = true;
+
+    // 动态时间分配
+    int movesPlayed = boardSize * boardSize - game->emptyCount;
+    int myMoves = (movesPlayed + 1) / 2;
+    int estimatedRemaining = max(10, 40 - myMoves);
+    float bonus = (myMoves < 5) ? 1.5f : 1.0f;
+    int thisTimeOut = (int)(info_time_left / estimatedRemaining * bonus);
+    thisTimeOut = min(info_timeout_turn, thisTimeOut);
+
+    if (firstCost == -1) {
+        firstCost = info_timeout_match - info_time_left;
+        thisTimeOut -= firstCost;
+        firstCost = 0;
+    }
+
+    int vctTimeOut = thisTimeOut / 8;
+
+    pipeOut("MESSAGE time limit %d", thisTimeOut);
+    pipeOut("MESSAGE current player %d", game->currentPlayer);
+    pipeOut("MESSAGE time limit updated %d", thisTimeOut);
+
+    // VCF 快速判断
+    auto vcfMoves = game->getMyVCFMoves();
+    if (!vcfMoves.empty()) {
+        auto p = vcfMoves[0];
+        pipeOut("MESSAGE : action %d,%d vcf!", p.x, p.y);
+        do_mymove(p.x, p.y);
+        return;
+    }
+
+    // VCT 搜索
+    int myVctBudget = vctTimeOut / 2;
+    int oppVctBudget = vctTimeOut - myVctBudget;
+    vector<Point> vctBannedMoves;
+
+    if (searchMyVCT(mcts, myVctBudget, thisTimeOut)) return;
+    if (searchOpponentVCT(mcts, oppVctBudget, thisTimeOut, vctBannedMoves)) return;
+
+    // 剪除 banned 分支
+    if (!vctBannedMoves.empty()) {
+        applyBannedMoves(mcts, vctBannedMoves);
+    }
+
+    // MCTS 搜索 + 落子
+    mctsSearchAndPlay(mcts, thisTimeOut);
 }
 
 void brain_end()
