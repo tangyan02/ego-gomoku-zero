@@ -3,6 +3,7 @@
 
 #include "Game.h"
 #include <atomic>
+#include <climits>
 #include <unordered_map>
 #include <vector>
 #include <cstdint>
@@ -32,7 +33,7 @@ struct VCTResult {
 };
 
 // df-pn VCT 搜索
-VCTResult dfpnVCT(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes = 2000000, int maxDepth = 40);
+VCTResult dfpnVCT(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes = 2000000, int maxDepth = 40, int timeLimitMs = INT_MAX);
 
 // df-pn VCT 迭代加深版（按活三数逐层放宽 + 时间控制）
 // threeLimits: 1→4→7→10→13→16（从1开始每次+3），逐步允许更多活三

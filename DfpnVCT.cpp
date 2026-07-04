@@ -3,6 +3,7 @@
 #include "Shape.h"
 #include "Utils.h"
 #include <algorithm>
+#include <climits>
 #include <cstring>
 
 // DF-PN VCT 搜索实现
@@ -14,6 +15,8 @@
 static thread_local int nodeCount = 0;
 static thread_local int maxNodesLimit = 2000000;
 static thread_local int maxThreeCountLimit = 99;  // 活三次数上限，>=此值进入 fourMode
+static thread_local long long searchStartTime = 0;
+static thread_local int searchTimeLimitMs = INT_MAX;  // 搜索时间限制（ms），INT_MAX 表示无限制
 
 // -------- 转置表（线程局部）--------
 static thread_local std::unordered_map<uint64_t, DfpnEntry> ttable;
@@ -184,6 +187,12 @@ static void mid(int attacker, int currentPlayer, Game& game, std::atomic<bool>& 
                 int threeCount, int depth, int maxDepth) {
     if (!running.load()) return;
     if (nodeCount >= maxNodesLimit) { running.store(false); return; }
+    // 每 512 个节点检查一次时间（避免频繁调用 getSystemTime）
+    if ((nodeCount & 511) == 0 && searchTimeLimitMs != INT_MAX) {
+        if ((int)(getSystemTime() - searchStartTime) >= searchTimeLimitMs) {
+            running.store(false); return;
+        }
+    }
     nodeCount++;
     
     uint64_t hash = game.zobristHash;
@@ -336,11 +345,13 @@ static void mid(int attacker, int currentPlayer, Game& game, std::atomic<bool>& 
 
 // -------- 公开接口 --------
 
-VCTResult dfpnVCT(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes, int maxDepth) {
+VCTResult dfpnVCT(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes, int maxDepth, int timeLimitMs) {
     ttable.clear();
     ttable.reserve(std::min(maxNodes, 1000000));
     nodeCount = 0;
     maxNodesLimit = maxNodes;
+    searchStartTime = getSystemTime();
+    searchTimeLimitMs = timeLimitMs;
     
     // 少子局面快速返回
     int pieceCount = 0;
@@ -505,6 +516,9 @@ VCTResult dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& run
     }
 
     long long startTime = getSystemTime();
+    // 设置 mid() 内部的时间限制，使搜索能在超时时及时停止
+    searchStartTime = startTime;
+    searchTimeLimitMs = timeLimitMs;
     
     // 活三数量限制序列：从1开始每次+3（1,4,7,10,13,16）
     // 实测天花板在 threeLimit=7（62%），后续层为安全冗余

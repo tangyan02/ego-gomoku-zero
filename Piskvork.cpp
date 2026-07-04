@@ -293,12 +293,14 @@ bool searchOpponentVCT(MonteCarloTree& mcts, int oppVctBudget, int& thisTimeOut,
 
                 for (int i = 0; i < (int)candidateMoves.size(); i++) {
                     if (moveStatus[i] != 0) continue;  // 已确定（banned 或 safe），跳过
-                    if ((int)(getSystemTime() - oppVctStart) >= oppVctBudget) break;
+                    int elapsedOpp = (int)(getSystemTime() - oppVctStart);
+                    if (elapsedOpp >= oppVctBudget) break;
 
                     Game testGame = *game;
                     testGame.makeMove(candidateMoves[i]);
                     std::atomic<bool> testRunning(true);
-                    auto testResult = dfpnVCT(opponent, testGame, testRunning, vctMaxNodes);
+                    int perMoveTimeLimit = oppVctBudget - elapsedOpp;  // 剩余时间预算
+                    auto testResult = dfpnVCT(opponent, testGame, testRunning, vctMaxNodes, 40, perMoveTimeLimit);
 
                     if (testResult.found) {
                         moveStatus[i] = 1;  // banned: 对手确定有 VCT
