@@ -508,6 +508,9 @@ VCTResult dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& run
         // 检查时间
         int elapsed = (int)(getSystemTime() - startTime);
         if (elapsed >= timeLimitMs) { lastLayerExhausted = true; break; }
+        // 剩余时间不到已用时间的一半 → 下一层大概率搜不完，提前停止
+        int timeLeft = timeLimitMs - elapsed;
+        if (elapsed > 0 && timeLeft * 2 < elapsed) { lastLayerExhausted = true; break; }
         if (!running.load()) { lastLayerExhausted = true; break; }
 
         // 保留 pn=0 的已证明条目（有 VCT 的结论不受 threeLimit 放宽影响）
