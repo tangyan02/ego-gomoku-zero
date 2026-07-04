@@ -75,11 +75,23 @@ static bool generateMoves(int attacker, int currentPlayer, Game& game,
             return true;
         }
         
-        // 我方活四
-        auto activeFourMoves = getActiveFourMoves(attacker, game, allMovesAtk);
-        if (!activeFourMoves.empty()) {
-            entry.pn = 0; entry.dn = DFPN_INF;
-            return true;
+        // 我方活四（只有对方无五连时才是即胜）
+        if (oppWinMoves.empty()) {
+            auto activeFourMoves = getActiveFourMoves(attacker, game, allMovesAtk);
+            if (!activeFourMoves.empty()) {
+                entry.pn = 0; entry.dn = DFPN_INF;
+                return true;
+            }
+        }
+        
+        // 防守方有 VCF → 进攻方 VCT 失败
+        // （对方有五连时不检查：五连必须堵，后续递归自然处理）
+        if (oppWinMoves.empty()) {
+            auto defVCF = dfsVCF(defender, defender, game, Point(), Point());
+            if (defVCF.first) {
+                entry.pn = DFPN_INF; entry.dn = 0;
+                return true;
+            }
         }
         
         std::vector<Point> moves;
@@ -140,10 +152,15 @@ static bool generateMoves(int attacker, int currentPlayer, Game& game,
                 return true;
             }
             
-            // 防活三：用全盘范围（防守方的最优堵点可能不在 lastLastMove 附近）
+            // 防活三走法生成：
+            // 直接用进攻方冲四点+活四点作为堵点，防守方冲四点作为反先
             if (!fourMode) {
-                auto threeDefence = getThreeDefenceMoves(currentPlayer, game, allMoves);
-                moves.insert(moves.end(), threeDefence.begin(), threeDefence.end());
+                auto atkSleepFour = getSleepyFourMoves(checkPlayer, game, allMoves);
+                moves.insert(moves.end(), atkSleepFour.begin(), atkSleepFour.end());
+                auto atkActiveFour = getActiveFourMoves(checkPlayer, game, allMoves);
+                moves.insert(moves.end(), atkActiveFour.begin(), atkActiveFour.end());
+                auto defSleepFour = getSleepyFourMoves(currentPlayer, game, allMoves);
+                moves.insert(moves.end(), defSleepFour.begin(), defSleepFour.end());
             }
         }
         

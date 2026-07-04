@@ -289,7 +289,13 @@ void brain_turn()
         auto vctCost = getSystemTime() - vctStart;
         if (myVctResult.found && !myVctResult.moves.empty()) {
             auto p = myVctResult.moves[0];
-            pipeOut("MESSAGE VCT found! cost %dms, action %d,%d", (int)vctCost, p.x, p.y);
+            // 输出完整 VCT 路径用于调试
+            std::string pvStr;
+            for (size_t i = 0; i < myVctResult.moves.size() && i < 20; i++) {
+                if (i > 0) pvStr += " ";
+                pvStr += std::to_string(myVctResult.moves[i].x) + "," + std::to_string(myVctResult.moves[i].y);
+            }
+            pipeOut("MESSAGE VCT found! cost %dms, action %d,%d, pv: %s", (int)vctCost, p.x, p.y, pvStr.c_str());
             do_mymove(p.x, p.y);
             mcts.search(*game, node, 1);
             return;
