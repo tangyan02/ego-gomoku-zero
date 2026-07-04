@@ -340,6 +340,12 @@ dfpnVCT(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes, 
         return {false, {}};
     }
     
+    // Hash 修正：如果 attackPlayer != game.currentPlayer，翻转 hash 的 currentPlayer 位
+    bool hashFlipped = (attackPlayer != game.currentPlayer);
+    if (hashFlipped) {
+        game.zobristHash ^= zobristTable.currentPlayerHash;
+    }
+    
     // MID 搜索（根节点 lastMove/lastLastMove 都为空 → 用全部空点）
     mid(attackPlayer, attackPlayer, game, running,
         DFPN_INF, DFPN_INF,
@@ -359,13 +365,16 @@ dfpnVCT(int attackPlayer, Game& game, std::atomic<bool>& running, int maxNodes, 
                     ^ zobristTable.currentPlayerHash;
                 auto cit = ttable.find(childHash);
                 if (cit != ttable.end() && cit->second.pn == 0) {
+                    if (hashFlipped) game.zobristHash ^= zobristTable.currentPlayerHash;
                     return {true, {m}};
                 }
             }
         }
+        if (hashFlipped) game.zobristHash ^= zobristTable.currentPlayerHash;
         return {true, {}};
     }
     
+    if (hashFlipped) game.zobristHash ^= zobristTable.currentPlayerHash;
     return {false, {}};
 }
 
@@ -476,6 +485,13 @@ dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& running,
         return {false, {}};
     }
 
+    // Hash 修正：如果 attackPlayer != game.currentPlayer，搜索假设 attacker 先走，
+    // 需要翻转 zobristHash 的 currentPlayer 位使其与搜索一致
+    bool hashFlipped = (attackPlayer != game.currentPlayer);
+    if (hashFlipped) {
+        game.zobristHash ^= zobristTable.currentPlayerHash;
+    }
+
     long long startTime = getSystemTime();
     
     // 活三数量限制序列：从1开始每次+3（1,4,7,10,13,16）
@@ -528,12 +544,14 @@ dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& running,
                         ^ zobristTable.currentPlayerHash;
                     auto cit = ttable.find(childHash);
                     if (cit != ttable.end() && cit->second.pn == 0) {
-                        maxThreeCountLimit = 99;  // 恢复默认
+                        maxThreeCountLimit = 99;
+                        if (hashFlipped) game.zobristHash ^= zobristTable.currentPlayerHash;
                         return {true, {m}};
                     }
                 }
             }
-            maxThreeCountLimit = 99;  // 恢复默认
+            maxThreeCountLimit = 99;
+            if (hashFlipped) game.zobristHash ^= zobristTable.currentPlayerHash;
             return {true, {}};
         }
         
@@ -541,7 +559,8 @@ dfpnVCTIterDeepen(int attackPlayer, Game& game, std::atomic<bool>& running,
         running.store(true);
     }
     
-    maxThreeCountLimit = 99;  // 恢复默认
+    maxThreeCountLimit = 99;
+    if (hashFlipped) game.zobristHash ^= zobristTable.currentPlayerHash;
     return {false, {}};
 }
 

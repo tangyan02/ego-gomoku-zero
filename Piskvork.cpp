@@ -304,10 +304,8 @@ void brain_turn()
         auto oppVctStart = getSystemTime();
 
         // 先检测对手是否有 VCT
-        // 注意：当前 game->currentPlayer 是我方，但搜索假设 attacker(对手)先走
-        // 需要翻转 zobristHash 的 currentPlayer 位，使 hash 与搜索假设一致
+        // dfpnVCTIterDeepen 内部自动处理 attackPlayer != currentPlayer 时的 hash 修正
         Game gameCopy = *game;
-        gameCopy.zobristHash ^= zobristTable.currentPlayerHash;
         std::atomic<bool> vctRunning(true);
         int vctMaxNodes = 200000;
         auto [oppHasVCT, oppMoves] = dfpnVCTIterDeepen(opponent, gameCopy, vctRunning, vctMaxNodes, oppVctBudget / 2);
