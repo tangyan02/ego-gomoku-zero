@@ -677,20 +677,7 @@ tuple<bool, vector<Point>, string> selectActions(Game &game) {
         return make_tuple(true, myVCFMoves, " VCF!");
     }
 
-    //我方VCT（轻量 DFPN，maxNodes=5000, maxDepth=10）
-    {
-        int pieceCount = game.boardSize * game.boardSize - game.emptyCount;
-        if (pieceCount >= 6) {
-            Game gameCopy = game;
-            std::atomic<bool> vctRunning(true);
-            auto vctResult = dfpnVCT(gameCopy.currentPlayer, gameCopy, vctRunning, 5000, 10);
-            if (vctResult.found && !vctResult.moves.empty()) {
-                return make_tuple(true, vector<Point>{vctResult.moves[0]}, " VCT!");
-            }
-        }
-    }
-
-    //防御活4点
+    //防御对手活三/活四威胁
     auto threeDefenceMoves = getThreeDefenceMoves(game.currentPlayer, game, emptyPoints);
     if (!threeDefenceMoves.empty()) {
         return make_tuple(false, threeDefenceMoves, " defence 3");
