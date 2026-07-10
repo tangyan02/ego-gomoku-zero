@@ -76,7 +76,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -O3 -funroll-loops -ftree-vecto
 # ========== 源文件 ==========
 set(COMMON_SOURCES
     SelfPlay.cpp Game.h Game.cpp MCTS.h MCTS.cpp SelfPlay.h Main.cpp
-    GumbelMCTS.h GumbelMCTS.cpp
     Analyzer.cpp Analyzer.h Piskvork.cpp Pisqpipe.h
     Pisqpipe.cpp Utils.cpp Utils.h Shape.cpp Shape.h
     Model.cpp Model.h ConfigReader.cpp ConfigReader.h

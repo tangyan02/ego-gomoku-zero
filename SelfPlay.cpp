@@ -18,25 +18,6 @@ using namespace std;
 // 线程局部随机数生成器，避免多线程竞态
 static thread_local std::mt19937 gen(std::random_device{}());
 
-// 200 vs 400 sims 一致性统计
-static std::mutex simsLogMutex;
-static int simsTotal = 0;
-static int simsAgree = 0;
-
-// 调用时必须已持有 simsLogMutex
-static void logSimsConsistencyLocked(const std::string &logPath) {
-    if (simsTotal > 0 && simsTotal % 100 == 0) {
-        std::ofstream ofs(logPath, std::ios::app);
-        if (ofs.is_open()) {
-            double rate = 100.0 * simsAgree / simsTotal;
-            ofs << "[SimsCompare] total=" << simsTotal
-                << " agree=" << simsAgree
-                << " rate=" << std::fixed << std::setprecision(1) << rate << "%"
-                << std::endl;
-            ofs.close();
-        }
-    }
-}
 
 void printGame(Game &game, Point action, float rate, float temperature,
                const std::string &prefix, const string selectInfo) {
@@ -293,7 +274,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         cout << "============= " << prefix << "============" << endl;
 
         Game game(boardSize);
-        std::vector<std::tuple<vector<vector<vector<float> > >, int, std::vector<float>, float>> game_data;
+        std::vector<std::tuple<vector<vector<vector<float> > >, int, std::vector<float>>> game_data;
 
         game = randomGame(game, prefix);
 
@@ -318,41 +299,13 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             int existingVisits = rootNode->visits;
             int targetSimulations = max(numSimulations - existingVisits, 1);
 
-            // 中间检查点：200 sims 时记录贪心选择
-            int halfSims = numSimulations / 2;  // 400 → 200
-            int halfTarget = max(halfSims - existingVisits, 0);
-            Point halfMove;
-            bool hasHalfCheck = (numSimulations > halfSims && halfTarget > 0);
-
             mcts.search(game, rootNode, 1);
             if (mcts.root->children.size() > 1)
             {
-                if (hasHalfCheck) {
-                    // 先搜到 halfSims
-                    mcts.searchBatched(game, rootNode, halfTarget - 1, 16);
-                    halfMove = mcts.get_max_visit_move();
-                    // 继续搜剩余部分
-                    int remaining = targetSimulations - halfTarget;
-                    if (remaining > 0) {
-                        mcts.searchBatched(game, rootNode, remaining, 16);
-                    }
-                } else {
-                    mcts.searchBatched(game, rootNode, targetSimulations - 1, 16);
-                }
+                mcts.searchBatched(game, rootNode, targetSimulations - 1, 16);
             } else
             {
                 mcts.search(game, rootNode, 1);
-            }
-
-            // 比对 200 vs 400 sims 的贪心选择
-            if (hasHalfCheck && mcts.root->children.size() > 1) {
-                Point fullMove = mcts.get_max_visit_move();
-                std::lock_guard<std::mutex> lock(simsLogMutex);
-                simsTotal++;
-                if (halfMove.x == fullMove.x && halfMove.y == fullMove.y) {
-                    simsAgree++;
-                }
-                logSimsConsistencyLocked("log/sims_consistency.log");
             }
 
             vector<Point> moves;
@@ -372,9 +325,8 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             }
 
             auto state = game.getState();
-            float mcts_q = (rootNode->visits > 0) ? (float)(rootNode->value_sum / rootNode->visits) : 0.0f;
             int currentPlayerBeforeMove = game.currentPlayer;
-            std::tuple record(state, currentPlayerBeforeMove, probs_matrix, mcts_q);
+            std::tuple record(state, currentPlayerBeforeMove, probs_matrix);
             game.makeMove(move);
             game_data.push_back(record);
 
@@ -441,18 +393,6 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
         // 走到这里时若仍为 0，说明循环是因棋盘下满或其它非胜负原因退出，视为平局。
         int winner = winnerOverride;
 
-        // n-step TD bootstrapping
-        static int td_n = stoi(ConfigReader::getOrDefault("tdN", "5"));
-        static float td_gamma = stof(ConfigReader::getOrDefault("tdGamma", "0.7"));
-        float gamma_n = pow(td_gamma, td_n);
-        // 视角推导：
-        //   root.value_sum 是 backpropagate(node, -value) 起始 + 沿途翻转累积出来的，
-        //   推导可得：root.value_sum/root.visits 视角 = root 玩家的对手视角（即 root 父视角）。
-        //   所以 mcts_q[t+td_n] 视角 = player[t+td_n] 的对手视角。
-        //   要 align 到 final_value 的视角（player[t] 视角）：
-        //     - player[t+td_n] == player[t]（td_n 偶）→ 对手视角 vs player[t] 视角 → 乘 -1
-        //     - player[t+td_n] != player[t]（td_n 奇）→ 对手视角 vs player[t] 视角恰好对齐 → 乘 +1
-        float perspective_sign = (td_n % 2 == 0) ? -1.0f : 1.0f;
 
         cout << prefix << "winner is " << winner << endl;
         MonteCarloTree::printPerfStats();
@@ -468,17 +408,8 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
 
         int game_len = game_data.size();
         for (int t = 0; t < game_len; t++) {
-            const auto &[state, player, mcts_probs, mcts_q] = game_data[t];
-            float final_value = (winner == player) ? 1.0f : ((winner == (3 - player)) ? -1.0f : 0.0f);
-
-            float value;
-            if (t + td_n < game_len) {
-                float mcts_q_tn = perspective_sign * get<3>(game_data[t + td_n]);
-                value = gamma_n * mcts_q_tn + (1 - gamma_n) * final_value;
-            } else {
-                value = final_value;
-            }
-
+            const auto &[state, player, mcts_probs] = game_data[t];
+            float value = (winner == player) ? 1.0f : ((winner == (3 - player)) ? -1.0f : 0.0f);
             training_data.emplace_back(state, mcts_probs, std::vector<float>{value});
         }
     }

@@ -7,7 +7,7 @@ from SampleSet import SampleSet
 from Utils import getTimeStr
 
 
-def train(extended_data, network, device, optimizer, batch_size, i_episode, value_weight=1.5):
+def train(extended_data, network, device, optimizer, batch_size, i_episode, value_weight=1.0):
     # 创建数据加载器
     sample_set = SampleSet(extended_data)
     dataloader = DataLoader(sample_set, batch_size=batch_size, shuffle=True)

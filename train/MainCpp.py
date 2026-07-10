@@ -62,12 +62,12 @@ class ReplayBuffer:
 
 def get_extended_data(play_data):
     extend_data = []
-    for state, mcts_porb, value in play_data:
+    for state, mcts_prob, value in play_data:
         for i in [1, 2, 3, 4]:
             # rotate counterclockwise
             equi_state = np.array([np.rot90(s, i) for s in state])
             board_size = state.shape[1]
-            equi_mcts_prob = np.rot90(mcts_porb.reshape(board_size, board_size), i)
+            equi_mcts_prob = np.rot90(mcts_prob.reshape(board_size, board_size), i)
             extend_data.append((equi_state, equi_mcts_prob.flatten(), value))
             # flip horizontally
             equi_state = np.array([np.fliplr(s) for s in equi_state])
@@ -92,21 +92,6 @@ def update_count(k, filepath="model/count.txt"):
 
     Logger.infoD(f"更新对局计数，当前完成对局 {count}")
     return count
-
-
-def read_persistent_int(filepath, default=0):
-    """从文件读取持久化的整数值"""
-    try:
-        with open(filepath, 'r') as f:
-            return int(f.read().strip())
-    except (FileNotFoundError, ValueError):
-        return default
-
-
-def write_persistent_int(value, filepath):
-    """将整数值持久化到文件"""
-    with open(filepath, 'w') as f:
-        f.write(str(value))
 
 
 def save_checkpoint(total_games):
@@ -341,12 +326,7 @@ if __name__ == "__main__":
     eval_interval = int(ConfigReader.get('evalInterval') if 'evalInterval' in ConfigReader.config else 5000)
     eval_games = int(ConfigReader.get('evalGames') if 'evalGames' in ConfigReader.config else 40)
     eval_simulation = int(ConfigReader.get('evalSimulation') if 'evalSimulation' in ConfigReader.config else 100)
-    arena_interval = int(ConfigReader.get('arenaInterval') if 'arenaInterval' in ConfigReader.config else 500)
-    arena_games = int(ConfigReader.get('arenaGames') if 'arenaGames' in ConfigReader.config else 40)
-    arena_simulation = int(ConfigReader.get('arenaSimulation') if 'arenaSimulation' in ConfigReader.config else 100)
-    arena_threshold = float(ConfigReader.get('arenaWinRateThreshold') if 'arenaWinRateThreshold' in ConfigReader.config else 0.55)
-    arena_max_skip = int(ConfigReader.get('arenaMaxSkip') if 'arenaMaxSkip' in ConfigReader.config else 10)
-    value_weight = float(ConfigReader.get('valueWeight') if 'valueWeight' in ConfigReader.config else 1.5)
+    value_weight = float(ConfigReader.get('valueWeight') if 'valueWeight' in ConfigReader.config else 1.0)
 
     total_games_count = update_count(0)
 
@@ -367,10 +347,6 @@ if __name__ == "__main__":
     if not os.path.exists(best_pt) and os.path.exists(latest_pt):
         shutil.copy2(latest_pt, best_pt)
         Logger.infoD("首次启动：model_best.pt 从 model_latest.pt 复制而来")
-
-    # Arena 状态（arena_skip_count 持久化，防止进程重启丢失）
-    arena_skip_count = read_persistent_int("model/arena_skip_count.txt", 0)
-    last_arena_games = (total_games_count // arena_interval) * arena_interval  # 上一次 arena 的对局数
 
     # 保存初始检查点作为基线（仅首次训练时）
     save_checkpoint(total_games_count)

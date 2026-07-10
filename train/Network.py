@@ -83,11 +83,12 @@ class PolicyValueNetwork(nn.Module):
         self.act_fc1 = nn.Linear(self.act_channels * self.board_size * self.board_size, 512)
         self.act_fc2 = nn.Linear(512, self.board_size * self.board_size)
 
-        # state value layers（GAP 缩小，抗过拟合）
+        # state value layers（GAP + 隐藏层增强表达力）
         self.val_channels = 32
         self.val_conv1 = nn.Conv2d(self.residual_channels, self.val_channels, kernel_size=(1, 1), bias=False)
         self.val_bn1 = nn.BatchNorm2d(self.val_channels)
-        self.val_fc1 = nn.Linear(self.val_channels, 1)  # GAP 后直接 FC
+        self.val_fc1 = nn.Linear(self.val_channels, 32)  # GAP → 隐藏层
+        self.val_fc2 = nn.Linear(32, 1)
 
     def forward(self, state_input):
         if state_input.dim() == 3:
@@ -105,12 +106,13 @@ class PolicyValueNetwork(nn.Module):
         x_act = F.relu(self.act_fc1(x_act))
         x_act = F.log_softmax(self.act_fc2(x_act), dim=1)
 
-        # state value layers (GAP)
+        # state value layers (GAP + hidden)
         x_val = self.val_conv1(x)
         x_val = self.val_bn1(x_val)
         x_val = F.relu(x_val)
         x_val = F.adaptive_avg_pool2d(x_val, 1).flatten(1)  # [batch, 32]
-        x_val = torch.tanh(self.val_fc1(x_val))
+        x_val = F.relu(self.val_fc1(x_val))  # [batch, 32]
+        x_val = torch.tanh(self.val_fc2(x_val))  # [batch, 1]
 
         return x_val, x_act
 
