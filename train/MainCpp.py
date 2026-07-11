@@ -388,7 +388,7 @@ if __name__ == "__main__":
 
         start_time = time.time()
 
-        retcode = Bridge.run_program(cppPath)
+        retcode = Bridge.run_program(cppPath, num_processes, numGames)
         if retcode != 0:
             Logger.infoD(f"C++ 自对弈进程异常退出 (code {retcode})，重试本 episode")
             continue

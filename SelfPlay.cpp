@@ -11,6 +11,9 @@
 #include <future>
 #include <mutex>
 #include <iomanip>
+#include <fcntl.h>
+#include <sys/file.h>
+#include <unistd.h>
 #include "Analyzer.h"
 
 using namespace std;
@@ -28,6 +31,30 @@ void printGame(Game &game, Point action, float rate, float temperature,
             << " T=" << temperature
             << selectInfo
             << endl;
+}
+
+// 跨进程动态分配对局：文件锁 + 共享计数器
+static int claimNextGame(int totalGames) {
+    int fd = open("record/game_counter.lock", O_RDWR | O_CREAT, 0666);
+    if (fd < 0) return -1;
+    flock(fd, LOCK_EX);
+
+    char buf[16] = {0};
+    pread(fd, buf, sizeof(buf) - 1, 0);
+    int current = atoi(buf);
+
+    if (current >= totalGames) {
+        flock(fd, LOCK_UN);
+        close(fd);
+        return -1;  // 所有对局已分配完
+    }
+
+    snprintf(buf, sizeof(buf), "%d", current + 1);
+    ftruncate(fd, 0);  // 截断避免旧数据残留
+    pwrite(fd, buf, strlen(buf), 0);
+    flock(fd, LOCK_UN);
+    close(fd);
+    return current;
 }
 
 // 缓存开局库，只读一次文件
@@ -265,8 +292,8 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
     std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std::vector<float> > > training_data;
 
     while (true){
-        int gameNum = context->counter.fetch_add(1);
-        if (gameNum >= context->max) {
+        int gameNum = claimNextGame(context->max);
+        if (gameNum < 0) {
             break;
         }
         string prefix = "[" + to_string(shard) + "-" + std::to_string(gameNum) + "]";
@@ -302,7 +329,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             mcts.search(game, rootNode, 1);
             if (mcts.root->children.size() > 1)
             {
-                mcts.searchBatched(game, rootNode, targetSimulations - 1, 4);
+                mcts.searchBatched(game, rootNode, targetSimulations - 1, 16);
             } else
             {
                 mcts.search(game, rootNode, 1);

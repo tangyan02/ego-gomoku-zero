@@ -20,14 +20,21 @@ void selfPlay(int argc, char *argv[]) {
     int numSimulation = stoi(ConfigReader::get("numSimulation"));
     float explorationFactor = stof(ConfigReader::get("explorationFactor"));
 
+    // 环境变量覆盖 numGames（Python 端按进程数分摊后传入）
+    if (getenv("NUM_GAMES")) numGames = atoi(getenv("NUM_GAMES"));
+
     string modelPath = ConfigReader::get("modelPath");
     string coreType = ConfigReader::get("coreType");
     auto sharedModel = std::make_unique<Model>();
     sharedModel->init(modelPath, coreType);
 
+    // 从环境变量读取 shard ID（Python 端启动多个 C++ 进程时传入）
+    int shard = 0;
+    if (getenv("SHARD_ID")) shard = atoi(getenv("SHARD_ID"));
+
     auto context = std::make_unique<Context>(numGames);
     // 单进程单线程自对弈（多进程并行由 Python 端启动多个 C++ 进程实现）
-    recordSelfPlay(boardSize, context.get(), numSimulation, explorationFactor, 0, sharedModel.get());
+    recordSelfPlay(boardSize, context.get(), numSimulation, explorationFactor, shard, sharedModel.get());
 }
 
 int main(int argc, char *argv[]) {

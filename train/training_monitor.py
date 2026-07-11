@@ -15,6 +15,7 @@ PORT = 8766
 TRAIN_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_DIR = os.path.join(TRAIN_DIR, "log")
 LOG_PATH = os.path.join(LOG_DIR, "train_stdout.log")
+SELFPLAY_LOG_PATH = os.path.join(LOG_DIR, "selfplay_0.log")
 
 # SSE 客户端队列
 sse_clients = []
@@ -105,9 +106,7 @@ def _backfill_eval_state():
 
 
 def tail_log():
-    """后台 tail -f 日志，实时解析并推送"""
-    global live_game
-    
+    """后台 tail -f train_stdout.log，解析训练/评估/episode 等事件"""
     # 等日志文件出现
     while not os.path.exists(LOG_PATH):
         time.sleep(1)
@@ -129,276 +128,298 @@ def tail_log():
         if not line:
             continue
         
-        # 新局开始（多线程时只跟踪 shard 0，避免交叉输出导致监控混乱）
-        m = re.match(r'^=+ \[(\d+)-(\d+)\]=+$', line)
-        if m:
-            shard_id = m.group(1)
-            game_id = m.group(1) + "-" + m.group(2)
-            if shard_id != "0":
-                continue
-            with live_lock:
-                if live_game["active"] and live_game["moves"]:
-                    broadcast_sse("game_end", {
-                        "id": live_game["id"],
-                        "winner": live_game["winner"],
-                        "total_moves": len(live_game["moves"])
-                    })
-                live_game = {"id": game_id, "moves": [], "winner": 0, "opening": "", "active": True}
-                broadcast_sse("game_start", {"id": game_id})
+        _parse_train_line(line)
+
+
+def tail_selfplay_log():
+    """后台 tail -f selfplay_0.log，解析实时棋局（仅跟踪 shard 0）"""
+    global live_game
+    
+    # 等日志文件出现（自对弈阶段才创建）
+    while not os.path.exists(SELFPLAY_LOG_PATH):
+        time.sleep(2)
+    
+    proc = subprocess.Popen(
+        ["tail", "-n", "0", "-f", SELFPLAY_LOG_PATH],
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1
+    )
+    
+    while True:
+        line = proc.stdout.readline()
+        if not line:
+            break
+        line = line.strip()
+        if not line:
             continue
         
-        # === 以下事件不依赖 live_game，任何时候都要解析 ===
-        
-        # 评估开始
-        if "开始 Elo 评估:" in line:
-            eval_state["active"] = True
-            eval_state["m1_wins"] = 0
-            eval_state["m2_wins"] = 0
-            eval_state["draws"] = 0
-            eval_state["current"] = 0
-            eval_state["total"] = 0
-            eval_state["games"] = []
-            eval_state["info"] = line.strip()
-            broadcast_sse("eval_start", {"info": line.strip()})
-            continue
+        _parse_selfplay_line(line)
 
-        # 开局生成开始
-        if "生成训练开局" in line or "生成评估开局" in line:
-            info = line.split("]", 1)[-1].strip() if "]" in line else line
-            broadcast_sse("openings_start", {"info": info})
-            continue
 
-        # 开局生成完成
-        og = re.search(r'开局生成完成: train=(\d+), eval=(\d+)', line)
-        if og:
-            broadcast_sse("openings_done", {
-                "train": int(og.group(1)),
-                "eval": int(og.group(2))
-            })
-            continue
+def _parse_train_line(line):
+    """解析 train_stdout.log 中的事件（训练、评估、开局生成等）"""
+    # 评估开始
+    if "开始 Elo 评估:" in line:
+        eval_state["active"] = True
+        eval_state["m1_wins"] = 0
+        eval_state["m2_wins"] = 0
+        eval_state["draws"] = 0
+        eval_state["current"] = 0
+        eval_state["total"] = 0
+        eval_state["games"] = []
+        eval_state["info"] = line.strip()
+        broadcast_sse("eval_start", {"info": line.strip()})
+        return
 
-        # 开局生成 C++ 实时进度
-        op_progress = re.search(r'\[Openings\] 进度: (\d+)/(\d+) 候选, 尝试 (\d+) 次, 耗时 (\d+)s', line)
-        if op_progress:
-            broadcast_sse("openings_progress", {
-                "current": int(op_progress.group(1)),
-                "total": int(op_progress.group(2)),
-                "attempts": int(op_progress.group(3)),
-                "elapsed": int(op_progress.group(4))
-            })
-            continue
+    # 开局生成开始
+    if "生成训练开局" in line or "生成评估开局" in line:
+        info = line.split("]", 1)[-1].strip() if "]" in line else line
+        broadcast_sse("openings_start", {"info": info})
+        return
 
-        # 开局生成 C++ 最终完成统计
-        op_final = re.search(r'\[Openings\] 生成 (\d+) 训练 \+ (\d+) 评估开局', line)
-        if op_final:
-            broadcast_sse("openings_done", {
-                "train": int(op_final.group(1)),
-                "eval": int(op_final.group(2))
-            })
-            continue
+    # 开局生成完成
+    og = re.search(r'开局生成完成: train=(\d+), eval=(\d+)', line)
+    if og:
+        broadcast_sse("openings_done", {
+            "train": int(og.group(1)),
+            "eval": int(og.group(2))
+        })
+        return
 
-        # 训练 batch 进度
-        tm = re.search(r'\[train\] batch (\d+)/(\d+) loss=([\d.]+)', line)
-        if tm:
-            broadcast_sse("train_batch", {
-                "batch": int(tm.group(1)),
-                "total": int(tm.group(2)),
-                "loss": float(tm.group(3))
-            })
-            continue
+    # 开局生成 C++ 实时进度（开局生成仍走 train_stdout，因为是单独进程 pipe 输出）
+    op_progress = re.search(r'\[Openings\] 进度: (\d+)/(\d+) 候选, 尝试 (\d+) 次, 耗时 (\d+)s', line)
+    if op_progress:
+        broadcast_sse("openings_progress", {
+            "current": int(op_progress.group(1)),
+            "total": int(op_progress.group(2)),
+            "attempts": int(op_progress.group(3)),
+            "elapsed": int(op_progress.group(4))
+        })
+        return
 
-        # 训练 epoch 完成
-        te = re.search(r'episode (\d+) Loss: ([\d.]+) \(value: ([\d.]+), policy: ([\d.]+)\)', line)
-        if te:
-            broadcast_sse("train_epoch", {
-                "episode": int(te.group(1)),
-                "loss": float(te.group(2)),
-                "value_loss": float(te.group(3)),
-                "policy_loss": float(te.group(4))
-            })
-            continue
+    # 开局生成 C++ 最终完成统计
+    op_final = re.search(r'\[Openings\] 生成 (\d+) 训练 \+ (\d+) 评估开局', line)
+    if op_final:
+        broadcast_sse("openings_done", {
+            "train": int(op_final.group(1)),
+            "eval": int(op_final.group(2))
+        })
+        return
 
-        # 训练采样信息
-        if "本轮采样" in line:
-            broadcast_sse("train_sample", {"info": line.strip()})
-            continue
+    # 训练 batch 进度
+    tm = re.search(r'\[train\] batch (\d+)/(\d+) loss=([\d.]+)', line)
+    if tm:
+        broadcast_sse("train_batch", {
+            "batch": int(tm.group(1)),
+            "total": int(tm.group(2)),
+            "loss": float(tm.group(3))
+        })
+        return
 
-        # 自对弈速度
-        sp = re.search(r'自对弈完成.*?(\d+)局.*?(\d+)条.*?([\d.]+)s.*?([\d.]+)条/s', line)
-        if sp:
+    # 训练 epoch 完成
+    te = re.search(r'episode (\d+) Loss: ([\d.]+) \(value: ([\d.]+), policy: ([\d.]+)\)', line)
+    if te:
+        broadcast_sse("train_epoch", {
+            "episode": int(te.group(1)),
+            "loss": float(te.group(2)),
+            "value_loss": float(te.group(3)),
+            "policy_loss": float(te.group(4))
+        })
+        return
+
+    # 训练采样信息
+    if "本轮采样" in line:
+        broadcast_sse("train_sample", {"info": line.strip()})
+        return
+
+    # 自对弈速度（Python 端输出）
+    sp = re.search(r'([\d.]+)\s*条/s', line)
+    if sp and "扩展" in line:
+        # "完成扩展自我对弈数据，条数 N , X 条/s"
+        sm = re.search(r'条数\s*(\d+)\s*,\s*([\d.]+)\s*条/s', line)
+        if sm:
             broadcast_sse("selfplay_done", {
-                "games": int(sp.group(1)),
-                "records": int(sp.group(2)),
-                "time": float(sp.group(3)),
-                "speed": float(sp.group(4))
+                "records": int(sm.group(1)),
+                "speed": float(sm.group(2))
             })
-            continue
+            return
 
-        # VCT 标注启动: [VCTLabel] START files=N threads=M maxTimeMs=X
-        vs = re.search(r'\[VCTLabel\] START files=(\d+) threads=(\d+) maxTimeMs=(\d+)', line)
-        if vs:
-            broadcast_sse("vct_start", {
-                "files": int(vs.group(1)),
-                "threads": int(vs.group(2)),
-                "max_time_ms": int(vs.group(3))
-            })
-            continue
+    # VCT 标注启动: [VCTLabel] START files=N threads=M maxTimeMs=X
+    vs = re.search(r'\[VCTLabel\] START files=(\d+) threads=(\d+) maxTimeMs=(\d+)', line)
+    if vs:
+        broadcast_sse("vct_start", {
+            "files": int(vs.group(1)),
+            "threads": int(vs.group(2)),
+            "max_time_ms": int(vs.group(3))
+        })
+        return
 
-        # VCT 单文件进度: [VCTLabel] file=data_X.txt progress=N/M labeled=K changed=C elapsed=Xs
-        vp = re.search(r'\[VCTLabel\] file=(\S+) progress=(\d+)/(\d+) labeled=(\d+) changed=(\d+) elapsed=(\d+)s', line)
-        if vp:
-            broadcast_sse("vct_file_progress", {
-                "file": vp.group(1),
-                "current": int(vp.group(2)),
-                "total": int(vp.group(3)),
-                "labeled": int(vp.group(4)),
-                "changed": int(vp.group(5)),
-                "elapsed": int(vp.group(6))
-            })
-            continue
+    # VCT 单文件进度: [VCTLabel] file=data_X.txt progress=N/M labeled=K changed=C elapsed=Xs
+    vp = re.search(r'\[VCTLabel\] file=(\S+) progress=(\d+)/(\d+) labeled=(\d+) changed=(\d+) elapsed=(\d+)s', line)
+    if vp:
+        broadcast_sse("vct_file_progress", {
+            "file": vp.group(1),
+            "current": int(vp.group(2)),
+            "total": int(vp.group(3)),
+            "labeled": int(vp.group(4)),
+            "changed": int(vp.group(5)),
+            "elapsed": int(vp.group(6))
+        })
+        return
 
-        # VCT 全局进度: [VCTLabel] global progress=N/M labeled=K/T changed=C alreadyOne=A
-        vg = re.search(r'\[VCTLabel\] global progress=(\d+)/(\d+) labeled=(\d+)/(\d+) changed=(\d+) alreadyOne=(\d+)', line)
-        if vg:
-            broadcast_sse("vct_global_progress", {
-                "files_done": int(vg.group(1)),
-                "files_total": int(vg.group(2)),
-                "labeled": int(vg.group(3)),
-                "samples_total": int(vg.group(4)),
-                "changed": int(vg.group(5)),
-                "already_one": int(vg.group(6))
-            })
-            continue
+    # VCT 全局进度: [VCTLabel] global progress=N/M labeled=K/T changed=C alreadyOne=A
+    vg = re.search(r'\[VCTLabel\] global progress=(\d+)/(\d+) labeled=(\d+)/(\d+) changed=(\d+) alreadyOne=(\d+)', line)
+    if vg:
+        broadcast_sse("vct_global_progress", {
+            "files_done": int(vg.group(1)),
+            "files_total": int(vg.group(2)),
+            "labeled": int(vg.group(3)),
+            "samples_total": int(vg.group(4)),
+            "changed": int(vg.group(5)),
+            "already_one": int(vg.group(6))
+        })
+        return
 
-        # VCT 完成: [VCTLabel] FINISH totalFiles=X totalSamples=Y totalLabeled=Z changed=C alreadyOne=A (label=R% change=R%) elapsed=Ws
-        vf = re.search(r'\[VCTLabel\] FINISH totalFiles=(\d+) totalSamples=(\d+) totalLabeled=(\d+) changed=(\d+) alreadyOne=(\d+) \(label=([\d.]+)% change=([\d.]+)%\) elapsed=([\d.]+)s', line)
-        if vf:
-            broadcast_sse("vct_finish", {
-                "files": int(vf.group(1)),
-                "samples": int(vf.group(2)),
-                "labeled": int(vf.group(3)),
-                "changed": int(vf.group(4)),
-                "already_one": int(vf.group(5)),
-                "label_ratio": float(vf.group(6)),
-                "change_ratio": float(vf.group(7)),
-                "elapsed": float(vf.group(8))
-            })
-            continue
+    # VCT 完成: [VCTLabel] FINISH totalFiles=X totalSamples=Y totalLabeled=Z changed=C alreadyOne=A (label=R% change=R%) elapsed=Ws
+    vf = re.search(r'\[VCTLabel\] FINISH totalFiles=(\d+) totalSamples=(\d+) totalLabeled=(\d+) changed=(\d+) alreadyOne=(\d+) \(label=([\d.]+)% change=([\d.]+)%\) elapsed=([\d.]+)s', line)
+    if vf:
+        broadcast_sse("vct_finish", {
+            "files": int(vf.group(1)),
+            "samples": int(vf.group(2)),
+            "labeled": int(vf.group(3)),
+            "changed": int(vf.group(4)),
+            "already_one": int(vf.group(5)),
+            "label_ratio": float(vf.group(6)),
+            "change_ratio": float(vf.group(7)),
+            "elapsed": float(vf.group(8))
+        })
+        return
 
-        # 评估单局结果
-        em = re.match(r'\[Evaluate\] Game (\d+)/(\d+) Opening (\d+) \((M1=\w+)\): (M\d WIN) \((\d+)ms\)', line)
-        if em:
-            game_data = {
-                "current": int(em.group(1)),
-                "total": int(em.group(2)),
-                "opening": int(em.group(3)),
-                "side": em.group(4),
-                "result": em.group(5),
-                "time_ms": int(em.group(6))
-            }
-            eval_state["current"] = game_data["current"]
-            eval_state["total"] = game_data["total"]
-            if game_data["result"] == "M1 WIN":
-                eval_state["m1_wins"] += 1
-            else:
-                eval_state["m2_wins"] += 1
-            eval_state["games"].append(game_data)
-            broadcast_sse("eval_game", game_data)
-            continue
-        
-        # 分开局类型统计
-        gm = re.match(r'\[Evaluate\] (Generated|Manual) openings:\s+(\d+)-(\d+)\s+\(([\d.]+)%\)', line)
-        if gm:
-            otype = "generated" if gm.group(1) == "Generated" else "manual"
-            w, l, wr = int(gm.group(2)), int(gm.group(3)), float(gm.group(4))
-            eval_state.setdefault("by_type", {})[otype] = {"wins": w, "losses": l, "win_rate": wr}
-            broadcast_sse("eval_type", {"type": otype, "wins": w, "losses": l, "win_rate": wr})
-            continue
+    # 评估单局结果
+    em = re.match(r'\[Evaluate\] Game (\d+)/(\d+) Opening (\d+) \((M1=\w+)\): (M\d WIN) \((\d+)ms\)', line)
+    if em:
+        game_data = {
+            "current": int(em.group(1)),
+            "total": int(em.group(2)),
+            "opening": int(em.group(3)),
+            "side": em.group(4),
+            "result": em.group(5),
+            "time_ms": int(em.group(6))
+        }
+        eval_state["current"] = game_data["current"]
+        eval_state["total"] = game_data["total"]
+        if game_data["result"] == "M1 WIN":
+            eval_state["m1_wins"] += 1
+        else:
+            eval_state["m2_wins"] += 1
+        eval_state["games"].append(game_data)
+        broadcast_sse("eval_game", game_data)
+        return
+    
+    # 分开局类型统计
+    gm = re.match(r'\[Evaluate\] (Generated|Manual) openings:\s+(\d+)-(\d+)\s+\(([\d.]+)%\)', line)
+    if gm:
+        otype = "generated" if gm.group(1) == "Generated" else "manual"
+        w, l, wr = int(gm.group(2)), int(gm.group(3)), float(gm.group(4))
+        eval_state.setdefault("by_type", {})[otype] = {"wins": w, "losses": l, "win_rate": wr}
+        broadcast_sse("eval_type", {"type": otype, "wins": w, "losses": l, "win_rate": wr})
+        return
 
-        # Elo 结果
-        if '"elo_diff"' in line:
-            idx = line.find("{")
-            if idx >= 0:
-                try:
-                    elo = json.loads(line[idx:])
-                    eval_state["active"] = False
-                    broadcast_sse("elo", elo)
-                except json.JSONDecodeError:
-                    pass
-            continue
-        
-        # episode 完成
-        if '"i_episode"' in line:
-            idx = line.find("{")
-            if idx >= 0:
-                try:
-                    ep = json.loads(line[idx:])
-                    broadcast_sse("episode", ep)
-                except json.JSONDecodeError:
-                    pass
-            continue
-        
-        # === 以下事件依赖 live_game，且只跟踪 shard 0 ===
-        
-        # 多线程过滤：只处理 shard 0 的输出行（[0-xxx] 前缀）
-        # 非 shard 0 的行（如 [1-3]、[2-5]）直接跳过，避免交叉污染
-        shard_prefix = re.match(r'^\[(\d+)-', line)
-        if shard_prefix and shard_prefix.group(1) != "0":
-            continue
-        
+    # Elo 结果
+    if '"elo_diff"' in line:
+        idx = line.find("{")
+        if idx >= 0:
+            try:
+                elo = json.loads(line[idx:])
+                eval_state["active"] = False
+                broadcast_sse("elo", elo)
+            except json.JSONDecodeError:
+                pass
+        return
+    
+    # episode 完成
+    if '"i_episode"' in line:
+        idx = line.find("{")
+        if idx >= 0:
+            try:
+                ep = json.loads(line[idx:])
+                broadcast_sse("episode", ep)
+            except json.JSONDecodeError:
+                pass
+        return
+
+
+def _parse_selfplay_line(line):
+    """解析 selfplay_0.log 中的实时棋局事件"""
+    global live_game
+    
+    # 新局开始: ===== [0-7]=====
+    m = re.match(r'^=+ \[(\d+)-(\d+)\]=+$', line)
+    if m:
+        game_id = m.group(1) + "-" + m.group(2)
         with live_lock:
-            if not live_game["active"]:
-                continue
-            gid = live_game["id"]
-        
-        # 开局信息
-        if "Opening pool=" in line:
-            info = line.split("]", 1)[-1].strip() if "]" in line else line
-            with live_lock:
-                live_game["opening"] = info
-            broadcast_sse("opening", {"id": gid, "info": info})
-        elif "empty board start" in line:
-            with live_lock:
-                live_game["opening"] = "empty board"
-            broadcast_sse("opening", {"id": gid, "info": "empty board"})
-        elif "make move" in line:
-            # 开局落子
-            mm = re.search(r'make move (\d+),(\d+)', line)
-            if mm:
-                row, col = int(mm.group(1)), int(mm.group(2))
-                with live_lock:
-                    step = len(live_game["moves"])
-                    color = "x" if step % 2 == 0 else "o"
-                    move_data = {"color": color, "row": row, "col": col, "rate": 0, "temp": 0, "info": "opening"}
-                    live_game["moves"].append(move_data)
-                broadcast_sse("move", {"id": gid, "move": move_data, "step": step + 1})
-        
-        # 正常落子
-        m2 = re.match(r'\[0-\d+\]\s+(x|o)\s+(\d+),(\d+)\s+rate=([\d.]+)\s+T=([\d.]+)(.*)', line)
-        if m2:
-            move_data = {
-                "color": m2.group(1),
-                "row": int(m2.group(2)), "col": int(m2.group(3)),
-                "rate": float(m2.group(4)), "temp": float(m2.group(5)),
-                "info": m2.group(6).strip()
-            }
-            with live_lock:
-                live_game["moves"].append(move_data)
-                step = len(live_game["moves"])
-            broadcast_sse("move", {"id": gid, "move": move_data, "step": step})
-        
-        # 胜者
-        if "winner is" in line:
-            m3 = re.search(r'winner is (\d)', line)
-            if m3:
-                winner = int(m3.group(1))
-                with live_lock:
-                    live_game["winner"] = winner
-                    live_game["active"] = False
+            if live_game["active"] and live_game["moves"]:
                 broadcast_sse("game_end", {
-                    "id": gid, "winner": winner,
+                    "id": live_game["id"],
+                    "winner": live_game["winner"],
                     "total_moves": len(live_game["moves"])
                 })
+            live_game = {"id": game_id, "moves": [], "winner": 0, "opening": "", "active": True}
+            broadcast_sse("game_start", {"id": game_id})
+        return
+    
+    with live_lock:
+        if not live_game["active"]:
+            return
+        gid = live_game["id"]
+    
+    # 开局信息
+    if "Opening pool=" in line:
+        info = line.split("]", 1)[-1].strip() if "]" in line else line
+        with live_lock:
+            live_game["opening"] = info
+        broadcast_sse("opening", {"id": gid, "info": info})
+    elif "empty board start" in line:
+        with live_lock:
+            live_game["opening"] = "empty board"
+        broadcast_sse("opening", {"id": gid, "info": "empty board"})
+    elif "make move" in line:
+        # 开局落子
+        mm = re.search(r'make move (\d+),(\d+)', line)
+        if mm:
+            row, col = int(mm.group(1)), int(mm.group(2))
+            with live_lock:
+                step = len(live_game["moves"])
+                color = "x" if step % 2 == 0 else "o"
+                move_data = {"color": color, "row": row, "col": col, "rate": 0, "temp": 0, "info": "opening"}
+                live_game["moves"].append(move_data)
+            broadcast_sse("move", {"id": gid, "move": move_data, "step": step + 1})
+    
+    # 正常落子: [0-7] x 9,5 rate=1 T=0
+    m2 = re.match(r'\[\d+-\d+\]\s+(x|o)\s+(\d+),(\d+)\s+rate=([\d.]+)\s+T=([\d.]+)(.*)', line)
+    if m2:
+        move_data = {
+            "color": m2.group(1),
+            "row": int(m2.group(2)), "col": int(m2.group(3)),
+            "rate": float(m2.group(4)), "temp": float(m2.group(5)),
+            "info": m2.group(6).strip()
+        }
+        with live_lock:
+            live_game["moves"].append(move_data)
+            step = len(live_game["moves"])
+        broadcast_sse("move", {"id": gid, "move": move_data, "step": step})
+    
+    # 胜者
+    if "winner is" in line:
+        m3 = re.search(r'winner is (\d)', line)
+        if m3:
+            winner = int(m3.group(1))
+            with live_lock:
+                live_game["winner"] = winner
+                live_game["active"] = False
+            broadcast_sse("game_end", {
+                "id": gid, "winner": winner,
+                "total_moves": len(live_game["moves"])
+            })
 
 
 def parse_episodes():
@@ -1111,6 +1132,10 @@ if __name__ == "__main__":
     # 启动日志 tail 线程
     tail_thread = threading.Thread(target=tail_log, daemon=True)
     tail_thread.start()
+
+    # 启动 selfplay_0.log tail 线程（跟踪实时棋局）
+    selfplay_tail_thread = threading.Thread(target=tail_selfplay_log, daemon=True)
+    selfplay_tail_thread.start()
 
     server = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     url = f"http://0.0.0.0:{PORT}"
