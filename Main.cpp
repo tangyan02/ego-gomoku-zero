@@ -19,32 +19,15 @@ void selfPlay(int argc, char *argv[]) {
     int numGames = stoi(ConfigReader::get("numGames"));
     int numSimulation = stoi(ConfigReader::get("numSimulation"));
     float explorationFactor = stof(ConfigReader::get("explorationFactor"));
-    int numProcesses = stoi(ConfigReader::get("numProcesses"));
 
-    // 主线程加载模型，避免多线程并发 MPS 初始化崩溃
     string modelPath = ConfigReader::get("modelPath");
     string coreType = ConfigReader::get("coreType");
     auto sharedModel = std::make_unique<Model>();
     sharedModel->init(modelPath, coreType);
 
-    std::vector<std::thread> threads; // 存储线程的容器
-
     auto context = std::make_unique<Context>(numGames);
-    // 创建n个线程并将函数作为入口点
-    for (int i = 0; i < numProcesses; ++i) {
-        threads.emplace_back(recordSelfPlay,
-                             boardSize,
-                             context.get(),
-                             numSimulation,
-                             explorationFactor,
-                             i,
-                             sharedModel.get());
-    }
-
-    // 等待所有线程执行完毕
-    for (auto &thread: threads) {
-        thread.join();
-    };
+    // 单进程单线程自对弈（多进程并行由 Python 端启动多个 C++ 进程实现）
+    recordSelfPlay(boardSize, context.get(), numSimulation, explorationFactor, 0, sharedModel.get());
 }
 
 int main(int argc, char *argv[]) {

@@ -302,7 +302,7 @@ std::vector<std::tuple<vector<vector<vector<float> > >, std::vector<float>, std:
             mcts.search(game, rootNode, 1);
             if (mcts.root->children.size() > 1)
             {
-                mcts.searchBatched(game, rootNode, targetSimulations - 1, 16);
+                mcts.searchBatched(game, rootNode, targetSimulations - 1, 4);
             } else
             {
                 mcts.search(game, rootNode, 1);
