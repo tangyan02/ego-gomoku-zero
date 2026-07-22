@@ -48,4 +48,7 @@ void dfpnVCTResetThreeLimit();
 // 返回进攻方和防守方交替的走法序列
 std::vector<Point> dfpnExtractPV(int attackPlayer, Game& game, int maxDepth = 100);
 
+// 获取上次搜索使用的节点数
+int dfpnVCTGetNodeCount();
+
 #endif // EGO_GOMOKU_ZERO_DFPN_VCT_H

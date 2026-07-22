@@ -254,16 +254,16 @@ def _run_openings_once(cpp_path, model_path, count, threshold, max_attempts, out
     return openings_output
 
 
-def run_generate_openings(cpp_path, model_path, threshold=0.5, eval_threshold=0.25, max_attempts=80000):
+def run_generate_openings(cpp_path, model_path, threshold=1.0, eval_threshold=0.25, max_attempts=80000):
     """分别生成训练开局和评估开局（独立阈值、独立数量，MCTS 评估）
 
-    训练开局：200 个，|v| < threshold * 0.2（默认 |v| < 0.1），MCTS 50 sims
+    训练开局：200 个，|v| < threshold * 0.2（默认 |v| < 0.2），MCTS 50 sims
     评估开局：25 个，|v| < eval_threshold * 0.2（默认 |v| < 0.05），MCTS 50 sims
     """
     cpp_dir = os.path.dirname(os.path.abspath(cpp_path))
 
     # 1. 生成训练开局：200 个，阈值 0.1
-    Logger.infoD("生成训练开局 (200个, |v|<0.1, MCTS 50 sims)...")
+    Logger.infoD("生成训练开局 (200个, |v|<0.2, MCTS 50 sims)...")
     train_output_file = os.path.join("openings", "openings_train.txt")
     os.makedirs("openings", exist_ok=True)
     train_logs = _run_openings_once(cpp_path, model_path, 200, threshold, max_attempts, train_output_file)

@@ -402,6 +402,10 @@ VCTResult dfpnVCT(int attackPlayer, Game& game, std::atomic<bool>& running, int 
     return {false, exhaustive, {}};  // 没找到：exhaustive 标记结论是否可靠
 }
 
+int dfpnVCTGetNodeCount() {
+    return nodeCount;
+}
+
 // -------- PV 提取（验证用）--------
 
 std::vector<Point> dfpnExtractPV(int attackPlayer, Game& game, int maxDepth) {

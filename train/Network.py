@@ -76,18 +76,16 @@ class PolicyValueNetwork(nn.Module):
             ResidualBlock(self.residual_channels, use_se=True),
         )
 
-        # action policy layers（16ch + 512 隐藏层提升表达力）
-        self.act_channels = 16
-        self.act_conv1 = nn.Conv2d(self.residual_channels, self.act_channels, kernel_size=(1, 1), bias=False)
-        self.act_bn1 = nn.BatchNorm2d(self.act_channels)
-        self.act_fc1 = nn.Linear(self.act_channels * self.board_size * self.board_size, 512)
-        self.act_fc2 = nn.Linear(512, self.board_size * self.board_size)
+        # action policy layers（纯卷积结构，AlphaZero 标准）
+        self.act_conv1 = nn.Conv2d(self.residual_channels, 32, kernel_size=1, bias=False)
+        self.act_bn1 = nn.BatchNorm2d(32)
+        self.act_conv2 = nn.Conv2d(32, 1, kernel_size=1)
 
-        # state value layers（GAP + 隐藏层增强表达力）
+        # state value layers（GAP + GMP 并联，捕捉全局均值和局部峰值）
         self.val_channels = 32
-        self.val_conv1 = nn.Conv2d(self.residual_channels, self.val_channels, kernel_size=(1, 1), bias=False)
+        self.val_conv1 = nn.Conv2d(self.residual_channels, self.val_channels, kernel_size=1, bias=False)
         self.val_bn1 = nn.BatchNorm2d(self.val_channels)
-        self.val_fc1 = nn.Linear(self.val_channels, 32)  # GAP → 隐藏层
+        self.val_fc1 = nn.Linear(self.val_channels * 2, 32)  # GAP(32) + GMP(32) = 64
         self.val_fc2 = nn.Linear(32, 1)
 
     def forward(self, state_input):
@@ -98,21 +96,18 @@ class PolicyValueNetwork(nn.Module):
         x = F.relu(self.bn1(self.conv1(state_input)))
         x = self.residual_blocks(x)
 
-        # action policy layers
-        x_act = self.act_conv1(x)
-        x_act = self.act_bn1(x_act)
-        x_act = F.relu(x_act)
-        x_act = x_act.view(-1, self.act_channels * self.board_size * self.board_size)
-        x_act = F.relu(self.act_fc1(x_act))
-        x_act = F.log_softmax(self.act_fc2(x_act), dim=1)
+        # action policy layers（纯卷积）
+        x_act = F.relu(self.act_bn1(self.act_conv1(x)))
+        x_act = self.act_conv2(x_act).view(-1, self.board_size * self.board_size)
+        x_act = F.log_softmax(x_act, dim=1)
 
-        # state value layers (GAP + hidden)
-        x_val = self.val_conv1(x)
-        x_val = self.val_bn1(x_val)
-        x_val = F.relu(x_val)
-        x_val = F.adaptive_avg_pool2d(x_val, 1).flatten(1)  # [batch, 32]
-        x_val = F.relu(self.val_fc1(x_val))  # [batch, 32]
-        x_val = torch.tanh(self.val_fc2(x_val))  # [batch, 1]
+        # state value layers (GAP + GMP 并联)
+        x_val = F.relu(self.val_bn1(self.val_conv1(x)))
+        v_gap = F.adaptive_avg_pool2d(x_val, 1).flatten(1)  # [batch, 32] 全局均值
+        v_gmp = F.adaptive_max_pool2d(x_val, 1).flatten(1)  # [batch, 32] 局部峰值
+        x_val = torch.cat([v_gap, v_gmp], dim=1)            # [batch, 64]
+        x_val = F.relu(self.val_fc1(x_val))                 # [batch, 32]
+        x_val = torch.tanh(self.val_fc2(x_val))             # [batch, 1]
 
         return x_val, x_act
 
