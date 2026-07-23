@@ -14,6 +14,7 @@
 #include "Utils.h"
 #include "Shape.h"
 #include "DfpnVCT.h"
+#include <algorithm>
 
 const char* infotext = "name=\"Ego-Zero\", author=\"TangYan\", version=\"2.0\", country=\"China\", email=\"tangyan1412@foxmail.com\"";
 
@@ -267,6 +268,20 @@ bool searchOpponentVCT(MonteCarloTree& mcts, int oppVctBudget, int& thisTimeOut,
     auto [win, candidateMoves, info] = selectActions(*game);
 
     if (!win && !candidateMoves.empty()) {
+        // 用 policy 概率对候选点排序（从高到低），优先验证最可能走的点
+        if (node->children.empty()) {
+            mcts.search(*game, node, 1);  // 仅在树复用未展开时 expand
+        }
+        std::sort(candidateMoves.begin(), candidateMoves.end(),
+            [&](const Point& a, const Point& b) {
+                double pa = 0, pb = 0;
+                auto itA = node->children.find(a);
+                auto itB = node->children.find(b);
+                if (itA != node->children.end()) pa = itA->second->prior_prob;
+                if (itB != node->children.end()) pb = itB->second->prior_prob;
+                return pa > pb;  // 降序
+            });
+
         // 快速预判对手是否有 VCT
         Game gameCopy = *game;
         std::atomic<bool> vctRunning(true);
