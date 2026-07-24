@@ -12,6 +12,8 @@
 #include <mutex>
 #include <iomanip>
 #ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <io.h>
 #include <windows.h>
 #else
