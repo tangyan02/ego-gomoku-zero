@@ -11,9 +11,14 @@
 #include <future>
 #include <mutex>
 #include <iomanip>
+#ifdef _WIN32
+#include <io.h>
+#include <windows.h>
+#else
 #include <fcntl.h>
 #include <sys/file.h>
 #include <unistd.h>
+#endif
 #include "Analyzer.h"
 
 using namespace std;
@@ -35,6 +40,30 @@ void printGame(Game &game, Point action, float rate, float temperature,
 
 // 跨进程动态分配对局：文件锁 + 共享计数器
 static int claimNextGame(int totalGames) {
+#ifdef _WIN32
+    HANDLE hFile = CreateFileA("record/game_counter.lock",
+        GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) return -1;
+
+    // Win32 独占打开已隐含锁定（dwShareMode=0）
+    char buf[16] = {0};
+    DWORD bytesRead = 0;
+    ReadFile(hFile, buf, sizeof(buf) - 1, &bytesRead, NULL);
+    int current = atoi(buf);
+
+    if (current >= totalGames) {
+        CloseHandle(hFile);
+        return -1;
+    }
+
+    SetFilePointer(hFile, 0, NULL, FILE_BEGIN);
+    SetEndOfFile(hFile);
+    snprintf(buf, sizeof(buf), "%d", current + 1);
+    DWORD bytesWritten = 0;
+    WriteFile(hFile, buf, (DWORD)strlen(buf), &bytesWritten, NULL);
+    CloseHandle(hFile);
+    return current;
+#else
     int fd = open("record/game_counter.lock", O_RDWR | O_CREAT, 0666);
     if (fd < 0) return -1;
     flock(fd, LOCK_EX);
@@ -55,6 +84,7 @@ static int claimNextGame(int totalGames) {
     flock(fd, LOCK_UN);
     close(fd);
     return current;
+#endif
 }
 
 // 缓存开局库，只读一次文件
